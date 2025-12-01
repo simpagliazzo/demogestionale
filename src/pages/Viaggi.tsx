@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useNavigate } from "react-router-dom";
+import CreateTripDialog from "@/components/CreateTripDialog";
 
 interface Trip {
   id: string;
@@ -42,6 +43,7 @@ const statusLabels = {
 export default function Viaggi() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { isAdmin, isAgent } = useUserRole();
   const navigate = useNavigate();
 
@@ -99,7 +101,7 @@ export default function Viaggi() {
           </p>
         </div>
         {(isAdmin || isAgent) && (
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Crea Viaggio
           </Button>
@@ -115,7 +117,7 @@ export default function Viaggi() {
               Inizia creando il primo viaggio di gruppo
             </p>
             {(isAdmin || isAgent) && (
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Crea Primo Viaggio
               </Button>
@@ -189,6 +191,12 @@ export default function Viaggi() {
           ))}
         </div>
       )}
+
+      <CreateTripDialog 
+        open={createDialogOpen} 
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={loadTrips}
+      />
     </div>
   );
 }
