@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -40,6 +40,7 @@ export default function AddParticipantDialog({
   onSuccess,
 }: AddParticipantDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [numParticipants, setNumParticipants] = useState<number | null>(null);
 
   const {
     register,
@@ -47,7 +48,6 @@ export default function AddParticipantDialog({
     control,
     formState: { errors },
     reset,
-    watch,
   } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -81,6 +81,7 @@ export default function AddParticipantDialog({
 
       toast.success(`${values.participants.length} partecipante/i aggiunto/i con successo`);
       reset();
+      setNumParticipants(null);
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -91,67 +92,82 @@ export default function AddParticipantDialog({
     }
   };
 
+  const handleNumParticipantsSelect = (num: number) => {
+    setNumParticipants(num);
+    const newParticipants = Array(num).fill(null).map(() => ({
+      full_name: "", 
+      date_of_birth: "", 
+      place_of_birth: "", 
+      email: "", 
+      phone: "", 
+      notes: ""
+    }));
+    reset({
+      participants: newParticipants,
+      room_type: "doppia",
+    });
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      onOpenChange(isOpen);
+      if (!isOpen) setNumParticipants(null);
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Aggiungi Partecipanti</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Inserisci fino a 4 partecipanti che condivideranno la stessa camera
+            Seleziona il numero di partecipanti che condivideranno la stessa camera
           </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="space-y-2">
-            <Label>Tipologia Camera <span className="text-destructive">*</span></Label>
-            <Select
-              value={watch("room_type")}
-              onValueChange={(value) => register("room_type").onChange({ target: { value } })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona tipologia" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="singola">Singola</SelectItem>
-                <SelectItem value="doppia">Doppia</SelectItem>
-                <SelectItem value="matrimoniale">Matrimoniale</SelectItem>
-                <SelectItem value="tripla">Tripla</SelectItem>
-                <SelectItem value="quadrupla">Quadrupla</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">Partecipanti</Label>
-              {fields.length < 4 && (
+        {numParticipants === null ? (
+          <div className="space-y-4 py-8">
+            <Label className="text-center block text-lg">Quanti partecipanti vuoi aggiungere?</Label>
+            <div className="grid grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((num) => (
                 <Button
+                  key={num}
                   type="button"
                   variant="outline"
-                  size="sm"
-                  onClick={() => append({ full_name: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "" })}
+                  className="h-24 text-2xl font-bold"
+                  onClick={() => handleNumParticipantsSelect(num)}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Aggiungi Partecipante
+                  {num}
                 </Button>
-              )}
+              ))}
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-2">
+              <Label>Tipologia Camera <span className="text-destructive">*</span></Label>
+              <Controller
+                name="room_type"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona tipologia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="singola">Singola</SelectItem>
+                      <SelectItem value="doppia">Doppia</SelectItem>
+                      <SelectItem value="matrimoniale">Matrimoniale</SelectItem>
+                      <SelectItem value="tripla">Tripla</SelectItem>
+                      <SelectItem value="quadrupla">Quadrupla</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
-            {fields.map((field, index) => (
-              <div key={field.id} className="p-4 border rounded-lg space-y-4 relative">
-                {fields.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={() => remove(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-                
-                <h4 className="font-medium">Partecipante {index + 1}</h4>
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Partecipanti ({fields.length})</Label>
+
+              {fields.map((field, index) => (
+                <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                  <h4 className="font-medium">Partecipante {index + 1}</h4>
 
                 <div className="space-y-2">
                   <Label htmlFor={`participants.${index}.full_name`}>
@@ -207,32 +223,33 @@ export default function AddParticipantDialog({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor={`participants.${index}.notes`}>Note (Viaggia con...)</Label>
-                  <Textarea
-                    {...register(`participants.${index}.notes`)}
-                    placeholder="Es. Viaggia con amici, preferisce posti vicini sul bus"
-                    rows={2}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor={`participants.${index}.notes`}>Note (Viaggia con...)</Label>
+                    <Textarea
+                      {...register(`participants.${index}.notes`)}
+                      placeholder="Es. Viaggia con amici, preferisce posti vicini sul bus"
+                      rows={2}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Annulla
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvataggio..." : `Aggiungi ${fields.length} Partecipante/i`}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNumParticipants(null)}
+                disabled={isSubmitting}
+              >
+                Indietro
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Salvataggio..." : `Aggiungi ${fields.length} Partecipante/i`}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

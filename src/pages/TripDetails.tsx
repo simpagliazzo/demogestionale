@@ -13,6 +13,7 @@ import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "sonner";
 import AddParticipantDialog from "@/components/AddParticipantDialog";
+import EditParticipantDialog from "@/components/EditParticipantDialog";
 
 interface Trip {
   id: string;
@@ -79,6 +80,8 @@ export default function TripDetails() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
+  const [editParticipantOpen, setEditParticipantOpen] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [carriers, setCarriers] = useState<{ id: string; name: string }[]>([]);
   const [selectedCarrier, setSelectedCarrier] = useState<string>("");
   const [companion, setCompanion] = useState<string>("");
@@ -170,6 +173,33 @@ export default function TripDetails() {
   const getAvailableSpots = () => {
     if (!trip?.max_participants) return "Illimitati";
     return trip.max_participants - participants.length;
+  };
+
+  const getRoomOccupancy = () => {
+    const occupied = {
+      singole: 0,
+      doppie: 0,
+      matrimoniali: 0,
+      triple: 0,
+      quadruple: 0,
+    };
+
+    participants.forEach(p => {
+      if (p.notes) {
+        if (p.notes.includes("Camera: singola")) occupied.singole++;
+        else if (p.notes.includes("Camera: doppia")) occupied.doppie++;
+        else if (p.notes.includes("Camera: matrimoniale")) occupied.matrimoniali++;
+        else if (p.notes.includes("Camera: tripla")) occupied.triple++;
+        else if (p.notes.includes("Camera: quadrupla")) occupied.quadruple++;
+      }
+    });
+
+    return occupied;
+  };
+
+  const handleEditParticipant = (participant: Participant) => {
+    setSelectedParticipant(participant);
+    setEditParticipantOpen(true);
   };
 
   if (loading) {
@@ -342,15 +372,15 @@ export default function TripDetails() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Hotel className="h-5 w-5" />
-              Allotment Camere
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(isAdmin || isAgent) ? (
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hotel className="h-5 w-5" />
+                Allotment Camere
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -405,23 +435,64 @@ export default function TripDetails() {
                   </div>
                 </div>
               </div>
-            ) : (
-              Object.keys(roomTypeCounts).length > 0 ? (
-                <div className="space-y-2">
-                  {Object.entries(roomTypeCounts).map(([type, count]) => (
-                    <div key={type} className="flex justify-between">
-                      <span className="capitalize">{type}</span>
-                      <span className="font-medium">{count}</span>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {(isAdmin || isAgent) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Hotel className="h-5 w-5" />
+              Disponibilità Camere
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {(() => {
+                const occupied = getRoomOccupancy();
+                const roomTypes = [
+                  { key: 'singole', label: 'Singole' },
+                  { key: 'doppie', label: 'Doppie' },
+                  { key: 'matrimoniali', label: 'Matrimoniali' },
+                  { key: 'triple', label: 'Triple' },
+                  { key: 'quadruple', label: 'Quadruple' },
+                ] as const;
+
+                return roomTypes.map(({ key, label }) => {
+                  const total = allotmentData[key];
+                  const used = occupied[key];
+                  const available = total - used;
+                  
+                  if (total === 0) return null;
+                  
+                  return (
+                    <div key={key} className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="font-medium">{label}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground">
+                          Occupate: {used} / {total}
+                        </span>
+                        <span className={`font-bold ${available > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          Disponibili: {available}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nessuna camera configurata</p>
-              )
-            )}
+                  );
+                });
+              })()}
+              {allotmentData.singole === 0 && allotmentData.doppie === 0 && 
+               allotmentData.matrimoniali === 0 && allotmentData.triple === 0 && 
+               allotmentData.quadruple === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Configura l'allotment delle camere per visualizzare la disponibilità
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -445,7 +516,8 @@ export default function TripDetails() {
               {participants.map((participant) => (
                 <div
                   key={participant.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                  onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                 >
                   <div>
                     <p className="font-medium">{participant.full_name}</p>
@@ -478,6 +550,13 @@ export default function TripDetails() {
         tripId={id!}
         open={addParticipantOpen}
         onOpenChange={setAddParticipantOpen}
+        onSuccess={loadTripDetails}
+      />
+
+      <EditParticipantDialog
+        participant={selectedParticipant}
+        open={editParticipantOpen}
+        onOpenChange={setEditParticipantOpen}
         onSuccess={loadTripDetails}
       />
     </div>
