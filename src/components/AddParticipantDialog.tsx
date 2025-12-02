@@ -87,14 +87,57 @@ export default function AddParticipantDialog({
 
       // Se non esiste una configurazione, creane una standard GT (13 file x 4 posti = 52 posti)
       if (!config) {
+        // Verifica se il viaggio ha un tipo di bus associato
+        const { data: tripData } = await supabase
+          .from("trips")
+          .select("id")
+          .eq("id", tripId)
+          .single();
+
+        // Cerca se esiste già un tipo di bus associato tramite altra configurazione
+        const { data: existingBusConfig } = await supabase
+          .from("bus_configurations")
+          .select("bus_type_id")
+          .eq("trip_id", tripId)
+          .limit(1)
+          .maybeSingle();
+
+        let busTypeToUse = null;
+        
+        // Se c'è un tipo di bus già associato, usalo
+        if (existingBusConfig?.bus_type_id) {
+          const { data: busType } = await supabase
+            .from("bus_types")
+            .select("*")
+            .eq("id", existingBusConfig.bus_type_id)
+            .single();
+          busTypeToUse = busType;
+        } else {
+          // Altrimenti usa il tipo GT Standard come default
+          const { data: defaultBusType } = await supabase
+            .from("bus_types")
+            .select("*")
+            .ilike("name", "%GT Standard%")
+            .limit(1)
+            .maybeSingle();
+          busTypeToUse = defaultBusType;
+        }
+
+        // Crea la configurazione
+        const configToInsert: any = {
+          trip_id: tripId,
+          rows: busTypeToUse?.rows || 13,
+          seats_per_row: busTypeToUse?.seats_per_row || 4,
+          total_seats: busTypeToUse?.total_seats || 52,
+        };
+
+        if (busTypeToUse?.id) {
+          configToInsert.bus_type_id = busTypeToUse.id;
+        }
+
         const { data: newConfig, error: createError } = await supabase
           .from("bus_configurations")
-          .insert({
-            trip_id: tripId,
-            rows: 13,
-            seats_per_row: 4,
-            total_seats: 52
-          })
+          .insert(configToInsert)
           .select()
           .single();
 

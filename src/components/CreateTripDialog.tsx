@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -25,6 +25,7 @@ const tripSchema = z.object({
   deposit_amount: z.string().min(1, "L'acconto è obbligatorio"),
   max_participants: z.string().optional(),
   status: z.enum(["planned", "confirmed", "ongoing", "completed", "cancelled"]),
+  bus_type_id: z.string().optional(),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -41,6 +42,27 @@ interface CreateTripDialogProps {
 export default function CreateTripDialog({ open, onOpenChange, onSuccess }: CreateTripDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [busTypes, setBusTypes] = useState<{ id: string; name: string; total_seats: number }[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      loadBusTypes();
+    }
+  }, [open]);
+
+  const loadBusTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("bus_types")
+        .select("id, name, total_seats")
+        .order("name");
+      
+      if (error) throw error;
+      setBusTypes(data || []);
+    } catch (error) {
+      console.error("Errore caricamento tipi bus:", error);
+    }
+  };
 
   const form = useForm<TripFormValues>({
     resolver: zodResolver(tripSchema),
@@ -55,6 +77,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
       deposit_amount: "",
       max_participants: "",
       status: "planned",
+      bus_type_id: "",
     },
   });
 
@@ -68,7 +91,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("trips").insert({
+      const { data: tripData, error: tripError } = await supabase.from("trips").insert({
         title: values.title,
         description: values.description || null,
         destination: values.destination,
@@ -80,9 +103,32 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
         max_participants: values.max_participants ? parseInt(values.max_participants) : null,
         status: values.status,
         created_by: user.id,
-      });
+      }).select().single();
 
-      if (error) throw error;
+      if (tripError) throw tripError;
+
+      // Se è stato selezionato un tipo di bus, crea la configurazione
+      if (values.bus_type_id && tripData) {
+        const { data: busType } = await supabase
+          .from("bus_types")
+          .select("*")
+          .eq("id", values.bus_type_id)
+          .single();
+
+        if (busType) {
+          const { error: configError } = await supabase
+            .from("bus_configurations")
+            .insert({
+              trip_id: tripData.id,
+              bus_type_id: busType.id,
+              rows: busType.rows,
+              seats_per_row: busType.seats_per_row,
+              total_seats: busType.total_seats,
+            });
+
+          if (configError) throw configError;
+        }
+      }
 
       toast.success("Viaggio creato con successo!");
       form.reset();
@@ -292,6 +338,32 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="bus_type_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo di Bus</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona il tipo di bus (opzionale)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Nessuno</SelectItem>
+                      {busTypes.map((busType) => (
+                        <SelectItem key={busType.id} value={busType.id}>
+                          {busType.name} - {busType.total_seats} posti
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

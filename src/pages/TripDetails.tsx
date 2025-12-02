@@ -92,6 +92,8 @@ export default function TripDetails() {
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [carriers, setCarriers] = useState<{ id: string; name: string }[]>([]);
   const [selectedCarrier, setSelectedCarrier] = useState<string>("");
+  const [busTypes, setBusTypes] = useState<{ id: string; name: string; total_seats: number }[]>([]);
+  const [selectedBusType, setSelectedBusType] = useState<string>("");
   const [companion, setCompanion] = useState<string>("");
   const [allotmentData, setAllotmentData] = useState({
     singole: 0,
@@ -109,6 +111,7 @@ export default function TripDetails() {
   useEffect(() => {
     loadTripDetails();
     loadCarriers();
+    loadBusTypes();
   }, [id]);
 
   useEffect(() => {
@@ -128,6 +131,20 @@ export default function TripDetails() {
       setCarriers(data || []);
     } catch (error) {
       console.error("Errore caricamento vettori:", error);
+    }
+  };
+
+  const loadBusTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("bus_types")
+        .select("id, name, total_seats")
+        .order("name");
+
+      if (error) throw error;
+      setBusTypes(data || []);
+    } catch (error) {
+      console.error("Errore caricamento tipi bus:", error);
     }
   };
 
@@ -171,6 +188,19 @@ export default function TripDetails() {
         });
         setSelectedCarrier(tripData.carrier_id || "");
         setCompanion(tripData.companion_name || "");
+
+        // Carica il tipo di bus dalla configurazione
+        const { data: busConfig } = await supabase
+          .from("bus_configurations")
+          .select("bus_type_id")
+          .eq("trip_id", tripData.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (busConfig?.bus_type_id) {
+          setSelectedBusType(busConfig.bus_type_id);
+        }
       }
 
       // Carica partecipanti
@@ -320,6 +350,72 @@ export default function TripDetails() {
     } catch (error) {
       console.error("Errore salvataggio accompagnatore:", error);
       toast.error("Errore nel salvataggio dell'accompagnatore");
+    }
+  };
+
+  const saveBusType = async (busTypeId: string) => {
+    if (!trip) return;
+    
+    try {
+      // Controlla se esiste già una configurazione bus
+      const { data: existingConfig } = await supabase
+        .from("bus_configurations")
+        .select("id")
+        .eq("trip_id", trip.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (busTypeId) {
+        // Carica i dati del tipo di bus selezionato
+        const { data: busType } = await supabase
+          .from("bus_types")
+          .select("*")
+          .eq("id", busTypeId)
+          .single();
+
+        if (!busType) throw new Error("Tipo di bus non trovato");
+
+        if (existingConfig) {
+          // Aggiorna la configurazione esistente
+          const { error } = await supabase
+            .from("bus_configurations")
+            .update({
+              bus_type_id: busTypeId,
+              rows: busType.rows,
+              seats_per_row: busType.seats_per_row,
+              total_seats: busType.total_seats,
+            })
+            .eq("id", existingConfig.id);
+
+          if (error) throw error;
+        } else {
+          // Crea una nuova configurazione
+          const { error } = await supabase
+            .from("bus_configurations")
+            .insert({
+              trip_id: trip.id,
+              bus_type_id: busTypeId,
+              rows: busType.rows,
+              seats_per_row: busType.seats_per_row,
+              total_seats: busType.total_seats,
+            });
+
+          if (error) throw error;
+        }
+      } else if (existingConfig) {
+        // Se deselezionato, rimuovi il bus_type_id ma mantieni la configurazione
+        const { error } = await supabase
+          .from("bus_configurations")
+          .update({ bus_type_id: null })
+          .eq("id", existingConfig.id);
+
+        if (error) throw error;
+      }
+
+      toast.success("Tipo di bus salvato con successo");
+    } catch (error) {
+      console.error("Errore salvataggio tipo bus:", error);
+      toast.error("Errore nel salvataggio del tipo di bus");
     }
   };
 
@@ -572,6 +668,41 @@ export default function TripDetails() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 {carriers.find(c => c.id === selectedCarrier)?.name || "Non ancora assegnato"}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bus className="h-5 w-5" />
+              Tipo di Bus
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(isAdmin || isAgent) ? (
+              <div className="space-y-2">
+                <Select value={selectedBusType} onValueChange={(value) => {
+                  setSelectedBusType(value);
+                  saveBusType(value);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona tipo bus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nessuno</SelectItem>
+                    {busTypes.map((busType) => (
+                      <SelectItem key={busType.id} value={busType.id}>
+                        {busType.name} - {busType.total_seats} posti
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {busTypes.find(bt => bt.id === selectedBusType)?.name || "Non ancora assegnato"}
               </p>
             )}
           </CardContent>
