@@ -1,9 +1,6 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bus } from "lucide-react";
-import { toast } from "sonner";
 
 interface BusSeatMapProps {
   busConfig: { id: string; rows: number; seats_per_row: number } | null;
