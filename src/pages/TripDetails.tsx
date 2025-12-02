@@ -793,6 +793,9 @@ export default function TripDetails() {
 
       <EditParticipantDialog
         participant={selectedParticipant}
+        tripPrice={trip?.price || 0}
+        depositType={trip?.deposit_type || "fixed"}
+        depositAmount={trip?.deposit_amount || 0}
         open={editParticipantOpen}
         onOpenChange={setEditParticipantOpen}
         onSuccess={loadTripDetails}
