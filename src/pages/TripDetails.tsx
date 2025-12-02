@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -742,12 +742,30 @@ export default function TripDetails() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Partecipanti ({participants.length})</CardTitle>
-            {(isAdmin || isAgent) && (
-              <Button onClick={() => setAddParticipantOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Aggiungi Partecipante
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => window.open(`/trips/${id}/hotel-list`, '_blank')} 
+                variant="outline"
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Lista Hotel
               </Button>
-            )}
+              <Button 
+                onClick={() => window.open(`/trips/${id}/companion-list`, '_blank')} 
+                variant="outline"
+                className="gap-2"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Lista Accompagnatore
+              </Button>
+              {(isAdmin || isAgent) && (
+                <Button onClick={() => setAddParticipantOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Aggiungi Partecipante
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -13,6 +13,8 @@ import Partecipanti from "./pages/Partecipanti";
 import Vettori from "./pages/Vettori";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import HotelList from "./components/HotelList";
+import CompanionList from "./components/CompanionList";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/viaggi/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
+            <Route path="/viaggi/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
             <Route
               element={
                 <ProtectedRoute>
