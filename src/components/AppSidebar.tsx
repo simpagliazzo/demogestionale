@@ -8,6 +8,7 @@ import {
   UserCircle,
   LogOut,
   Plane,
+  Settings,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,6 +45,7 @@ export function AppSidebar() {
 
   const adminItems = [
     { title: "Vettori Bus", url: "/vettori", icon: Bus, requiresAdmin: true },
+    { title: "Tipi Bus", url: "/tipi-bus", icon: Settings, requiresAdmin: true },
   ];
 
   return (

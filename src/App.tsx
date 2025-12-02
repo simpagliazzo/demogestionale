@@ -11,6 +11,7 @@ import Viaggi from "./pages/Viaggi";
 import TripDetails from "./pages/TripDetails";
 import Partecipanti from "./pages/Partecipanti";
 import Vettori from "./pages/Vettori";
+import BusTypes from "./pages/BusTypes";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import HotelList from "./components/HotelList";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/viaggi/:id" element={<TripDetails />} />
               <Route path="/partecipanti" element={<Partecipanti />} />
               <Route path="/vettori" element={<Vettori />} />
+              <Route path="/tipi-bus" element={<BusTypes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
