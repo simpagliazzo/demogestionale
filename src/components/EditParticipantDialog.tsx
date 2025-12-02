@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,6 +20,14 @@ const participantSchema = z.object({
   notes: z.string().optional(),
 });
 
+interface Payment {
+  id: string;
+  amount: number;
+  payment_date: string;
+  payment_type: string;
+  notes: string | null;
+}
+
 interface EditParticipantDialogProps {
   participant: {
     id: string;
@@ -29,6 +38,9 @@ interface EditParticipantDialogProps {
     phone: string | null;
     notes: string | null;
   } | null;
+  tripPrice: number;
+  depositType: "fixed" | "percentage";
+  depositAmount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
@@ -36,11 +48,18 @@ interface EditParticipantDialogProps {
 
 export default function EditParticipantDialog({
   participant,
+  tripPrice,
+  depositType,
+  depositAmount,
   open,
   onOpenChange,
   onSuccess,
 }: EditParticipantDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [newPaymentAmount, setNewPaymentAmount] = useState("");
+  const [newPaymentType, setNewPaymentType] = useState("acconto");
+  const [newPaymentNotes, setNewPaymentNotes] = useState("");
 
   const {
     register,
@@ -61,8 +80,89 @@ export default function EditParticipantDialog({
         phone: participant.phone || "",
         notes: participant.notes || "",
       });
+      loadPayments();
     }
   }, [participant, reset]);
+
+  const loadPayments = async () => {
+    if (!participant) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("participant_id", participant.id)
+        .order("payment_date", { ascending: false });
+
+      if (error) throw error;
+      setPayments(data || []);
+    } catch (error) {
+      console.error("Errore caricamento pagamenti:", error);
+    }
+  };
+
+  const calculateDepositAmount = () => {
+    if (depositType === "fixed") {
+      return depositAmount;
+    } else {
+      return (tripPrice * depositAmount) / 100;
+    }
+  };
+
+  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const depositDue = calculateDepositAmount();
+  const balance = tripPrice - totalPaid;
+
+  const handleAddPayment = async () => {
+    if (!participant || !newPaymentAmount) return;
+    
+    const amount = parseFloat(newPaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Inserisci un importo valido");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .insert({
+          participant_id: participant.id,
+          amount,
+          payment_type: newPaymentType,
+          notes: newPaymentNotes || null,
+        });
+
+      if (error) throw error;
+
+      toast.success("Pagamento aggiunto con successo");
+      setNewPaymentAmount("");
+      setNewPaymentType("acconto");
+      setNewPaymentNotes("");
+      loadPayments();
+    } catch (error) {
+      console.error("Errore:", error);
+      toast.error("Errore durante l'aggiunta del pagamento");
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm("Sei sicuro di voler eliminare questo pagamento?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .eq("id", paymentId);
+
+      if (error) throw error;
+
+      toast.success("Pagamento eliminato");
+      loadPayments();
+    } catch (error) {
+      console.error("Errore:", error);
+      toast.error("Errore durante l'eliminazione del pagamento");
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof participantSchema>) => {
     if (!participant) return;
@@ -121,12 +221,14 @@ export default function EditParticipantDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifica Partecipante</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Sezione Dati Partecipante */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="full_name">
               Nome e Cognome <span className="text-destructive">*</span>
@@ -190,30 +292,148 @@ export default function EditParticipantDialog({
             />
           </div>
 
-          <div className="flex justify-between gap-3 pt-4">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isSubmitting}
-            >
-              Elimina
-            </Button>
-            <div className="flex gap-3">
+            <div className="flex justify-between gap-3 pt-4">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
+                variant="destructive"
+                onClick={handleDelete}
                 disabled={isSubmitting}
               >
-                Annulla
+                Elimina
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Salvataggio..." : "Salva Modifiche"}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  Annulla
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Salvataggio..." : "Salva Modifiche"}
+                </Button>
+              </div>
+            </div>
+          </form>
+
+          {/* Sezione Pagamenti */}
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Situazione Pagamenti</h3>
+              
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                  <span className="text-sm font-medium">Prezzo Viaggio</span>
+                  <span className="text-lg font-bold">€{tripPrice.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                  <span className="text-sm font-medium">
+                    Acconto Dovuto {depositType === "percentage" ? `(${depositAmount}%)` : ""}
+                  </span>
+                  <span className="text-lg font-semibold text-amber-600">€{depositDue.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                  <span className="text-sm font-medium">Totale Pagato</span>
+                  <span className="text-lg font-semibold text-green-600">€{totalPaid.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border-2 border-primary">
+                  <span className="text-sm font-bold">Saldo Residuo</span>
+                  <span className="text-xl font-bold text-primary">€{balance.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-md font-semibold mb-3">Cronologia Pagamenti</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {payments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nessun pagamento registrato
+                  </p>
+                ) : (
+                  payments.map((payment) => (
+                    <div key={payment.id} className="flex justify-between items-start p-3 bg-card border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {payment.payment_type}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(payment.payment_date).toLocaleDateString("it-IT")}
+                          </span>
+                        </div>
+                        {payment.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">{payment.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">€{payment.amount.toFixed(2)}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePayment(payment.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-md font-semibold mb-3">Aggiungi Pagamento</h4>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Importo</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={newPaymentAmount}
+                    onChange={(e) => setNewPaymentAmount(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Tipo Pagamento</Label>
+                  <Input
+                    type="text"
+                    placeholder="es: acconto, saldo, bonifico..."
+                    value={newPaymentType}
+                    onChange={(e) => setNewPaymentType(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Note</Label>
+                  <Textarea
+                    placeholder="Note opzionali"
+                    rows={2}
+                    value={newPaymentNotes}
+                    onChange={(e) => setNewPaymentNotes(e.target.value)}
+                  />
+                </div>
+                
+                <Button
+                  type="button"
+                  onClick={handleAddPayment}
+                  className="w-full"
+                  disabled={!newPaymentAmount}
+                >
+                  Aggiungi Pagamento
+                </Button>
+              </div>
             </div>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
