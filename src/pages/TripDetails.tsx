@@ -683,14 +683,23 @@ export default function TripDetails() {
           <CardContent>
             {(isAdmin || isAgent) ? (
               <div className="space-y-2">
-                <Select value={selectedBusType || ""} onValueChange={(value) => {
-                  setSelectedBusType(value);
-                  saveBusType(value);
-                }}>
+                <Select 
+                  value={selectedBusType || "none"} 
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      setSelectedBusType("");
+                      saveBusType("");
+                    } else {
+                      setSelectedBusType(value);
+                      saveBusType(value);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleziona tipo bus" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nessun tipo bus</SelectItem>
                     {busTypes.map((busType) => (
                       <SelectItem key={busType.id} value={busType.id}>
                         {busType.name} - {busType.total_seats} posti
