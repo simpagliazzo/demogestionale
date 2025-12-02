@@ -73,14 +73,17 @@ export default function AddParticipantDialog({
     
     setLoadingBusConfig(true);
     try {
-      // Carica configurazione bus per questo viaggio
-      const { data: config, error: configError } = await supabase
+      // Carica configurazione bus per questo viaggio (prendi la prima se ce ne sono più)
+      const { data: configs, error: configError } = await supabase
         .from("bus_configurations")
         .select("*")
         .eq("trip_id", tripId)
-        .maybeSingle();
+        .order("created_at", { ascending: true })
+        .limit(1);
 
       if (configError) throw configError;
+
+      let config = configs?.[0];
 
       // Se non esiste una configurazione, creane una standard GT (13 file x 4 posti = 52 posti)
       if (!config) {
@@ -96,19 +99,19 @@ export default function AddParticipantDialog({
           .single();
 
         if (createError) throw createError;
-        setBusConfig(newConfig);
-      } else {
-        setBusConfig(config);
-
-        // Carica posti già occupati
-        const { data: assignments, error: assignError } = await supabase
-          .from("bus_seat_assignments")
-          .select("seat_number")
-          .eq("bus_config_id", config.id);
-
-        if (assignError) throw assignError;
-        setOccupiedSeats(assignments?.map(a => a.seat_number) || []);
+        config = newConfig;
       }
+
+      setBusConfig(config);
+
+      // Carica posti già occupati
+      const { data: assignments, error: assignError } = await supabase
+        .from("bus_seat_assignments")
+        .select("seat_number")
+        .eq("bus_config_id", config.id);
+
+      if (assignError) throw assignError;
+      setOccupiedSeats(assignments?.map(a => a.seat_number) || []);
     } catch (error) {
       console.error("Errore caricamento configurazione bus:", error);
       toast.error("Errore nel caricamento della mappa del bus");
