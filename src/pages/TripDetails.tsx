@@ -744,7 +744,7 @@ export default function TripDetails() {
             <CardTitle>Partecipanti ({participants.length})</CardTitle>
             <div className="flex gap-2">
               <Button 
-                onClick={() => window.open(`/viaggi/${id}/hotel-list`, '_blank')} 
+                onClick={() => window.open(`/trips/${id}/hotel-list`, '_blank')} 
                 variant="outline"
                 className="gap-2"
               >
@@ -752,7 +752,7 @@ export default function TripDetails() {
                 Lista Hotel
               </Button>
               <Button 
-                onClick={() => window.open(`/viaggi/${id}/companion-list`, '_blank')} 
+                onClick={() => window.open(`/trips/${id}/companion-list`, '_blank')} 
                 variant="outline"
                 className="gap-2"
               >
