@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -103,12 +103,19 @@ export default function TripDetails() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortAlphabetically, setSortAlphabetically] = useState<boolean>(false);
   const [groupByRoom, setGroupByRoom] = useState<boolean>(false);
+  const [totalDeposits, setTotalDeposits] = useState<number>(0);
   const { isAdmin, isAgent } = useUserRole();
 
   useEffect(() => {
     loadTripDetails();
     loadCarriers();
   }, [id]);
+
+  useEffect(() => {
+    if (participants.length > 0) {
+      loadPayments();
+    }
+  }, [participants]);
 
   const loadCarriers = async () => {
     try {
@@ -121,6 +128,23 @@ export default function TripDetails() {
       setCarriers(data || []);
     } catch (error) {
       console.error("Errore caricamento vettori:", error);
+    }
+  };
+
+  const loadPayments = async () => {
+    try {
+      const participantIds = participants.map(p => p.id);
+      const { data, error } = await supabase
+        .from("payments")
+        .select("amount")
+        .in("participant_id", participantIds);
+
+      if (error) throw error;
+      
+      const total = data?.reduce((sum, payment) => sum + Number(payment.amount), 0) || 0;
+      setTotalDeposits(total);
+    } catch (error) {
+      console.error("Errore caricamento pagamenti:", error);
     }
   };
 
@@ -434,7 +458,7 @@ export default function TripDetails() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Iscritti</CardTitle>
@@ -467,6 +491,30 @@ export default function TripDetails() {
           <CardContent>
             <div className="text-2xl font-bold">€{trip.price.toLocaleString("it-IT")}</div>
             <p className="text-xs text-muted-foreground">Acconto: {depositDisplay}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Acconti Ricevuti</CardTitle>
+            <Euro className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">€{totalDeposits.toLocaleString("it-IT")}</div>
+            <p className="text-xs text-muted-foreground">totale versato</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Mancante</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              €{((participants.length * trip.price) - totalDeposits).toLocaleString("it-IT")}
+            </div>
+            <p className="text-xs text-muted-foreground">da incassare</p>
           </CardContent>
         </Card>
       </div>
