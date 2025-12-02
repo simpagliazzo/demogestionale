@@ -6,9 +6,11 @@ import { Bus } from "lucide-react";
 import { toast } from "sonner";
 
 interface BusSeatMapProps {
-  tripId: string;
+  busConfig: { id: string; rows: number; seats_per_row: number } | null;
+  occupiedSeats: number[];
   onSeatSelect: (seatNumber: number) => void;
   selectedSeat: number | null;
+  loading?: boolean;
 }
 
 interface SeatAssignment {
@@ -16,60 +18,7 @@ interface SeatAssignment {
   participant_id: string;
 }
 
-export default function BusSeatMap({ tripId, onSeatSelect, selectedSeat }: BusSeatMapProps) {
-  const [busConfig, setBusConfig] = useState<{ id: string; rows: number; seats_per_row: number } | null>(null);
-  const [occupiedSeats, setOccupiedSeats] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadBusConfiguration();
-  }, [tripId]);
-
-  const loadBusConfiguration = async () => {
-    try {
-      // Carica configurazione bus per questo viaggio
-      const { data: config, error: configError } = await supabase
-        .from("bus_configurations")
-        .select("*")
-        .eq("trip_id", tripId)
-        .maybeSingle();
-
-      if (configError) throw configError;
-
-      // Se non esiste una configurazione, creane una standard GT (13 file x 4 posti = 52 posti)
-      if (!config) {
-        const { data: newConfig, error: createError } = await supabase
-          .from("bus_configurations")
-          .insert({
-            trip_id: tripId,
-            rows: 13,
-            seats_per_row: 4,
-            total_seats: 52
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        setBusConfig(newConfig);
-      } else {
-        setBusConfig(config);
-
-        // Carica posti già occupati
-        const { data: assignments, error: assignError } = await supabase
-          .from("bus_seat_assignments")
-          .select("seat_number")
-          .eq("bus_config_id", config.id);
-
-        if (assignError) throw assignError;
-        setOccupiedSeats(assignments?.map(a => a.seat_number) || []);
-      }
-    } catch (error) {
-      console.error("Errore caricamento configurazione bus:", error);
-      toast.error("Errore nel caricamento della mappa del bus");
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function BusSeatMap({ busConfig, occupiedSeats, onSeatSelect, selectedSeat, loading = false }: BusSeatMapProps) {
 
   const getSeatNumber = (row: number, position: number) => {
     // Configurazione GT standard: fila 1 = posti 1-4, fila 2 = posti 5-8, etc.
