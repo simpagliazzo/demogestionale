@@ -99,11 +99,17 @@ export default function AddParticipantDialog({
       // Se l'assegnazione posti è attiva, salva i posti selezionati
       if (assignBusSeat && insertedParticipants) {
         // Carica la configurazione bus
-        const { data: busConfig } = await supabase
+        const { data: busConfig, error: configError } = await supabase
           .from("bus_configurations")
           .select("id")
           .eq("trip_id", tripId)
-          .single();
+          .maybeSingle();
+
+        if (configError) {
+          console.error("Errore nel caricamento configurazione bus:", configError);
+          toast.error("Errore nel caricamento della configurazione bus");
+          return;
+        }
 
         if (busConfig) {
           const seatAssignments = insertedParticipants.map((participant, idx) => ({
