@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layouts/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import Viaggi from "./pages/Viaggi";
 import TripDetails from "./pages/TripDetails";
@@ -20,36 +21,38 @@ import CompanionList from "./components/CompanionList";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/viaggi/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
-            <Route path="/viaggi/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/viaggi" element={<Viaggi />} />
-              <Route path="/viaggi/:id" element={<TripDetails />} />
-              <Route path="/partecipanti" element={<Partecipanti />} />
-              <Route path="/vettori" element={<Vettori />} />
-              <Route path="/tipi-bus" element={<BusTypes />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/viaggi/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
+              <Route path="/viaggi/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/viaggi" element={<Viaggi />} />
+                <Route path="/viaggi/:id" element={<TripDetails />} />
+                <Route path="/partecipanti" element={<Partecipanti />} />
+                <Route path="/vettori" element={<Vettori />} />
+                <Route path="/tipi-bus" element={<BusTypes />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
