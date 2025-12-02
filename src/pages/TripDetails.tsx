@@ -683,7 +683,7 @@ export default function TripDetails() {
           <CardContent>
             {(isAdmin || isAgent) ? (
               <div className="space-y-2">
-                <Select value={selectedBusType || undefined} onValueChange={(value) => {
+                <Select value={selectedBusType || ""} onValueChange={(value) => {
                   setSelectedBusType(value);
                   saveBusType(value);
                 }}>
