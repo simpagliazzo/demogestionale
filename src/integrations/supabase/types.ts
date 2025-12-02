@@ -361,6 +361,13 @@ export type Database = {
       }
       trips: {
         Row: {
+          allotment_doppie: number | null
+          allotment_matrimoniali: number | null
+          allotment_quadruple: number | null
+          allotment_singole: number | null
+          allotment_triple: number | null
+          carrier_id: string | null
+          companion_name: string | null
           created_at: string
           created_by: string
           departure_date: string
@@ -377,6 +384,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allotment_doppie?: number | null
+          allotment_matrimoniali?: number | null
+          allotment_quadruple?: number | null
+          allotment_singole?: number | null
+          allotment_triple?: number | null
+          carrier_id?: string | null
+          companion_name?: string | null
           created_at?: string
           created_by: string
           departure_date: string
@@ -393,6 +407,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allotment_doppie?: number | null
+          allotment_matrimoniali?: number | null
+          allotment_quadruple?: number | null
+          allotment_singole?: number | null
+          allotment_triple?: number | null
+          carrier_id?: string | null
+          companion_name?: string | null
           created_at?: string
           created_by?: string
           departure_date?: string
@@ -409,6 +430,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trips_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "bus_carriers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trips_created_by_fkey"
             columns: ["created_by"]

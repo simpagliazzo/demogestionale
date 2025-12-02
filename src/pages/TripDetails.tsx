@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -27,6 +27,13 @@ interface Trip {
   deposit_amount: number;
   max_participants: number | null;
   status: string;
+  allotment_singole: number;
+  allotment_doppie: number;
+  allotment_matrimoniali: number;
+  allotment_triple: number;
+  allotment_quadruple: number;
+  carrier_id: string | null;
+  companion_name: string | null;
 }
 
 interface Participant {
@@ -92,6 +99,9 @@ export default function TripDetails() {
     triple: 0,
     quadruple: 0,
   });
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortAlphabetically, setSortAlphabetically] = useState<boolean>(false);
+  const [groupByRoom, setGroupByRoom] = useState<boolean>(false);
   const { isAdmin, isAgent } = useUserRole();
 
   useEffect(() => {
@@ -124,6 +134,19 @@ export default function TripDetails() {
 
       if (tripError) throw tripError;
       setTrip(tripData);
+      
+      // Carica dati allotment, carrier e companion dal database
+      if (tripData) {
+        setAllotmentData({
+          singole: tripData.allotment_singole || 0,
+          doppie: tripData.allotment_doppie || 0,
+          matrimoniali: tripData.allotment_matrimoniali || 0,
+          triple: tripData.allotment_triple || 0,
+          quadruple: tripData.allotment_quadruple || 0,
+        });
+        setSelectedCarrier(tripData.carrier_id || "");
+        setCompanion(tripData.companion_name || "");
+      }
 
       // Carica partecipanti
       const { data: participantsData, error: participantsError } = await supabase
@@ -202,6 +225,98 @@ export default function TripDetails() {
     setEditParticipantOpen(true);
   };
 
+  const saveAllotment = async () => {
+    if (!trip || !isAdmin) return;
+    
+    try {
+      const { error } = await supabase
+        .from("trips")
+        .update({
+          allotment_singole: allotmentData.singole,
+          allotment_doppie: allotmentData.doppie,
+          allotment_matrimoniali: allotmentData.matrimoniali,
+          allotment_triple: allotmentData.triple,
+          allotment_quadruple: allotmentData.quadruple,
+        })
+        .eq("id", trip.id);
+
+      if (error) throw error;
+      toast.success("Allotment salvato con successo");
+      loadTripDetails();
+    } catch (error) {
+      console.error("Errore salvataggio allotment:", error);
+      toast.error("Errore nel salvataggio dell'allotment");
+    }
+  };
+
+  const saveCarrier = async (carrierId: string) => {
+    if (!trip) return;
+    
+    try {
+      const { error } = await supabase
+        .from("trips")
+        .update({ carrier_id: carrierId || null })
+        .eq("id", trip.id);
+
+      if (error) throw error;
+      toast.success("Vettore salvato con successo");
+    } catch (error) {
+      console.error("Errore salvataggio vettore:", error);
+      toast.error("Errore nel salvataggio del vettore");
+    }
+  };
+
+  const saveCompanion = async () => {
+    if (!trip) return;
+    
+    try {
+      const { error } = await supabase
+        .from("trips")
+        .update({ companion_name: companion || null })
+        .eq("id", trip.id);
+
+      if (error) throw error;
+      toast.success("Accompagnatore salvato con successo");
+    } catch (error) {
+      console.error("Errore salvataggio accompagnatore:", error);
+      toast.error("Errore nel salvataggio dell'accompagnatore");
+    }
+  };
+
+  const getFilteredAndSortedParticipants = () => {
+    let filtered = participants.filter(p => 
+      p.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (sortAlphabetically) {
+      filtered = [...filtered].sort((a, b) => a.full_name.localeCompare(b.full_name));
+    }
+
+    return filtered;
+  };
+
+  const getParticipantsByRoom = () => {
+    const byRoom: Record<string, Participant[]> = {
+      singola: [],
+      doppia: [],
+      matrimoniale: [],
+      tripla: [],
+      quadrupla: [],
+      altro: [],
+    };
+
+    getFilteredAndSortedParticipants().forEach(p => {
+      if (p.notes?.includes("Camera: singola")) byRoom.singola.push(p);
+      else if (p.notes?.includes("Camera: doppia")) byRoom.doppia.push(p);
+      else if (p.notes?.includes("Camera: matrimoniale")) byRoom.matrimoniale.push(p);
+      else if (p.notes?.includes("Camera: tripla")) byRoom.tripla.push(p);
+      else if (p.notes?.includes("Camera: quadrupla")) byRoom.quadrupla.push(p);
+      else byRoom.altro.push(p);
+    });
+
+    return byRoom;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -250,6 +365,33 @@ export default function TripDetails() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">{trip.description}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {hotels.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Hotel className="h-5 w-5" />
+              Hotel
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {hotels.map((hotel) => (
+                <div key={hotel.id} className="border rounded-lg p-4">
+                  <p className="font-medium text-lg">{hotel.name}</p>
+                  {hotel.address && (
+                    <p className="text-sm text-muted-foreground mt-1">{hotel.address}</p>
+                  )}
+                  <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+                    <span>Check-in: {format(new Date(hotel.check_in_date), "dd/MM/yyyy")}</span>
+                    <span>Check-out: {format(new Date(hotel.check_out_date), "dd/MM/yyyy")}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -324,21 +466,26 @@ export default function TripDetails() {
           </CardHeader>
           <CardContent>
             {(isAdmin || isAgent) ? (
-              <Select value={selectedCarrier} onValueChange={setSelectedCarrier}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona vettore" />
-                </SelectTrigger>
-                <SelectContent>
-                  {carriers.map((carrier) => (
-                    <SelectItem key={carrier.id} value={carrier.id}>
-                      {carrier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Select value={selectedCarrier} onValueChange={(value) => {
+                  setSelectedCarrier(value);
+                  saveCarrier(value);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona vettore" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {carriers.map((carrier) => (
+                      <SelectItem key={carrier.id} value={carrier.id}>
+                        {carrier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {selectedCarrier || "Non ancora assegnato"}
+                {carriers.find(c => c.id === selectedCarrier)?.name || "Non ancora assegnato"}
               </p>
             )}
           </CardContent>
@@ -357,12 +504,17 @@ export default function TripDetails() {
             {(isAdmin || isAgent) ? (
               <div className="space-y-2">
                 <Label htmlFor="companion">Nome Accompagnatore</Label>
-                <Input
-                  id="companion"
-                  value={companion}
-                  onChange={(e) => setCompanion(e.target.value)}
-                  placeholder="Inserisci nome accompagnatore"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="companion"
+                    value={companion}
+                    onChange={(e) => setCompanion(e.target.value)}
+                    placeholder="Inserisci nome accompagnatore"
+                  />
+                  <Button onClick={saveCompanion} size="icon" variant="outline">
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -375,10 +527,16 @@ export default function TripDetails() {
         {isAdmin && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hotel className="h-5 w-5" />
-                Allotment Camere
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Hotel className="h-5 w-5" />
+                  Allotment Camere
+                </CardTitle>
+                <Button onClick={saveAllotment} size="sm" className="gap-2">
+                  <Save className="h-4 w-4" />
+                  Salva Allotment
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -507,42 +665,122 @@ export default function TripDetails() {
           </div>
         </CardHeader>
         <CardContent>
-          {participants.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nessun partecipante ancora iscritto
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {participants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
-                >
-                  <div>
-                    <p className="font-medium">{participant.full_name}</p>
-                    <div className="text-sm text-muted-foreground space-y-1 mt-1">
-                      {participant.date_of_birth && (
-                        <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
-                      )}
-                      {participant.place_of_birth && (
-                        <p>a {participant.place_of_birth}</p>
-                      )}
-                      {participant.notes && (
-                        <p className="text-xs mt-2 italic">Nota: {participant.notes}</p>
-                      )}
-                    </div>
-                  </div>
-                  {(participant.email || participant.phone) && (
-                    <div className="text-sm text-muted-foreground text-right">
-                      {participant.email && <p>{participant.email}</p>}
-                      {participant.phone && <p>{participant.phone}</p>}
-                    </div>
-                  )}
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cerca partecipante..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
-              ))}
+              </div>
+              <Button
+                variant={sortAlphabetically ? "default" : "outline"}
+                onClick={() => setSortAlphabetically(!sortAlphabetically)}
+                size="sm"
+              >
+                A-Z
+              </Button>
+              <Button
+                variant={groupByRoom ? "default" : "outline"}
+                onClick={() => setGroupByRoom(!groupByRoom)}
+                size="sm"
+              >
+                Per Camera
+              </Button>
             </div>
-          )}
+
+            {participants.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nessun partecipante ancora iscritto
+              </div>
+            ) : groupByRoom ? (
+              <div className="space-y-6">
+                {Object.entries(getParticipantsByRoom()).map(([roomType, roomParticipants]) => {
+                  if (roomParticipants.length === 0) return null;
+                  
+                  const roomLabels: Record<string, string> = {
+                    singola: "Camere Singole",
+                    doppia: "Camere Doppie",
+                    matrimoniale: "Camere Matrimoniali",
+                    tripla: "Camere Triple",
+                    quadrupla: "Camere Quadruple",
+                    altro: "Senza Camera Assegnata",
+                  };
+
+                  return (
+                    <div key={roomType} className="space-y-2">
+                      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                        {roomLabels[roomType]} ({roomParticipants.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {roomParticipants.map((participant) => (
+                          <div
+                            key={participant.id}
+                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                            onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                          >
+                            <div>
+                              <p className="font-medium">{participant.full_name}</p>
+                              <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                                {participant.date_of_birth && (
+                                  <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                                )}
+                                {participant.place_of_birth && (
+                                  <p>a {participant.place_of_birth}</p>
+                                )}
+                              </div>
+                            </div>
+                            {(participant.email || participant.phone) && (
+                              <div className="text-sm text-muted-foreground text-right">
+                                {participant.email && <p>{participant.email}</p>}
+                                {participant.phone && <p>{participant.phone}</p>}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {getFilteredAndSortedParticipants().map((participant) => (
+                  <div
+                    key={participant.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                  >
+                    <div>
+                      <p className="font-medium">{participant.full_name}</p>
+                      <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                        {participant.date_of_birth && (
+                          <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                        )}
+                        {participant.place_of_birth && (
+                          <p>a {participant.place_of_birth}</p>
+                        )}
+                        {participant.notes && (
+                          <p className="text-xs mt-2 italic">Nota: {participant.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                    {(participant.email || participant.phone) && (
+                      <div className="text-sm text-muted-foreground text-right">
+                        {participant.email && <p>{participant.email}</p>}
+                        {participant.phone && <p>{participant.phone}</p>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
