@@ -683,7 +683,7 @@ export default function TripDetails() {
           <CardContent>
             {(isAdmin || isAgent) ? (
               <div className="space-y-2">
-                <Select value={selectedBusType} onValueChange={(value) => {
+                <Select value={selectedBusType || undefined} onValueChange={(value) => {
                   setSelectedBusType(value);
                   saveBusType(value);
                 }}>
@@ -691,7 +691,6 @@ export default function TripDetails() {
                     <SelectValue placeholder="Seleziona tipo bus" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nessuno</SelectItem>
                     {busTypes.map((busType) => (
                       <SelectItem key={busType.id} value={busType.id}>
                         {busType.name} - {busType.total_seats} posti
