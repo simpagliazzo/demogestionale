@@ -46,6 +46,7 @@ export type Database = {
       }
       bus_configurations: {
         Row: {
+          bus_type_id: string | null
           carrier_id: string | null
           created_at: string
           id: string
@@ -55,6 +56,7 @@ export type Database = {
           trip_id: string
         }
         Insert: {
+          bus_type_id?: string | null
           carrier_id?: string | null
           created_at?: string
           id?: string
@@ -64,6 +66,7 @@ export type Database = {
           trip_id: string
         }
         Update: {
+          bus_type_id?: string | null
           carrier_id?: string | null
           created_at?: string
           id?: string
@@ -73,6 +76,13 @@ export type Database = {
           trip_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bus_configurations_bus_type_id_fkey"
+            columns: ["bus_type_id"]
+            isOneToOne: false
+            referencedRelation: "bus_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bus_configurations_carrier_id_fkey"
             columns: ["carrier_id"]
@@ -127,6 +137,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bus_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          rows: number
+          seats_per_row: number
+          total_seats: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          rows: number
+          seats_per_row: number
+          total_seats: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          rows?: number
+          seats_per_row?: number
+          total_seats?: number
+        }
+        Relationships: []
       }
       hotels: {
         Row: {

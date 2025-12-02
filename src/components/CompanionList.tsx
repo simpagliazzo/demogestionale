@@ -15,6 +15,11 @@ interface Participant {
   created_at: string;
 }
 
+interface SeatAssignment {
+  participant_id: string;
+  seat_number: number;
+}
+
 interface Payment {
   participant_id: string;
   amount: number;
@@ -36,6 +41,7 @@ export default function CompanionList() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [payments, setPayments] = useState<Record<string, number>>({});
+  const [seatAssignments, setSeatAssignments] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,6 +67,8 @@ export default function CompanionList() {
 
       if (participantsData) {
         const participantIds = participantsData.map(p => p.id);
+        
+        // Carica pagamenti
         const { data: paymentsData } = await supabase
           .from("payments")
           .select("participant_id, amount")
@@ -72,6 +80,28 @@ export default function CompanionList() {
             (paymentsByParticipant[payment.participant_id] || 0) + Number(payment.amount);
         });
         setPayments(paymentsByParticipant);
+
+        // Carica assegnazioni posti bus
+        const { data: busConfig } = await supabase
+          .from("bus_configurations")
+          .select("id")
+          .eq("trip_id", id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .single();
+
+        if (busConfig) {
+          const { data: seatsData } = await supabase
+            .from("bus_seat_assignments")
+            .select("participant_id, seat_number")
+            .eq("bus_config_id", busConfig.id);
+
+          const seatsByParticipant: Record<string, number> = {};
+          seatsData?.forEach((seat: SeatAssignment) => {
+            seatsByParticipant[seat.participant_id] = seat.seat_number;
+          });
+          setSeatAssignments(seatsByParticipant);
+        }
       }
     } catch (error) {
       console.error("Errore caricamento dati:", error);
@@ -215,6 +245,7 @@ export default function CompanionList() {
                 <thead>
                   <tr className="bg-muted">
                     <th className="border border-border p-1.5 text-left font-semibold">Camera</th>
+                    <th className="border border-border p-1.5 text-center font-semibold">Posto Bus</th>
                     <th className="border border-border p-1.5 text-left font-semibold">Nome</th>
                     <th className="border border-border p-1.5 text-left font-semibold">Data Nascita</th>
                     <th className="border border-border p-1.5 text-left font-semibold">Luogo Nascita</th>
@@ -241,6 +272,9 @@ export default function CompanionList() {
                               #{groupIndex + 1}
                             </td>
                           )}
+                          <td className="border border-border p-1.5 text-center font-semibold">
+                            {seatAssignments[participant.id] || "-"}
+                          </td>
                           <td className="border border-border p-1.5">{participant.full_name}</td>
                           <td className="border border-border p-1.5 whitespace-nowrap">
                             {participant.date_of_birth 
