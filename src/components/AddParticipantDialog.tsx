@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -45,9 +45,6 @@ export default function AddParticipantDialog({
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
   const [assignBusSeat, setAssignBusSeat] = useState(false);
   const [selectedSeats, setSelectedSeats] = useState<Record<number, number>>({});
-  const [busConfig, setBusConfig] = useState<{ id: string; rows: number; seats_per_row: number } | null>(null);
-  const [occupiedSeats, setOccupiedSeats] = useState<number[]>([]);
-  const [loadingBusConfig, setLoadingBusConfig] = useState(false);
 
   const {
     register,
@@ -67,65 +64,6 @@ export default function AddParticipantDialog({
     control,
     name: "participants",
   });
-
-  const loadBusConfiguration = async () => {
-    if (!assignBusSeat) return;
-    
-    setLoadingBusConfig(true);
-    try {
-      // Carica configurazione bus per questo viaggio (prendi la prima se ce ne sono più)
-      const { data: configs, error: configError } = await supabase
-        .from("bus_configurations")
-        .select("*")
-        .eq("trip_id", tripId)
-        .order("created_at", { ascending: true })
-        .limit(1);
-
-      if (configError) throw configError;
-
-      let config = configs?.[0];
-
-      // Se non esiste una configurazione, creane una standard GT (13 file x 4 posti = 52 posti)
-      if (!config) {
-        const { data: newConfig, error: createError } = await supabase
-          .from("bus_configurations")
-          .insert({
-            trip_id: tripId,
-            rows: 13,
-            seats_per_row: 4,
-            total_seats: 52
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        config = newConfig;
-      }
-
-      setBusConfig(config);
-
-      // Carica posti già occupati
-      const { data: assignments, error: assignError } = await supabase
-        .from("bus_seat_assignments")
-        .select("seat_number")
-        .eq("bus_config_id", config.id);
-
-      if (assignError) throw assignError;
-      setOccupiedSeats(assignments?.map(a => a.seat_number) || []);
-    } catch (error) {
-      console.error("Errore caricamento configurazione bus:", error);
-      toast.error("Errore nel caricamento della mappa del bus");
-    } finally {
-      setLoadingBusConfig(false);
-    }
-  };
-
-  // Carica configurazione bus quando viene attivata l'assegnazione posti
-  useEffect(() => {
-    if (assignBusSeat && open) {
-      loadBusConfiguration();
-    }
-  }, [assignBusSeat, open]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
@@ -159,18 +97,27 @@ export default function AddParticipantDialog({
       if (error) throw error;
 
       // Se l'assegnazione posti è attiva, salva i posti selezionati
-      if (assignBusSeat && insertedParticipants && busConfig) {
-        const seatAssignments = insertedParticipants.map((participant, idx) => ({
-          bus_config_id: busConfig.id,
-          participant_id: participant.id,
-          seat_number: selectedSeats[idx],
-        }));
+      if (assignBusSeat && insertedParticipants) {
+        // Carica la configurazione bus
+        const { data: busConfig } = await supabase
+          .from("bus_configurations")
+          .select("id")
+          .eq("trip_id", tripId)
+          .single();
 
-        const { error: seatError } = await supabase
-          .from("bus_seat_assignments")
-          .insert(seatAssignments);
+        if (busConfig) {
+          const seatAssignments = insertedParticipants.map((participant, idx) => ({
+            bus_config_id: busConfig.id,
+            participant_id: participant.id,
+            seat_number: selectedSeats[idx],
+          }));
 
-        if (seatError) throw seatError;
+          const { error: seatError } = await supabase
+            .from("bus_seat_assignments")
+            .insert(seatAssignments);
+
+          if (seatError) throw seatError;
+        }
       }
 
       toast.success(`${values.participants.length} partecipante/i aggiunto/i con successo`);
@@ -178,8 +125,6 @@ export default function AddParticipantDialog({
       setNumParticipants(null);
       setAssignBusSeat(false);
       setSelectedSeats({});
-      setBusConfig(null);
-      setOccupiedSeats([]);
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -213,8 +158,6 @@ export default function AddParticipantDialog({
         setNumParticipants(null);
         setAssignBusSeat(false);
         setSelectedSeats({});
-        setBusConfig(null);
-        setOccupiedSeats([]);
       }
     }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -296,10 +239,8 @@ export default function AddParticipantDialog({
                       )}
                     </Label>
                     <BusSeatMap
-                      busConfig={busConfig}
-                      occupiedSeats={occupiedSeats}
+                      tripId={tripId}
                       selectedSeat={selectedSeats[index] || null}
-                      loading={loadingBusConfig}
                       onSeatSelect={(seatNumber) => {
                         setSelectedSeats(prev => ({ ...prev, [index]: seatNumber }));
                       }}

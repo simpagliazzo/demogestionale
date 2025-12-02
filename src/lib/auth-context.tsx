@@ -46,23 +46,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    }).catch((error) => {
-      console.error("Errore nel recupero della sessione:", error);
-      setLoading(false);
     });
 
-    // Timeout di sicurezza per evitare loading infinito
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn("Timeout autenticazione, caricamento forzato");
-        setLoading(false);
-      }
-    }, 5000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
