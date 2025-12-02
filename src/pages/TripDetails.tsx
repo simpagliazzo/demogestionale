@@ -208,14 +208,29 @@ export default function TripDetails() {
       quadruple: 0,
     };
 
+    // Raggruppa partecipanti per created_at e tipo di camera
+    const roomGroups: Record<string, number> = {};
+    
     participants.forEach(p => {
       if (p.notes) {
-        if (p.notes.includes("Camera: singola")) occupied.singole++;
-        else if (p.notes.includes("Camera: doppia")) occupied.doppie++;
-        else if (p.notes.includes("Camera: matrimoniale")) occupied.matrimoniali++;
-        else if (p.notes.includes("Camera: tripla")) occupied.triple++;
-        else if (p.notes.includes("Camera: quadrupla")) occupied.quadruple++;
+        let roomType = '';
+        if (p.notes.includes("Camera: singola")) roomType = 'singole';
+        else if (p.notes.includes("Camera: doppia")) roomType = 'doppie';
+        else if (p.notes.includes("Camera: matrimoniale")) roomType = 'matrimoniali';
+        else if (p.notes.includes("Camera: tripla")) roomType = 'triple';
+        else if (p.notes.includes("Camera: quadrupla")) roomType = 'quadruple';
+        
+        if (roomType) {
+          const groupKey = `${roomType}-${p.created_at}`;
+          roomGroups[groupKey] = 1; // Ogni gruppo (stesso created_at) = 1 camera
+        }
       }
+    });
+
+    // Conta le camere uniche (non i partecipanti)
+    Object.keys(roomGroups).forEach(key => {
+      const roomType = key.split('-')[0] as keyof typeof occupied;
+      occupied[roomType]++;
     });
 
     return occupied;
