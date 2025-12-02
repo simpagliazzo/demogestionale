@@ -130,6 +130,7 @@ export default function Viaggi() {
             <Card
               key={trip.id}
               className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
+              onClick={() => navigate(`/viaggi/${trip.id}`)}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -182,7 +183,14 @@ export default function Viaggi() {
                 </div>
 
                 <div className="pt-4 border-t">
-                  <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <Button 
+                    variant="outline" 
+                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/viaggi/${trip.id}`);
+                    }}
+                  >
                     Visualizza Dettagli
                   </Button>
                 </div>

@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Viaggi from "./pages/Viaggi";
+import TripDetails from "./pages/TripDetails";
 import Partecipanti from "./pages/Partecipanti";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
             >
               <Route path="/" element={<Dashboard />} />
               <Route path="/viaggi" element={<Viaggi />} />
+              <Route path="/viaggi/:id" element={<TripDetails />} />
               <Route path="/partecipanti" element={<Partecipanti />} />
             </Route>
             <Route path="*" element={<NotFound />} />
