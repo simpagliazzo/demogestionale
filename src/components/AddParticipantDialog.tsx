@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import BusSeatMap from "./BusSeatMap";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -43,8 +41,6 @@ export default function AddParticipantDialog({
 }: AddParticipantDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
-  const [assignBusSeat, setAssignBusSeat] = useState(false);
-  const [selectedSeats, setSelectedSeats] = useState<Record<number, number>>({});
 
   const {
     register,
@@ -68,16 +64,6 @@ export default function AddParticipantDialog({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // Verifica che tutti i partecipanti abbiano un posto assegnato se l'opzione è attiva
-      if (assignBusSeat) {
-        const missingSeats = values.participants.filter((_, idx) => !selectedSeats[idx]);
-        if (missingSeats.length > 0) {
-          toast.error("Seleziona un posto bus per tutti i partecipanti");
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       // Inserisci tutti i partecipanti
       const participantsToInsert = values.participants.map(p => ({
         trip_id: tripId,
@@ -89,48 +75,13 @@ export default function AddParticipantDialog({
         notes: p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`,
       }));
 
-      const { data: insertedParticipants, error } = await supabase
-        .from("participants")
-        .insert(participantsToInsert)
-        .select();
+      const { error } = await supabase.from("participants").insert(participantsToInsert);
 
       if (error) throw error;
-
-      // Se l'assegnazione posti è attiva, salva i posti selezionati
-      if (assignBusSeat && insertedParticipants) {
-        // Carica la configurazione bus
-        const { data: busConfig, error: configError } = await supabase
-          .from("bus_configurations")
-          .select("id")
-          .eq("trip_id", tripId)
-          .maybeSingle();
-
-        if (configError) {
-          console.error("Errore nel caricamento configurazione bus:", configError);
-          toast.error("Errore nel caricamento della configurazione bus");
-          return;
-        }
-
-        if (busConfig) {
-          const seatAssignments = insertedParticipants.map((participant, idx) => ({
-            bus_config_id: busConfig.id,
-            participant_id: participant.id,
-            seat_number: selectedSeats[idx],
-          }));
-
-          const { error: seatError } = await supabase
-            .from("bus_seat_assignments")
-            .insert(seatAssignments);
-
-          if (seatError) throw seatError;
-        }
-      }
 
       toast.success(`${values.participants.length} partecipante/i aggiunto/i con successo`);
       reset();
       setNumParticipants(null);
-      setAssignBusSeat(false);
-      setSelectedSeats({});
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -160,11 +111,7 @@ export default function AddParticipantDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       onOpenChange(isOpen);
-      if (!isOpen) {
-        setNumParticipants(null);
-        setAssignBusSeat(false);
-        setSelectedSeats({});
-      }
+      if (!isOpen) setNumParticipants(null);
     }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -214,47 +161,6 @@ export default function AddParticipantDialog({
                 )}
               />
             </div>
-
-            <div className="flex items-center space-x-2 p-4 border rounded-lg bg-muted/30">
-              <Checkbox 
-                id="assignBusSeat" 
-                checked={assignBusSeat}
-                onCheckedChange={(checked) => {
-                  setAssignBusSeat(checked as boolean);
-                  if (!checked) setSelectedSeats({});
-                }}
-              />
-              <Label 
-                htmlFor="assignBusSeat" 
-                className="cursor-pointer font-medium"
-              >
-                Assegna posto/i sul bus
-              </Label>
-            </div>
-
-            {assignBusSeat && (
-              <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <div key={field.id} className="space-y-2">
-                    <Label className="text-sm font-semibold">
-                      Posto per {fields[index]?.full_name || `Partecipante ${index + 1}`}
-                      {selectedSeats[index] && (
-                        <span className="ml-2 text-primary">
-                          (Posto {selectedSeats[index]} selezionato)
-                        </span>
-                      )}
-                    </Label>
-                    <BusSeatMap
-                      tripId={tripId}
-                      selectedSeat={selectedSeats[index] || null}
-                      onSeatSelect={(seatNumber) => {
-                        setSelectedSeats(prev => ({ ...prev, [index]: seatNumber }));
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
 
             <div className="space-y-4">
               <Label className="text-base font-semibold">Partecipanti ({fields.length})</Label>
