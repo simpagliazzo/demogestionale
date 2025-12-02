@@ -365,6 +365,7 @@ export type Database = {
           created_by: string
           departure_date: string
           deposit_amount: number
+          deposit_type: Database["public"]["Enums"]["deposit_type"]
           description: string | null
           destination: string
           id: string
@@ -380,6 +381,7 @@ export type Database = {
           created_by: string
           departure_date: string
           deposit_amount: number
+          deposit_type?: Database["public"]["Enums"]["deposit_type"]
           description?: string | null
           destination: string
           id?: string
@@ -395,6 +397,7 @@ export type Database = {
           created_by?: string
           departure_date?: string
           deposit_amount?: number
+          deposit_type?: Database["public"]["Enums"]["deposit_type"]
           description?: string | null
           destination?: string
           id?: string
@@ -456,6 +459,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "agente" | "accompagnatore" | "cliente"
+      deposit_type: "fixed" | "percentage"
       payment_status: "pending" | "completed" | "partial"
       trip_status:
         | "planned"
@@ -591,6 +595,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "agente", "accompagnatore", "cliente"],
+      deposit_type: ["fixed", "percentage"],
       payment_status: ["pending", "completed", "partial"],
       trip_status: [
         "planned",

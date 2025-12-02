@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Users, DollarSign, MapPin } from "lucide-react";
@@ -21,6 +22,7 @@ interface UpcomingTrip {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalTrips: 0,
     upcomingTrips: 0,
@@ -185,7 +187,8 @@ export default function Dashboard() {
               {upcomingTrips.map((trip) => (
                 <div
                   key={trip.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/viaggi/${trip.id}`)}
                 >
                   <div className="space-y-1">
                     <h4 className="font-semibold">{trip.title}</h4>

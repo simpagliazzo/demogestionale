@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const tripSchema = z.object({
@@ -19,6 +21,7 @@ const tripSchema = z.object({
   departure_date: z.string().min(1, "La data di partenza è obbligatoria"),
   return_date: z.string().min(1, "La data di ritorno è obbligatoria"),
   price: z.string().min(1, "Il prezzo è obbligatorio"),
+  deposit_type: z.enum(["fixed", "percentage"]),
   deposit_amount: z.string().min(1, "L'acconto è obbligatorio"),
   max_participants: z.string().optional(),
   status: z.enum(["planned", "confirmed", "ongoing", "completed", "cancelled"]),
@@ -48,11 +51,14 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
       departure_date: "",
       return_date: "",
       price: "",
+      deposit_type: "fixed",
       deposit_amount: "",
       max_participants: "",
       status: "planned",
     },
   });
+
+  const depositType = form.watch("deposit_type");
 
   const onSubmit = async (values: TripFormValues) => {
     if (!user) {
@@ -69,6 +75,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
         departure_date: values.departure_date,
         return_date: values.return_date,
         price: parseFloat(values.price),
+        deposit_type: values.deposit_type,
         deposit_amount: parseFloat(values.deposit_amount),
         max_participants: values.max_participants ? parseInt(values.max_participants) : null,
         status: values.status,
@@ -177,35 +184,73 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prezzo Totale (€) *</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prezzo Totale (€) *</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
+            <div>
+              <FormLabel>Tipo Acconto *</FormLabel>
               <FormField
                 control={form.control}
-                name="deposit_amount"
+                name="deposit_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Acconto (€) *</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex gap-4 mt-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="fixed" id="fixed" />
+                          <Label htmlFor="fixed" className="font-normal cursor-pointer">
+                            Importo fisso (€)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="percentage" id="percentage" />
+                          <Label htmlFor="percentage" className="font-normal cursor-pointer">
+                            Percentuale (%)
+                          </Label>
+                        </div>
+                      </RadioGroup>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="deposit_amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Acconto {depositType === "percentage" ? "(%)" : "(€)"} *
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder={depositType === "percentage" ? "Es: 20" : "Es: 200.00"}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
