@@ -683,30 +683,24 @@ export default function TripDetails() {
           <CardContent>
             {(isAdmin || isAgent) ? (
               <div className="space-y-2">
-                {busTypes.length > 0 ? (
-                  <Select 
-                    value={selectedBusType || "none"} 
-                    onValueChange={(value) => {
-                      const newValue = value === "none" ? "" : value;
-                      setSelectedBusType(newValue);
-                      saveBusType(newValue);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona tipo bus" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nessun tipo bus</SelectItem>
-                      {busTypes.map((busType) => (
-                        <SelectItem key={busType.id} value={busType.id}>
-                          {busType.name} - {busType.total_seats} posti
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Caricamento tipi bus...</p>
-                )}
+                <Select 
+                  value={selectedBusType || ""} 
+                  onValueChange={(value) => {
+                    setSelectedBusType(value);
+                    saveBusType(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona tipo bus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {busTypes.map((busType) => (
+                      <SelectItem key={busType.id} value={busType.id}>
+                        {busType.name} - {busType.total_seats} posti
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
