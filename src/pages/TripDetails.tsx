@@ -4,10 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
+import { toast } from "sonner";
 import AddParticipantDialog from "@/components/AddParticipantDialog";
 
 interface Trip {
@@ -75,11 +79,36 @@ export default function TripDetails() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
+  const [carriers, setCarriers] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCarrier, setSelectedCarrier] = useState<string>("");
+  const [companion, setCompanion] = useState<string>("");
+  const [allotmentData, setAllotmentData] = useState({
+    singole: 0,
+    doppie: 0,
+    matrimoniali: 0,
+    triple: 0,
+    quadruple: 0,
+  });
   const { isAdmin, isAgent } = useUserRole();
 
   useEffect(() => {
     loadTripDetails();
+    loadCarriers();
   }, [id]);
+
+  const loadCarriers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("bus_carriers")
+        .select("id, name")
+        .order("name");
+
+      if (error) throw error;
+      setCarriers(data || []);
+    } catch (error) {
+      console.error("Errore caricamento vettori:", error);
+    }
+  };
 
   const loadTripDetails = async () => {
     try {
@@ -259,22 +288,136 @@ export default function TripDetails() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Bus className="h-5 w-5" />
+              Società Bus
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(isAdmin || isAgent) ? (
+              <Select value={selectedCarrier} onValueChange={setSelectedCarrier}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona vettore" />
+                </SelectTrigger>
+                <SelectContent>
+                  {carriers.map((carrier) => (
+                    <SelectItem key={carrier.id} value={carrier.id}>
+                      {carrier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {selectedCarrier || "Non ancora assegnato"}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Accompagnatore
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(isAdmin || isAgent) ? (
+              <div className="space-y-2">
+                <Label htmlFor="companion">Nome Accompagnatore</Label>
+                <Input
+                  id="companion"
+                  value={companion}
+                  onChange={(e) => setCompanion(e.target.value)}
+                  placeholder="Inserisci nome accompagnatore"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {companion || "Non ancora assegnato"}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <Hotel className="h-5 w-5" />
               Allotment Camere
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {Object.keys(roomTypeCounts).length > 0 ? (
-              <div className="space-y-2">
-                {Object.entries(roomTypeCounts).map(([type, count]) => (
-                  <div key={type} className="flex justify-between">
-                    <span className="capitalize">{type}</span>
-                    <span className="font-medium">{count}</span>
+            {(isAdmin || isAgent) ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="singole" className="text-xs">Singole</Label>
+                    <Input
+                      id="singole"
+                      type="number"
+                      min="0"
+                      value={allotmentData.singole}
+                      onChange={(e) => setAllotmentData({...allotmentData, singole: parseInt(e.target.value) || 0})}
+                    />
                   </div>
-                ))}
+                  <div className="space-y-1">
+                    <Label htmlFor="doppie" className="text-xs">Doppie</Label>
+                    <Input
+                      id="doppie"
+                      type="number"
+                      min="0"
+                      value={allotmentData.doppie}
+                      onChange={(e) => setAllotmentData({...allotmentData, doppie: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="matrimoniali" className="text-xs">Matrimoniali</Label>
+                    <Input
+                      id="matrimoniali"
+                      type="number"
+                      min="0"
+                      value={allotmentData.matrimoniali}
+                      onChange={(e) => setAllotmentData({...allotmentData, matrimoniali: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="triple" className="text-xs">Triple</Label>
+                    <Input
+                      id="triple"
+                      type="number"
+                      min="0"
+                      value={allotmentData.triple}
+                      onChange={(e) => setAllotmentData({...allotmentData, triple: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="quadruple" className="text-xs">Quadruple</Label>
+                    <Input
+                      id="quadruple"
+                      type="number"
+                      min="0"
+                      value={allotmentData.quadruple}
+                      onChange={(e) => setAllotmentData({...allotmentData, quadruple: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nessuna camera configurata</p>
+              Object.keys(roomTypeCounts).length > 0 ? (
+                <div className="space-y-2">
+                  {Object.entries(roomTypeCounts).map(([type, count]) => (
+                    <div key={type} className="flex justify-between">
+                      <span className="capitalize">{type}</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nessuna camera configurata</p>
+              )
             )}
           </CardContent>
         </Card>
