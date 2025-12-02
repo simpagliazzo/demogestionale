@@ -44,6 +44,7 @@ interface Participant {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  created_at: string;
 }
 
 interface Hotel {
@@ -296,7 +297,7 @@ export default function TripDetails() {
   };
 
   const getParticipantsByRoom = () => {
-    const byRoom: Record<string, Participant[]> = {
+    const byRoom: Record<string, Participant[][]> = {
       singola: [],
       doppia: [],
       matrimoniale: [],
@@ -305,13 +306,35 @@ export default function TripDetails() {
       altro: [],
     };
 
-    getFilteredAndSortedParticipants().forEach(p => {
-      if (p.notes?.includes("Camera: singola")) byRoom.singola.push(p);
-      else if (p.notes?.includes("Camera: doppia")) byRoom.doppia.push(p);
-      else if (p.notes?.includes("Camera: matrimoniale")) byRoom.matrimoniale.push(p);
-      else if (p.notes?.includes("Camera: tripla")) byRoom.tripla.push(p);
-      else if (p.notes?.includes("Camera: quadrupla")) byRoom.quadrupla.push(p);
-      else byRoom.altro.push(p);
+    const filtered = getFilteredAndSortedParticipants();
+    
+    // Raggruppa i partecipanti per created_at e tipo di camera (inseriti insieme)
+    const grouped: Record<string, Participant[]> = {};
+    
+    filtered.forEach(p => {
+      let roomType = 'altro';
+      if (p.notes?.includes("Camera: singola")) roomType = 'singola';
+      else if (p.notes?.includes("Camera: doppia")) roomType = 'doppia';
+      else if (p.notes?.includes("Camera: matrimoniale")) roomType = 'matrimoniale';
+      else if (p.notes?.includes("Camera: tripla")) roomType = 'tripla';
+      else if (p.notes?.includes("Camera: quadrupla")) roomType = 'quadrupla';
+      
+      const groupKey = `${roomType}-${p.created_at}`;
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
+      }
+      grouped[groupKey].push(p);
+    });
+
+    // Organizza i gruppi per tipo di camera
+    Object.values(grouped).forEach(group => {
+      const firstParticipant = group[0];
+      if (firstParticipant.notes?.includes("Camera: singola")) byRoom.singola.push(group);
+      else if (firstParticipant.notes?.includes("Camera: doppia")) byRoom.doppia.push(group);
+      else if (firstParticipant.notes?.includes("Camera: matrimoniale")) byRoom.matrimoniale.push(group);
+      else if (firstParticipant.notes?.includes("Camera: tripla")) byRoom.tripla.push(group);
+      else if (firstParticipant.notes?.includes("Camera: quadrupla")) byRoom.quadrupla.push(group);
+      else byRoom.altro.push(group);
     });
 
     return byRoom;
@@ -700,8 +723,8 @@ export default function TripDetails() {
               </div>
             ) : groupByRoom ? (
               <div className="space-y-6">
-                {Object.entries(getParticipantsByRoom()).map(([roomType, roomParticipants]) => {
-                  if (roomParticipants.length === 0) return null;
+                {Object.entries(getParticipantsByRoom()).map(([roomType, roomGroups]) => {
+                  if (roomGroups.length === 0) return null;
                   
                   const roomLabels: Record<string, string> = {
                     singola: "Camere Singole",
@@ -712,37 +735,64 @@ export default function TripDetails() {
                     altro: "Senza Camera Assegnata",
                   };
 
+                  const totalParticipants = roomGroups.reduce((sum, group) => sum + group.length, 0);
+
                   return (
                     <div key={roomType} className="space-y-2">
                       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                        {roomLabels[roomType]} ({roomParticipants.length})
+                        {roomLabels[roomType]} ({totalParticipants} {totalParticipants === 1 ? 'partecipante' : 'partecipanti'})
                       </h3>
-                      <div className="space-y-2">
-                        {roomParticipants.map((participant) => (
-                          <div
-                            key={participant.id}
-                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                            onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
-                          >
-                            <div>
-                              <p className="font-medium">{participant.full_name}</p>
-                              <div className="text-sm text-muted-foreground space-y-1 mt-1">
-                                {participant.date_of_birth && (
-                                  <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
-                                )}
-                                {participant.place_of_birth && (
-                                  <p>a {participant.place_of_birth}</p>
-                                )}
+                      <div className="space-y-3">
+                        {roomGroups.map((group, groupIndex) => {
+                          const groupTotal = trip.price * group.length;
+                          return (
+                            <div
+                              key={groupIndex}
+                              className="border rounded-lg p-4 bg-card hover:bg-accent/30 transition-colors"
+                            >
+                              <div className="space-y-3">
+                                {group.map((participant, idx) => (
+                                  <div
+                                    key={participant.id}
+                                    className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md -mx-3"
+                                    onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="text-xs">
+                                          {idx + 1}
+                                        </Badge>
+                                        <p className="font-medium">{participant.full_name}</p>
+                                      </div>
+                                      <div className="text-sm text-muted-foreground space-y-1 mt-1 ml-8">
+                                        {participant.date_of_birth && (
+                                          <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                                        )}
+                                        {participant.place_of_birth && (
+                                          <p>a {participant.place_of_birth}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {(participant.email || participant.phone) && (
+                                      <div className="text-sm text-muted-foreground text-right">
+                                        {participant.email && <p>{participant.email}</p>}
+                                        {participant.phone && <p>{participant.phone}</p>}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                                <span className="text-sm font-medium text-muted-foreground">
+                                  Totale Camera ({group.length} {group.length === 1 ? 'persona' : 'persone'})
+                                </span>
+                                <span className="text-lg font-bold text-primary">
+                                  €{groupTotal.toFixed(2)}
+                                </span>
                               </div>
                             </div>
-                            {(participant.email || participant.phone) && (
-                              <div className="text-sm text-muted-foreground text-right">
-                                {participant.email && <p>{participant.email}</p>}
-                                {participant.phone && <p>{participant.phone}</p>}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );

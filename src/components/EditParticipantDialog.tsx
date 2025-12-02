@@ -114,11 +114,21 @@ export default function EditParticipantDialog({
   const balance = tripPrice - totalPaid;
 
   const handleAddPayment = async () => {
-    if (!participant || !newPaymentAmount) return;
+    if (!participant) return;
     
-    const amount = parseFloat(newPaymentAmount);
+    if (!newPaymentAmount || newPaymentAmount.trim() === "") {
+      toast.error("Inserisci un importo");
+      return;
+    }
+
+    const amount = parseFloat(newPaymentAmount.replace(",", "."));
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Inserisci un importo valido");
+      toast.error("Inserisci un importo valido maggiore di zero");
+      return;
+    }
+
+    if (!newPaymentType || newPaymentType.trim() === "") {
+      toast.error("Inserisci un tipo di pagamento");
       return;
     }
 
@@ -128,8 +138,8 @@ export default function EditParticipantDialog({
         .insert({
           participant_id: participant.id,
           amount,
-          payment_type: newPaymentType,
-          notes: newPaymentNotes || null,
+          payment_type: newPaymentType.trim(),
+          notes: newPaymentNotes?.trim() || null,
         });
 
       if (error) throw error;
