@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Building2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import EditCarrierDialog from "@/components/EditCarrierDialog";
 
 const carrierSchema = z.object({
   name: z.string().min(2, "Il nome deve contenere almeno 2 caratteri"),
@@ -38,6 +39,8 @@ export default function Vettori() {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -95,6 +98,11 @@ export default function Vettori() {
     }
   };
 
+  const handleEditCarrier = (carrier: Carrier) => {
+    setSelectedCarrier(carrier);
+    setEditDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -131,7 +139,15 @@ export default function Vettori() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {carriers.map((carrier) => (
-            <Card key={carrier.id}>
+            <Card key={carrier.id} className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2"
+                onClick={() => handleEditCarrier(carrier)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building2 className="h-5 w-5" />
@@ -249,6 +265,13 @@ export default function Vettori() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <EditCarrierDialog
+        carrier={selectedCarrier}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={loadCarriers}
+      />
     </div>
   );
 }
