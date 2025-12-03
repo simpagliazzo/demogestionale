@@ -1102,6 +1102,7 @@ export default function TripDetails() {
 
       <AddParticipantDialog
         tripId={id!}
+        tripType={trip?.trip_type}
         open={addParticipantOpen}
         onOpenChange={setAddParticipantOpen}
         onSuccess={loadTripDetails}
