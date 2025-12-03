@@ -9,6 +9,8 @@ import { AppLayout } from "@/components/layouts/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Viaggi from "./pages/Viaggi";
 import TripDetails from "./pages/TripDetails";
+import HotelList from "./pages/HotelList";
+import CompanionList from "./pages/CompanionList";
 import Partecipanti from "./pages/Partecipanti";
 import Vettori from "./pages/Vettori";
 import Auth from "./pages/Auth";
@@ -38,6 +40,8 @@ const App = () => (
               <Route path="/partecipanti" element={<Partecipanti />} />
               <Route path="/vettori" element={<Vettori />} />
             </Route>
+            <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
+            <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
