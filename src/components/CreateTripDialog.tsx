@@ -23,6 +23,7 @@ const tripSchema = z.object({
   price: z.string().min(1, "Il prezzo è obbligatorio"),
   deposit_type: z.enum(["fixed", "percentage"]),
   deposit_amount: z.string().min(1, "L'acconto è obbligatorio"),
+  single_room_supplement: z.string().optional(),
   max_participants: z.string().optional(),
   status: z.enum(["planned", "confirmed", "ongoing", "completed", "cancelled"]),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
@@ -53,6 +54,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
       price: "",
       deposit_type: "fixed",
       deposit_amount: "",
+      single_room_supplement: "",
       max_participants: "",
       status: "planned",
     },
@@ -77,6 +79,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
         price: parseFloat(values.price),
         deposit_type: values.deposit_type,
         deposit_amount: parseFloat(values.deposit_amount),
+        single_room_supplement: values.single_room_supplement ? parseFloat(values.single_room_supplement) : 0,
         max_participants: values.max_participants ? parseInt(values.max_participants) : null,
         status: values.status,
         created_by: user.id,
@@ -244,6 +247,25 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
                       type="number" 
                       step="0.01" 
                       placeholder={depositType === "percentage" ? "Es: 20" : "Es: 200.00"}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="single_room_supplement"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Supplemento Singola (€)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="Es: 50.00"
                       {...field} 
                     />
                   </FormControl>
