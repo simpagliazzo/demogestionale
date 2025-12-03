@@ -32,11 +32,17 @@ interface Payment {
   amount: number;
 }
 
+interface SeatAssignment {
+  participant_id: string;
+  seat_number: number;
+}
+
 export default function CompanionList() {
   const { id } = useParams();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,6 +76,22 @@ export default function CompanionList() {
 
         setPayments(paymentsData || []);
       }
+
+      // Fetch bus seat assignments for this trip
+      const { data: busConfigData } = await supabase
+        .from("bus_configurations")
+        .select("id")
+        .eq("trip_id", id)
+        .maybeSingle();
+
+      if (busConfigData) {
+        const { data: seatsData } = await supabase
+          .from("bus_seat_assignments")
+          .select("participant_id, seat_number")
+          .eq("bus_config_id", busConfigData.id);
+
+        setSeatAssignments(seatsData || []);
+      }
     } catch (error) {
       console.error("Errore:", error);
     } finally {
@@ -81,6 +103,11 @@ export default function CompanionList() {
     return payments
       .filter((p) => p.participant_id === participantId)
       .reduce((sum, p) => sum + Number(p.amount), 0);
+  };
+
+  const getParticipantSeatNumber = (participantId: string) => {
+    const assignment = seatAssignments.find((a) => a.participant_id === participantId);
+    return assignment ? assignment.seat_number : null;
   };
 
   const isSingleRoom = (participant: Participant) => {
@@ -134,7 +161,7 @@ export default function CompanionList() {
   const totalBalance = totalDue - totalPaid;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto print:p-4">
+    <div className="p-8 max-w-6xl mx-auto print:p-4">
       <style>{`
         @media print {
           body { font-size: 11px; }
@@ -169,6 +196,7 @@ export default function CompanionList() {
           <tr className="bg-muted">
             <th className="border p-2 text-left text-xs">Gr.</th>
             <th className="border p-2 text-left text-xs">Nominativo</th>
+            <th className="border p-2 text-center text-xs">Posto Bus</th>
             <th className="border p-2 text-left text-xs">Telefono</th>
             <th className="border p-2 text-left text-xs">Data Nascita</th>
             <th className="border p-2 text-left text-xs">Luogo Nascita</th>
@@ -185,6 +213,7 @@ export default function CompanionList() {
               const paid = getParticipantPayments(p.id);
               const balance = total - paid;
               const roomType = p.notes?.replace("Camera: ", "") || "-";
+              const seatNumber = getParticipantSeatNumber(p.id);
 
               return (
                 <tr key={p.id} className={idx === 0 ? "border-t-2 border-primary/30" : ""}>
@@ -197,6 +226,15 @@ export default function CompanionList() {
                     </td>
                   )}
                   <td className="border p-2 text-xs font-medium">{p.full_name}</td>
+                  <td className="border p-2 text-xs text-center font-bold">
+                    {seatNumber ? (
+                      <span className="bg-primary/20 text-primary px-2 py-0.5 rounded">
+                        {seatNumber}
+                      </span>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td className="border p-2 text-xs">{p.phone || "-"}</td>
                   <td className="border p-2 text-xs">
                     {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
@@ -215,7 +253,7 @@ export default function CompanionList() {
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
-            <td colSpan={6} className="border p-2 text-xs text-right">TOTALI:</td>
+            <td colSpan={7} className="border p-2 text-xs text-right">TOTALI:</td>
             <td className="border p-2 text-xs text-right">€{totalDue.toFixed(2)}</td>
             <td className="border p-2 text-xs text-right text-green-600">€{totalPaid.toFixed(2)}</td>
             <td className={`border p-2 text-xs text-right ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`}>
