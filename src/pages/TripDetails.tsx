@@ -56,6 +56,7 @@ interface Hotel {
   id: string;
   name: string;
   address: string | null;
+  phone: string | null;
   check_in_date: string;
   check_out_date: string;
 }
@@ -111,6 +112,7 @@ export default function TripDetails() {
   const [groupByGroupNumber, setGroupByGroupNumber] = useState<boolean>(false);
   const [totalDeposits, setTotalDeposits] = useState<number>(0);
   const [singleSupplement, setSingleSupplement] = useState<number>(0);
+  const [hotelData, setHotelData] = useState({ name: "", address: "", phone: "" });
   const { isAdmin, isAgent } = useUserRole();
 
   // Calcola il numero di partecipanti in camera singola
@@ -212,6 +214,16 @@ export default function TripDetails() {
 
       if (hotelsError) throw hotelsError;
       setHotels(hotelsData || []);
+      
+      // Popola i dati hotel se esiste
+      if (hotelsData && hotelsData.length > 0) {
+        const hotel = hotelsData[0];
+        setHotelData({
+          name: hotel.name || "",
+          address: hotel.address || "",
+          phone: (hotel as any).phone || "",
+        });
+      }
 
       // Carica camere
       if (hotelsData && hotelsData.length > 0) {
@@ -342,6 +354,48 @@ export default function TripDetails() {
     } catch (error) {
       console.error("Errore salvataggio accompagnatore:", error);
       toast.error("Errore nel salvataggio dell'accompagnatore");
+    }
+  };
+
+  const saveHotel = async () => {
+    if (!trip || !hotelData.name) {
+      toast.error("Inserisci almeno il nome dell'hotel");
+      return;
+    }
+    
+    try {
+      if (hotels.length > 0) {
+        // Aggiorna hotel esistente
+        const { error } = await supabase
+          .from("hotels")
+          .update({
+            name: hotelData.name,
+            address: hotelData.address || null,
+            phone: hotelData.phone || null,
+          })
+          .eq("id", hotels[0].id);
+
+        if (error) throw error;
+      } else {
+        // Crea nuovo hotel
+        const { error } = await supabase
+          .from("hotels")
+          .insert({
+            trip_id: trip.id,
+            name: hotelData.name,
+            address: hotelData.address || null,
+            phone: hotelData.phone || null,
+            check_in_date: trip.departure_date,
+            check_out_date: trip.return_date,
+          });
+
+        if (error) throw error;
+      }
+      toast.success("Dati hotel salvati con successo");
+      loadTripDetails();
+    } catch (error) {
+      console.error("Errore salvataggio hotel:", error);
+      toast.error("Errore nel salvataggio dei dati hotel");
     }
   };
 
@@ -519,32 +573,6 @@ export default function TripDetails() {
         </Card>
       )}
 
-      {hotels.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Hotel className="h-5 w-5" />
-              Hotel
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {hotels.map((hotel) => (
-                <div key={hotel.id} className="border rounded-lg p-4">
-                  <p className="font-medium text-lg">{hotel.name}</p>
-                  {hotel.address && (
-                    <p className="text-sm text-muted-foreground mt-1">{hotel.address}</p>
-                  )}
-                  <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                    <span>Check-in: {format(new Date(hotel.check_in_date), "dd/MM/yyyy")}</span>
-                    <span>Check-out: {format(new Date(hotel.check_out_date), "dd/MM/yyyy")}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
@@ -703,6 +731,60 @@ export default function TripDetails() {
             )}
           </CardContent>
         </Card>
+
+        {trip?.trip_type !== 'day_trip' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hotel className="h-5 w-5" />
+                Hotel
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(isAdmin || isAgent) ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="hotel-name">Nome Hotel</Label>
+                    <Input
+                      id="hotel-name"
+                      value={hotelData.name}
+                      onChange={(e) => setHotelData({...hotelData, name: e.target.value})}
+                      placeholder="Nome dell'hotel"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="hotel-address">Indirizzo</Label>
+                    <Input
+                      id="hotel-address"
+                      value={hotelData.address}
+                      onChange={(e) => setHotelData({...hotelData, address: e.target.value})}
+                      placeholder="Indirizzo completo"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="hotel-phone">Telefono</Label>
+                    <Input
+                      id="hotel-phone"
+                      value={hotelData.phone}
+                      onChange={(e) => setHotelData({...hotelData, phone: e.target.value})}
+                      placeholder="Numero di telefono"
+                    />
+                  </div>
+                  <Button onClick={saveHotel} className="w-full gap-2">
+                    <Save className="h-4 w-4" />
+                    Salva Hotel
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="font-medium">{hotelData.name || "Non configurato"}</p>
+                  {hotelData.address && <p className="text-sm text-muted-foreground">{hotelData.address}</p>}
+                  {hotelData.phone && <p className="text-sm text-muted-foreground">Tel: {hotelData.phone}</p>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {isAdmin && trip?.trip_type !== 'day_trip' && (
           <Card>
