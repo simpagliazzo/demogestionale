@@ -451,6 +451,24 @@ export default function TripDetails() {
     ? `${trip.deposit_amount}%` 
     : `€${trip.deposit_amount.toLocaleString("it-IT")}`;
 
+  const saveStatus = async (newStatus: string) => {
+    if (!trip || (!isAdmin && !isAgent)) return;
+    
+    try {
+      const { error } = await supabase
+        .from("trips")
+        .update({ status: newStatus as "planned" | "confirmed" | "ongoing" | "completed" | "cancelled" })
+        .eq("id", trip.id);
+
+      if (error) throw error;
+      setTrip({ ...trip, status: newStatus });
+      toast.success("Stato viaggio aggiornato");
+    } catch (error) {
+      console.error("Errore aggiornamento stato:", error);
+      toast.error("Errore nell'aggiornamento dello stato");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-4">
@@ -458,11 +476,28 @@ export default function TripDetails() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display text-4xl font-bold">{trip.title}</h1>
-            <Badge className={`${statusColors[trip.status as keyof typeof statusColors]} text-white`}>
-              {statusLabels[trip.status as keyof typeof statusLabels]}
-            </Badge>
+            {(isAdmin || isAgent) ? (
+              <Select value={trip.status} onValueChange={saveStatus}>
+                <SelectTrigger className="w-[160px]">
+                  <Badge className={`${statusColors[trip.status as keyof typeof statusColors]} text-white`}>
+                    {statusLabels[trip.status as keyof typeof statusLabels]}
+                  </Badge>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="planned">Pianificato</SelectItem>
+                  <SelectItem value="confirmed">Confermato</SelectItem>
+                  <SelectItem value="ongoing">In Corso</SelectItem>
+                  <SelectItem value="completed">Completato</SelectItem>
+                  <SelectItem value="cancelled">Annullato</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Badge className={`${statusColors[trip.status as keyof typeof statusColors]} text-white`}>
+                {statusLabels[trip.status as keyof typeof statusLabels]}
+              </Badge>
+            )}
             {trip.trip_type === 'day_trip' && (
               <Badge variant="outline" className="border-blue-500 text-blue-600">
                 Giornaliero
