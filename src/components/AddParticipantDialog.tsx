@@ -23,12 +23,13 @@ const participantSchema = z.object({
 
 const formSchema = z.object({
   participants: z.array(participantSchema).min(1, "Aggiungi almeno un partecipante").max(4, "Massimo 4 partecipanti"),
-  room_type: z.enum(["singola", "doppia", "matrimoniale", "tripla", "quadrupla"]),
+  room_type: z.enum(["singola", "doppia", "matrimoniale", "tripla", "quadrupla", "nessuna"]),
   group_number: z.string().optional(),
 });
 
 interface AddParticipantDialogProps {
   tripId: string;
+  tripType?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
@@ -36,6 +37,7 @@ interface AddParticipantDialogProps {
 
 export default function AddParticipantDialog({
   tripId,
+  tripType = "standard",
   open,
   onOpenChange,
   onSuccess,
@@ -44,6 +46,8 @@ export default function AddParticipantDialog({
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
   const [nextGroupNumber, setNextGroupNumber] = useState<number>(1);
   const [useExistingGroup, setUseExistingGroup] = useState<boolean>(false);
+
+  const isDayTrip = tripType === "day_trip";
 
   const {
     register,
@@ -57,7 +61,7 @@ export default function AddParticipantDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       participants: [{ full_name: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "" }],
-      room_type: "doppia",
+      room_type: isDayTrip ? "nessuna" : "doppia",
       group_number: "",
     },
   });
@@ -115,7 +119,9 @@ export default function AddParticipantDialog({
         place_of_birth: p.place_of_birth || null,
         email: p.email || null,
         phone: p.phone || null,
-        notes: p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`,
+        notes: isDayTrip 
+          ? (p.notes || null)
+          : (p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`),
         group_number: groupNum,
       }));
 
@@ -149,7 +155,7 @@ export default function AddParticipantDialog({
     }));
     reset({
       participants: newParticipants,
-      room_type: "doppia",
+      room_type: isDayTrip ? "nessuna" : "doppia",
       group_number: "",
     });
   };
@@ -166,7 +172,10 @@ export default function AddParticipantDialog({
         <DialogHeader>
           <DialogTitle>Aggiungi Partecipanti</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Seleziona il numero di partecipanti che condivideranno la stessa camera
+            {isDayTrip 
+              ? "Aggiungi partecipanti per questo viaggio giornaliero"
+              : "Seleziona il numero di partecipanti che condivideranno la stessa camera"
+            }
           </p>
         </DialogHeader>
 
@@ -242,27 +251,29 @@ export default function AddParticipantDialog({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Tipologia Camera <span className="text-destructive">*</span></Label>
-              <Controller
-                name="room_type"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona tipologia" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="singola">Singola</SelectItem>
-                      <SelectItem value="doppia">Doppia</SelectItem>
-                      <SelectItem value="matrimoniale">Matrimoniale</SelectItem>
-                      <SelectItem value="tripla">Tripla</SelectItem>
-                      <SelectItem value="quadrupla">Quadrupla</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
+            {!isDayTrip && (
+              <div className="space-y-2">
+                <Label>Tipologia Camera <span className="text-destructive">*</span></Label>
+                <Controller
+                  name="room_type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona tipologia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="singola">Singola</SelectItem>
+                        <SelectItem value="doppia">Doppia</SelectItem>
+                        <SelectItem value="matrimoniale">Matrimoniale</SelectItem>
+                        <SelectItem value="tripla">Tripla</SelectItem>
+                        <SelectItem value="quadrupla">Quadrupla</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            )}
 
             <div className="space-y-4">
               <Label className="text-base font-semibold">Partecipanti ({fields.length})</Label>
