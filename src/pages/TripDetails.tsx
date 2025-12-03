@@ -52,6 +52,11 @@ interface Participant {
   discount_amount: number | null;
 }
 
+interface ParticipantPayment {
+  participant_id: string;
+  amount: number;
+}
+
 interface Hotel {
   id: string;
   name: string;
@@ -113,6 +118,7 @@ export default function TripDetails() {
   const [totalDeposits, setTotalDeposits] = useState<number>(0);
   const [singleSupplement, setSingleSupplement] = useState<number>(0);
   const [hotelData, setHotelData] = useState({ name: "", address: "", phone: "" });
+  const [participantPayments, setParticipantPayments] = useState<ParticipantPayment[]>([]);
   const { isAdmin, isAgent } = useUserRole();
 
   // Calcola il numero di partecipanti in camera singola
@@ -158,16 +164,23 @@ export default function TripDetails() {
       const participantIds = participants.map(p => p.id);
       const { data, error } = await supabase
         .from("payments")
-        .select("amount")
+        .select("participant_id, amount")
         .in("participant_id", participantIds);
 
       if (error) throw error;
       
+      setParticipantPayments(data || []);
       const total = data?.reduce((sum, payment) => sum + Number(payment.amount), 0) || 0;
       setTotalDeposits(total);
     } catch (error) {
       console.error("Errore caricamento pagamenti:", error);
     }
+  };
+
+  const getParticipantDeposit = (participantId: string) => {
+    return participantPayments
+      .filter(p => p.participant_id === participantId)
+      .reduce((sum, p) => sum + Number(p.amount), 0);
   };
 
   const loadTripDetails = async () => {
@@ -1141,41 +1154,50 @@ export default function TripDetails() {
               </div>
             ) : (
               <div className="space-y-2">
-                {getFilteredAndSortedParticipants().map((participant) => (
-                  <div
-                    key={participant.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{participant.full_name}</p>
-                        {participant.group_number && (
-                          <Badge variant="secondary" className="text-xs">
-                            Gruppo #{participant.group_number}
-                          </Badge>
-                        )}
+                {getFilteredAndSortedParticipants().map((participant) => {
+                  const deposit = getParticipantDeposit(participant.id);
+                  const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
+                  return (
+                    <div
+                      key={participant.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{participant.full_name}</p>
+                          {participant.group_number && (
+                            <Badge variant="secondary" className="text-xs">
+                              Gruppo #{participant.group_number}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                          {participant.date_of_birth && (
+                            <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                          )}
+                          {participant.place_of_birth && (
+                            <p>a {participant.place_of_birth}</p>
+                          )}
+                          {cleanNotes && (
+                            <p className="text-xs mt-2 italic text-amber-600">Note: {cleanNotes}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground space-y-1 mt-1">
-                        {participant.date_of_birth && (
-                          <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
-                        )}
-                        {participant.place_of_birth && (
-                          <p>a {participant.place_of_birth}</p>
-                        )}
-                        {participant.notes && (
-                          <p className="text-xs mt-2 italic">Nota: {participant.notes}</p>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-green-600">
+                          Acconto: €{deposit.toFixed(2)}
+                        </div>
+                        {(participant.email || participant.phone) && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {participant.email && <p>{participant.email}</p>}
+                            {participant.phone && <p>{participant.phone}</p>}
+                          </div>
                         )}
                       </div>
                     </div>
-                    {(participant.email || participant.phone) && (
-                      <div className="text-sm text-muted-foreground text-right">
-                        {participant.email && <p>{participant.email}</p>}
-                        {participant.phone && <p>{participant.phone}</p>}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

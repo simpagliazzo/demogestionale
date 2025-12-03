@@ -194,6 +194,7 @@ export default function CompanionList() {
       <table className="w-full border-collapse mb-6">
         <thead>
           <tr className="bg-muted">
+            <th className="border p-2 text-left text-xs w-24">P. Carico</th>
             <th className="border p-2 text-left text-xs">Gr.</th>
             <th className="border p-2 text-left text-xs">Nominativo</th>
             <th className="border p-2 text-center text-xs">Posto Bus</th>
@@ -201,7 +202,6 @@ export default function CompanionList() {
             <th className="border p-2 text-left text-xs">Data Nascita</th>
             <th className="border p-2 text-left text-xs">Luogo Nascita</th>
             <th className="border p-2 text-left text-xs">Camera</th>
-            <th className="border p-2 text-right text-xs">Totale</th>
             <th className="border p-2 text-right text-xs">Pagato</th>
             <th className="border p-2 text-right text-xs">Saldo</th>
           </tr>
@@ -217,6 +217,14 @@ export default function CompanionList() {
 
               return (
                 <tr key={p.id} className={idx === 0 ? "border-t-2 border-primary/30" : ""}>
+                  {idx === 0 && (
+                    <td
+                      className="border p-2 text-xs bg-white"
+                      rowSpan={group.participants.length}
+                    >
+                      {/* Colonna vuota per punti di carico */}
+                    </td>
+                  )}
                   {idx === 0 && (
                     <td
                       className="border p-2 text-xs font-bold text-center bg-muted/50"
@@ -241,7 +249,6 @@ export default function CompanionList() {
                   </td>
                   <td className="border p-2 text-xs">{p.place_of_birth || "-"}</td>
                   <td className="border p-2 text-xs capitalize">{roomType}</td>
-                  <td className="border p-2 text-xs text-right">€{total.toFixed(2)}</td>
                   <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
                   <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
                     €{balance.toFixed(2)}
@@ -253,8 +260,7 @@ export default function CompanionList() {
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
-            <td colSpan={7} className="border p-2 text-xs text-right">TOTALI:</td>
-            <td className="border p-2 text-xs text-right">€{totalDue.toFixed(2)}</td>
+            <td colSpan={8} className="border p-2 text-xs text-right">TOTALI:</td>
             <td className="border p-2 text-xs text-right text-green-600">€{totalPaid.toFixed(2)}</td>
             <td className={`border p-2 text-xs text-right ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`}>
               €{totalBalance.toFixed(2)}
