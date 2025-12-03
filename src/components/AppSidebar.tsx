@@ -42,6 +42,7 @@ export function AppSidebar() {
 
   const adminItems = [
     { title: "Vettori Bus", url: "/vettori", icon: Bus, requiresAdmin: true },
+    { title: "Gestione Utenti", url: "/utenti", icon: Users, requiresAdmin: true },
   ];
 
   return (
