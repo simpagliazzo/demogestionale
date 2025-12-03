@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -63,6 +64,7 @@ export default function EditParticipantDialog({
   onOpenChange,
   onSuccess,
 }: EditParticipantDialogProps) {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
@@ -162,6 +164,7 @@ export default function EditParticipantDialog({
           amount,
           payment_type: newPaymentType.trim(),
           notes: newPaymentNotes?.trim() || null,
+          created_by: user?.id || null,
         });
 
       if (error) throw error;

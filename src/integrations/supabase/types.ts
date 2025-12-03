@@ -209,6 +209,7 @@ export type Database = {
       participants: {
         Row: {
           created_at: string
+          created_by: string | null
           date_of_birth: string | null
           discount_amount: number | null
           discount_type: string | null
@@ -224,6 +225,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           date_of_birth?: string | null
           discount_amount?: number | null
           discount_type?: string | null
@@ -239,6 +241,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           date_of_birth?: string | null
           discount_amount?: number | null
           discount_type?: string | null
@@ -253,6 +256,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "participants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "participants_trip_id_fkey"
             columns: ["trip_id"]
@@ -273,6 +283,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
           id: string
           notes: string | null
           participant_id: string
@@ -282,6 +293,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          created_by?: string | null
           id?: string
           notes?: string | null
           participant_id: string
@@ -291,6 +303,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           notes?: string | null
           participant_id?: string
@@ -298,6 +311,13 @@ export type Database = {
           payment_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_participant_id_fkey"
             columns: ["participant_id"]

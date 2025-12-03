@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth-context";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -42,6 +43,7 @@ export default function AddParticipantDialog({
   onOpenChange,
   onSuccess,
 }: AddParticipantDialogProps) {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
   const [nextGroupNumber, setNextGroupNumber] = useState<number>(1);
@@ -123,6 +125,7 @@ export default function AddParticipantDialog({
           ? (p.notes || null)
           : (p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`),
         group_number: groupNum,
+        created_by: user?.id || null,
       }));
 
       const { error } = await supabase.from("participants").insert(participantsToInsert);
