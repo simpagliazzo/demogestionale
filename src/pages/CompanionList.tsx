@@ -171,7 +171,7 @@ export default function CompanionList() {
         }
       `}</style>
 
-      <div className="text-center mb-8">
+      <div className="text-center mb-4">
         <h1 className="text-2xl font-bold">{trip.title}</h1>
         <p className="text-lg text-muted-foreground">{trip.destination}</p>
         <p className="text-sm text-muted-foreground">
@@ -182,6 +182,16 @@ export default function CompanionList() {
           <p className="text-sm font-medium mt-2">Accompagnatore: {trip.companion_name}</p>
         )}
         <h2 className="text-xl font-semibold mt-4">LISTA ACCOMPAGNATORE</h2>
+      </div>
+
+      <div className="mb-4 text-sm text-muted-foreground border-b pb-4">
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          <span>Totale partecipanti: <strong>{participants.length}</strong></span>
+          <span>Prezzo base viaggio: <strong>€{trip.price.toFixed(2)}</strong></span>
+          {trip.single_room_supplement > 0 && (
+            <span>Supplemento singola: <strong>€{trip.single_room_supplement.toFixed(2)}</strong></span>
+          )}
+        </div>
       </div>
 
       <button
@@ -217,14 +227,10 @@ export default function CompanionList() {
 
               return (
                 <tr key={p.id} className={idx === 0 ? "border-t-2 border-primary/30" : ""}>
-                  {idx === 0 && (
-                    <td
-                      className="border p-2 text-xs bg-white"
-                      rowSpan={group.participants.length}
-                    >
-                      {/* Colonna vuota per punti di carico */}
-                    </td>
-                  )}
+                  <td className="border p-2 text-xs bg-white min-w-[80px]">
+                    {/* Linea vuota per punto di carico individuale */}
+                    <div className="border-b border-muted-foreground/30 h-4"></div>
+                  </td>
                   {idx === 0 && (
                     <td
                       className="border p-2 text-xs font-bold text-center bg-muted/50"
@@ -269,12 +275,7 @@ export default function CompanionList() {
         </tfoot>
       </table>
 
-      <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
-        <p>Totale partecipanti: {participants.length}</p>
-        <p>Prezzo base viaggio: €{trip.price.toFixed(2)}</p>
-        {trip.single_room_supplement > 0 && (
-          <p>Supplemento singola: €{trip.single_room_supplement.toFixed(2)}</p>
-        )}
+      <div className="mt-4 text-xs text-muted-foreground">
         <p>Data generazione: {format(new Date(), "dd/MM/yyyy HH:mm", { locale: it })}</p>
       </div>
     </div>
