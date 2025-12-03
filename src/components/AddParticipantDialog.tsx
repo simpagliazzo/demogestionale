@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -24,6 +24,7 @@ const participantSchema = z.object({
 const formSchema = z.object({
   participants: z.array(participantSchema).min(1, "Aggiungi almeno un partecipante").max(4, "Massimo 4 partecipanti"),
   room_type: z.enum(["singola", "doppia", "matrimoniale", "tripla", "quadrupla"]),
+  group_number: z.string().optional(),
 });
 
 interface AddParticipantDialogProps {
@@ -41,6 +42,8 @@ export default function AddParticipantDialog({
 }: AddParticipantDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
+  const [nextGroupNumber, setNextGroupNumber] = useState<number>(1);
+  const [useExistingGroup, setUseExistingGroup] = useState<boolean>(false);
 
   const {
     register,
@@ -48,23 +51,63 @@ export default function AddParticipantDialog({
     control,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       participants: [{ full_name: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "" }],
       room_type: "doppia",
+      group_number: "",
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields } = useFieldArray({
     control,
     name: "participants",
   });
 
+  const watchGroupNumber = watch("group_number");
+
+  // Carica il prossimo numero di gruppo disponibile
+  useEffect(() => {
+    if (open) {
+      loadNextGroupNumber();
+    }
+  }, [open, tripId]);
+
+  const loadNextGroupNumber = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("participants")
+        .select("group_number")
+        .eq("trip_id", tripId)
+        .not("group_number", "is", null)
+        .order("group_number", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      
+      const maxGroup = data?.[0]?.group_number || 0;
+      setNextGroupNumber(maxGroup + 1);
+    } catch (error) {
+      console.error("Errore caricamento numero gruppo:", error);
+      setNextGroupNumber(1);
+    }
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // Inserisci tutti i partecipanti
+      // Determina il numero di gruppo da usare
+      let groupNum: number;
+      if (useExistingGroup && values.group_number) {
+        groupNum = parseInt(values.group_number);
+      } else {
+        groupNum = nextGroupNumber;
+      }
+
+      // Inserisci tutti i partecipanti con lo stesso group_number
       const participantsToInsert = values.participants.map(p => ({
         trip_id: tripId,
         full_name: p.full_name,
@@ -73,15 +116,17 @@ export default function AddParticipantDialog({
         email: p.email || null,
         phone: p.phone || null,
         notes: p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`,
+        group_number: groupNum,
       }));
 
       const { error } = await supabase.from("participants").insert(participantsToInsert);
 
       if (error) throw error;
 
-      toast.success(`${values.participants.length} partecipante/i aggiunto/i con successo`);
+      toast.success(`${values.participants.length} partecipante/i aggiunto/i con successo (Gruppo #${groupNum})`);
       reset();
       setNumParticipants(null);
+      setUseExistingGroup(false);
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -105,13 +150,17 @@ export default function AddParticipantDialog({
     reset({
       participants: newParticipants,
       room_type: "doppia",
+      group_number: "",
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       onOpenChange(isOpen);
-      if (!isOpen) setNumParticipants(null);
+      if (!isOpen) {
+        setNumParticipants(null);
+        setUseExistingGroup(false);
+      }
     }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -140,6 +189,59 @@ export default function AddParticipantDialog({
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Sezione Numero Gruppo */}
+            <div className="p-4 bg-muted/50 rounded-lg border space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">Numero Gruppo Prenotazione</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Identifica chi viaggia insieme (amici, famiglia)
+                  </p>
+                </div>
+                <Badge variant="secondary" className="text-lg px-4 py-2">
+                  #{useExistingGroup && watchGroupNumber ? watchGroupNumber : nextGroupNumber}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <Button
+                  type="button"
+                  variant={!useExistingGroup ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setUseExistingGroup(false);
+                    setValue("group_number", "");
+                  }}
+                >
+                  Nuovo gruppo (#{nextGroupNumber})
+                </Button>
+                <Button
+                  type="button"
+                  variant={useExistingGroup ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setUseExistingGroup(true)}
+                >
+                  Aggiungi a gruppo esistente
+                </Button>
+              </div>
+
+              {useExistingGroup && (
+                <div className="space-y-2">
+                  <Label htmlFor="group_number">Inserisci numero gruppo esistente</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    {...register("group_number")}
+                    placeholder="Es: 1, 2, 3..."
+                    className="max-w-32"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Usa lo stesso numero di un gruppo già esistente per collegarli
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Tipologia Camera <span className="text-destructive">*</span></Label>
               <Controller

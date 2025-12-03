@@ -212,6 +212,7 @@ export type Database = {
           date_of_birth: string | null
           email: string | null
           full_name: string
+          group_number: number | null
           id: string
           notes: string | null
           phone: string | null
@@ -224,6 +225,7 @@ export type Database = {
           date_of_birth?: string | null
           email?: string | null
           full_name: string
+          group_number?: number | null
           id?: string
           notes?: string | null
           phone?: string | null
@@ -236,6 +238,7 @@ export type Database = {
           date_of_birth?: string | null
           email?: string | null
           full_name?: string
+          group_number?: number | null
           id?: string
           notes?: string | null
           phone?: string | null

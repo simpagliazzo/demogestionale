@@ -45,6 +45,7 @@ interface Participant {
   phone: string | null;
   notes: string | null;
   created_at: string;
+  group_number: number | null;
 }
 
 interface Hotel {
@@ -103,6 +104,7 @@ export default function TripDetails() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortAlphabetically, setSortAlphabetically] = useState<boolean>(false);
   const [groupByRoom, setGroupByRoom] = useState<boolean>(false);
+  const [groupByGroupNumber, setGroupByGroupNumber] = useState<boolean>(false);
   const [totalDeposits, setTotalDeposits] = useState<number>(0);
   const { isAdmin, isAgent } = useUserRole();
 
@@ -377,6 +379,32 @@ export default function TripDetails() {
     });
 
     return byRoom;
+  };
+
+  // Raggruppa partecipanti per numero gruppo prenotazione
+  const getParticipantsByGroupNumber = () => {
+    const filtered = getFilteredAndSortedParticipants();
+    const byGroupNumber: Record<string, Participant[]> = {};
+    
+    filtered.forEach(p => {
+      const groupKey = p.group_number?.toString() || 'senza-gruppo';
+      if (!byGroupNumber[groupKey]) {
+        byGroupNumber[groupKey] = [];
+      }
+      byGroupNumber[groupKey].push(p);
+    });
+
+    // Ordina per numero di gruppo
+    const sortedKeys = Object.keys(byGroupNumber).sort((a, b) => {
+      if (a === 'senza-gruppo') return 1;
+      if (b === 'senza-gruppo') return -1;
+      return parseInt(a) - parseInt(b);
+    });
+
+    return sortedKeys.map(key => ({
+      groupNumber: key === 'senza-gruppo' ? null : parseInt(key),
+      participants: byGroupNumber[key]
+    }));
   };
 
   if (loading) {
@@ -791,16 +819,81 @@ export default function TripDetails() {
               </Button>
               <Button
                 variant={groupByRoom ? "default" : "outline"}
-                onClick={() => setGroupByRoom(!groupByRoom)}
+                onClick={() => {
+                  setGroupByRoom(!groupByRoom);
+                  if (!groupByRoom) setGroupByGroupNumber(false);
+                }}
                 size="sm"
               >
                 Per Camera
+              </Button>
+              <Button
+                variant={groupByGroupNumber ? "default" : "outline"}
+                onClick={() => {
+                  setGroupByGroupNumber(!groupByGroupNumber);
+                  if (!groupByGroupNumber) setGroupByRoom(false);
+                }}
+                size="sm"
+              >
+                Per Gruppo
               </Button>
             </div>
 
             {participants.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Nessun partecipante ancora iscritto
+              </div>
+            ) : groupByGroupNumber ? (
+              <div className="space-y-6">
+                {getParticipantsByGroupNumber().map(({ groupNumber, participants: groupParticipants }) => {
+                  const groupTotal = trip.price * groupParticipants.length;
+                  return (
+                    <div key={groupNumber ?? 'no-group'} className="border rounded-lg p-4 bg-card">
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-lg px-3 py-1">
+                            {groupNumber ? `Gruppo #${groupNumber}` : 'Senza Gruppo'}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            ({groupParticipants.length} {groupParticipants.length === 1 ? 'persona' : 'persone'})
+                          </span>
+                        </div>
+                        <span className="text-lg font-bold text-primary">
+                          Totale: €{groupTotal.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {groupParticipants.map((participant) => (
+                          <div
+                            key={participant.id}
+                            className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md"
+                            onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{participant.full_name}</p>
+                              <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                                {participant.date_of_birth && (
+                                  <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                                )}
+                                {participant.notes && (
+                                  <p className="text-xs italic">
+                                    {participant.notes.replace(/\s*\|\s*Camera:\s*\w+/g, '')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {(participant.email || participant.phone) && (
+                              <div className="text-sm text-muted-foreground text-right">
+                                {participant.email && <p>{participant.email}</p>}
+                                {participant.phone && <p>{participant.phone}</p>}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : groupByRoom ? (
               <div className="space-y-6">
@@ -844,6 +937,11 @@ export default function TripDetails() {
                                           {idx + 1}
                                         </Badge>
                                         <p className="font-medium">{participant.full_name}</p>
+                                        {participant.group_number && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            Gr. #{participant.group_number}
+                                          </Badge>
+                                        )}
                                       </div>
                                       <div className="text-sm text-muted-foreground space-y-1 mt-1 ml-8">
                                         {participant.date_of_birth && (
@@ -888,7 +986,14 @@ export default function TripDetails() {
                     onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                   >
                     <div>
-                      <p className="font-medium">{participant.full_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{participant.full_name}</p>
+                        {participant.group_number && (
+                          <Badge variant="secondary" className="text-xs">
+                            Gruppo #{participant.group_number}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground space-y-1 mt-1">
                         {participant.date_of_birth && (
                           <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>

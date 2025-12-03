@@ -18,6 +18,7 @@ const participantSchema = z.object({
   email: z.string().email("Email non valida").optional().or(z.literal("")),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  group_number: z.string().optional(),
 });
 
 interface Payment {
@@ -37,6 +38,7 @@ interface EditParticipantDialogProps {
     email: string | null;
     phone: string | null;
     notes: string | null;
+    group_number?: number | null;
   } | null;
   tripPrice: number;
   depositType: "fixed" | "percentage";
@@ -79,6 +81,7 @@ export default function EditParticipantDialog({
         email: participant.email || "",
         phone: participant.phone || "",
         notes: participant.notes || "",
+        group_number: participant.group_number?.toString() || "",
       });
       loadPayments();
     }
@@ -179,6 +182,8 @@ export default function EditParticipantDialog({
     
     setIsSubmitting(true);
     try {
+      const groupNum = values.group_number ? parseInt(values.group_number) : null;
+      
       const { error } = await supabase
         .from("participants")
         .update({
@@ -188,6 +193,7 @@ export default function EditParticipantDialog({
           email: values.email || null,
           phone: values.phone || null,
           notes: values.notes || null,
+          group_number: groupNum,
         })
         .eq("id", participant.id);
 
@@ -233,12 +239,34 @@ export default function EditParticipantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modifica Partecipante</DialogTitle>
+          <DialogTitle className="flex items-center gap-3">
+            Modifica Partecipante
+            {participant?.group_number && (
+              <Badge variant="secondary">Gruppo #{participant.group_number}</Badge>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Sezione Dati Partecipante */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Numero Gruppo */}
+            <div className="p-3 bg-muted/50 rounded-lg border space-y-2">
+              <Label htmlFor="group_number" className="font-semibold">
+                Numero Gruppo Prenotazione
+              </Label>
+              <Input
+                type="number"
+                min="1"
+                {...register("group_number")}
+                placeholder="Es: 1, 2, 3..."
+                className="max-w-32"
+              />
+              <p className="text-xs text-muted-foreground">
+                Assegna lo stesso numero a chi viaggia insieme
+              </p>
+            </div>
+
           <div className="space-y-2">
             <Label htmlFor="full_name">
               Nome e Cognome <span className="text-destructive">*</span>
