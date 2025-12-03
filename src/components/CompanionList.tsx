@@ -13,6 +13,7 @@ interface Participant {
   phone: string | null;
   notes: string | null;
   created_at: string;
+  group_number: number | null;
 }
 
 interface Payment {
@@ -37,6 +38,7 @@ export default function CompanionList() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [payments, setPayments] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [groupByGroupNumber, setGroupByGroupNumber] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -120,6 +122,31 @@ export default function CompanionList() {
     return byRoom;
   };
 
+  // Raggruppa partecipanti per numero gruppo prenotazione
+  const getParticipantsByGroupNumber = () => {
+    const byGroupNumber: Record<string, Participant[]> = {};
+    
+    participants.forEach(p => {
+      const groupKey = p.group_number?.toString() || 'senza-gruppo';
+      if (!byGroupNumber[groupKey]) {
+        byGroupNumber[groupKey] = [];
+      }
+      byGroupNumber[groupKey].push(p);
+    });
+
+    // Ordina per numero di gruppo
+    const sortedKeys = Object.keys(byGroupNumber).sort((a, b) => {
+      if (a === 'senza-gruppo') return 1;
+      if (b === 'senza-gruppo') return -1;
+      return parseInt(a) - parseInt(b);
+    });
+
+    return sortedKeys.map(key => ({
+      groupNumber: key === 'senza-gruppo' ? null : parseInt(key),
+      participants: byGroupNumber[key]
+    }));
+  };
+
   const calculateExpectedDeposit = () => {
     if (!trip) return 0;
     if (trip.deposit_type === "percentage") {
@@ -170,12 +197,24 @@ export default function CompanionList() {
       `}</style>
       
       <div className="print-container">
-        <div className="no-print mb-6 flex gap-2">
+        <div className="no-print mb-6 flex gap-2 flex-wrap">
           <button 
             onClick={() => window.print()} 
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
           >
             Stampa Lista Accompagnatore
+          </button>
+          <button 
+            onClick={() => setGroupByGroupNumber(false)} 
+            className={`px-4 py-2 rounded-lg ${!groupByGroupNumber ? 'bg-primary text-white' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+          >
+            Per Camera
+          </button>
+          <button 
+            onClick={() => setGroupByGroupNumber(true)} 
+            className={`px-4 py-2 rounded-lg ${groupByGroupNumber ? 'bg-primary text-white' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+          >
+            Per Gruppo Prenotazione
           </button>
           <button 
             onClick={() => window.close()} 
@@ -187,7 +226,9 @@ export default function CompanionList() {
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">{trip?.title}</h1>
-          <h2 className="text-xl text-muted-foreground mb-4">Lista Accompagnatore</h2>
+          <h2 className="text-xl text-muted-foreground mb-4">
+            Lista Accompagnatore {groupByGroupNumber ? "(per Gruppo Prenotazione)" : "(per Camera)"}
+          </h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p><strong>Destinazione:</strong> {trip?.destination}</p>
@@ -202,45 +243,47 @@ export default function CompanionList() {
           </div>
         </div>
 
-        {Object.entries(getParticipantsByRoom()).map(([roomType, roomGroups]) => {
-          if (roomGroups.length === 0) return null;
-
-          return (
-            <div key={roomType} className="mb-6">
-              <h3 className="text-base font-semibold mb-3 pb-1 border-b-2 border-primary">
-                {roomLabels[roomType]}
-              </h3>
-              
-              <table className="w-full border-collapse mb-4 text-xs">
-                <thead>
-                  <tr className="bg-muted">
-                    <th className="border border-border p-1.5 text-left font-semibold">Camera</th>
-                    <th className="border border-border p-1.5 text-left font-semibold">Nome</th>
-                    <th className="border border-border p-1.5 text-left font-semibold">Data Nascita</th>
-                    <th className="border border-border p-1.5 text-left font-semibold">Luogo Nascita</th>
-                    <th className="border border-border p-1.5 text-left font-semibold">Email</th>
-                    <th className="border border-border p-1.5 text-left font-semibold">Telefono</th>
-                    <th className="border border-border p-1.5 text-right font-semibold">Prezzo</th>
-                    <th className="border border-border p-1.5 text-right font-semibold">Versato</th>
-                    <th className="border border-border p-1.5 text-right font-semibold">Da Versare</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {roomGroups.map((group, groupIndex) => (
-                    group.map((participant, idx) => {
+        {groupByGroupNumber ? (
+          // Vista raggruppata per numero di gruppo prenotazione
+          <div className="space-y-6">
+            {getParticipantsByGroupNumber().map(({ groupNumber, participants: groupParticipants }) => (
+              <div key={groupNumber ?? 'no-group'} className="mb-6">
+                <h3 className="text-base font-semibold mb-3 pb-1 border-b-2 border-primary">
+                  {groupNumber ? `Gruppo Prenotazione #${groupNumber}` : 'Senza Gruppo'} 
+                  <span className="font-normal text-sm text-muted-foreground ml-2">
+                    ({groupParticipants.length} {groupParticipants.length === 1 ? 'persona' : 'persone'})
+                  </span>
+                </h3>
+                
+                <table className="w-full border-collapse mb-4 text-xs">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="border border-border p-1.5 text-left font-semibold">Nome</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Data Nascita</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Luogo Nascita</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Email</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Telefono</th>
+                      <th className="border border-border p-1.5 text-center font-semibold">Camera</th>
+                      <th className="border border-border p-1.5 text-right font-semibold">Prezzo</th>
+                      <th className="border border-border p-1.5 text-right font-semibold">Versato</th>
+                      <th className="border border-border p-1.5 text-right font-semibold">Da Versare</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupParticipants.map((participant) => {
                       const paid = payments[participant.id] || 0;
                       const remaining = (trip?.price || 0) - paid;
                       
+                      // Estrai tipo camera dalle note
+                      let roomType = '-';
+                      if (participant.notes?.includes("Camera: singola")) roomType = 'S';
+                      else if (participant.notes?.includes("Camera: doppia")) roomType = 'D';
+                      else if (participant.notes?.includes("Camera: matrimoniale")) roomType = 'M';
+                      else if (participant.notes?.includes("Camera: tripla")) roomType = 'T';
+                      else if (participant.notes?.includes("Camera: quadrupla")) roomType = 'Q';
+                      
                       return (
                         <tr key={participant.id} className="hover:bg-muted/50">
-                          {idx === 0 && (
-                            <td 
-                              className="border border-border p-1.5 font-medium align-top text-center" 
-                              rowSpan={group.length}
-                            >
-                              #{groupIndex + 1}
-                            </td>
-                          )}
                           <td className="border border-border p-1.5">{participant.full_name}</td>
                           <td className="border border-border p-1.5 whitespace-nowrap">
                             {participant.date_of_birth 
@@ -257,6 +300,9 @@ export default function CompanionList() {
                           <td className="border border-border p-1.5">
                             {participant.phone || "-"}
                           </td>
+                          <td className="border border-border p-1.5 text-center font-medium">
+                            {roomType}
+                          </td>
                           <td className="border border-border p-1.5 text-right whitespace-nowrap">
                             €{trip?.price.toFixed(2)}
                           </td>
@@ -268,13 +314,107 @@ export default function CompanionList() {
                           </td>
                         </tr>
                       );
-                    })
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        })}
+                    })}
+                    {/* Riga totale gruppo */}
+                    <tr className="bg-muted/70 font-semibold">
+                      <td colSpan={6} className="border border-border p-1.5 text-right">
+                        Totale Gruppo:
+                      </td>
+                      <td className="border border-border p-1.5 text-right whitespace-nowrap">
+                        €{((trip?.price || 0) * groupParticipants.length).toFixed(2)}
+                      </td>
+                      <td className="border border-border p-1.5 text-right whitespace-nowrap text-green-600">
+                        €{groupParticipants.reduce((sum, p) => sum + (payments[p.id] || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="border border-border p-1.5 text-right whitespace-nowrap text-orange-600">
+                        €{(((trip?.price || 0) * groupParticipants.length) - groupParticipants.reduce((sum, p) => sum + (payments[p.id] || 0), 0)).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Vista raggruppata per tipo camera (originale)
+          Object.entries(getParticipantsByRoom()).map(([roomType, roomGroups]) => {
+            if (roomGroups.length === 0) return null;
+
+            return (
+              <div key={roomType} className="mb-6">
+                <h3 className="text-base font-semibold mb-3 pb-1 border-b-2 border-primary">
+                  {roomLabels[roomType]}
+                </h3>
+                
+                <table className="w-full border-collapse mb-4 text-xs">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="border border-border p-1.5 text-left font-semibold">Camera</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Nome</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Data Nascita</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Luogo Nascita</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Email</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Telefono</th>
+                      <th className="border border-border p-1.5 text-center font-semibold">Gr.</th>
+                      <th className="border border-border p-1.5 text-right font-semibold">Prezzo</th>
+                      <th className="border border-border p-1.5 text-right font-semibold">Versato</th>
+                      <th className="border border-border p-1.5 text-right font-semibold">Da Versare</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roomGroups.map((group, groupIndex) => (
+                      group.map((participant, idx) => {
+                        const paid = payments[participant.id] || 0;
+                        const remaining = (trip?.price || 0) - paid;
+                        
+                        return (
+                          <tr key={participant.id} className="hover:bg-muted/50">
+                            {idx === 0 && (
+                              <td 
+                                className="border border-border p-1.5 font-medium align-top text-center" 
+                                rowSpan={group.length}
+                              >
+                                #{groupIndex + 1}
+                              </td>
+                            )}
+                            <td className="border border-border p-1.5">{participant.full_name}</td>
+                            <td className="border border-border p-1.5 whitespace-nowrap">
+                              {participant.date_of_birth 
+                                ? format(new Date(participant.date_of_birth), "dd/MM/yyyy")
+                                : "-"
+                              }
+                            </td>
+                            <td className="border border-border p-1.5">
+                              {participant.place_of_birth || "-"}
+                            </td>
+                            <td className="border border-border p-1.5 text-xs">
+                              {participant.email || "-"}
+                            </td>
+                            <td className="border border-border p-1.5">
+                              {participant.phone || "-"}
+                            </td>
+                            <td className="border border-border p-1.5 text-center font-medium">
+                              {participant.group_number || "-"}
+                            </td>
+                            <td className="border border-border p-1.5 text-right whitespace-nowrap">
+                              €{trip?.price.toFixed(2)}
+                            </td>
+                            <td className="border border-border p-1.5 text-right whitespace-nowrap">
+                              €{paid.toFixed(2)}
+                            </td>
+                            <td className={`border border-border p-1.5 text-right font-semibold whitespace-nowrap ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                              €{remaining.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })
+        )}
 
         <div className="mt-6 pt-4 border-t">
           <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
