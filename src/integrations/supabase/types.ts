@@ -210,6 +210,8 @@ export type Database = {
         Row: {
           created_at: string
           date_of_birth: string | null
+          discount_amount: number | null
+          discount_type: string | null
           email: string | null
           full_name: string
           group_number: number | null
@@ -223,6 +225,8 @@ export type Database = {
         Insert: {
           created_at?: string
           date_of_birth?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           email?: string | null
           full_name: string
           group_number?: number | null
@@ -236,6 +240,8 @@ export type Database = {
         Update: {
           created_at?: string
           date_of_birth?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
           email?: string | null
           full_name?: string
           group_number?: number | null
@@ -425,6 +431,7 @@ export type Database = {
           single_room_supplement: number | null
           status: Database["public"]["Enums"]["trip_status"]
           title: string
+          trip_type: string
           updated_at: string
         }
         Insert: {
@@ -449,6 +456,7 @@ export type Database = {
           single_room_supplement?: number | null
           status?: Database["public"]["Enums"]["trip_status"]
           title: string
+          trip_type?: string
           updated_at?: string
         }
         Update: {
@@ -473,6 +481,7 @@ export type Database = {
           single_room_supplement?: number | null
           status?: Database["public"]["Enums"]["trip_status"]
           title?: string
+          trip_type?: string
           updated_at?: string
         }
         Relationships: [

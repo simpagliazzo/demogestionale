@@ -35,6 +35,7 @@ interface Trip {
   allotment_quadruple: number;
   carrier_id: string | null;
   companion_name: string | null;
+  trip_type: string;
 }
 
 interface Participant {
@@ -47,6 +48,8 @@ interface Participant {
   notes: string | null;
   created_at: string;
   group_number: number | null;
+  discount_type: string | null;
+  discount_amount: number | null;
 }
 
 interface Hotel {
@@ -460,6 +463,11 @@ export default function TripDetails() {
             <Badge className={`${statusColors[trip.status as keyof typeof statusColors]} text-white`}>
               {statusLabels[trip.status as keyof typeof statusLabels]}
             </Badge>
+            {trip.trip_type === 'day_trip' && (
+              <Badge variant="outline" className="border-blue-500 text-blue-600">
+                Giornaliero
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-2 text-muted-foreground">
             <MapPin className="h-4 w-4" />
@@ -661,7 +669,7 @@ export default function TripDetails() {
           </CardContent>
         </Card>
 
-        {isAdmin && (
+        {isAdmin && trip?.trip_type !== 'day_trip' && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -749,7 +757,7 @@ export default function TripDetails() {
         )}
       </div>
 
-      {(isAdmin || isAgent) && (
+      {(isAdmin || isAgent) && trip?.trip_type !== 'day_trip' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

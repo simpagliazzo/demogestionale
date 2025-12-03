@@ -39,6 +39,8 @@ interface EditParticipantDialogProps {
     phone: string | null;
     notes: string | null;
     group_number?: number | null;
+    discount_type?: string | null;
+    discount_amount?: number | null;
   } | null;
   tripPrice: number;
   depositType: "fixed" | "percentage";
@@ -66,6 +68,8 @@ export default function EditParticipantDialog({
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("acconto");
   const [newPaymentNotes, setNewPaymentNotes] = useState("");
+  const [discountType, setDiscountType] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
 
   const {
     register,
@@ -87,6 +91,8 @@ export default function EditParticipantDialog({
         notes: participant.notes || "",
         group_number: participant.group_number?.toString() || "",
       });
+      setDiscountType(participant.discount_type || null);
+      setDiscountAmount(participant.discount_amount || 0);
       loadPayments();
     }
   }, [participant, reset]);
@@ -116,10 +122,17 @@ export default function EditParticipantDialog({
     }
   };
 
+  const calculateDiscount = () => {
+    if (!discountType || discountAmount <= 0) return 0;
+    if (discountType === "fixed") return discountAmount;
+    return (tripPrice * discountAmount) / 100;
+  };
+
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const depositDue = calculateDepositAmount();
   const supplementAmount = isSingleRoom ? singleRoomSupplement : 0;
-  const totalPrice = tripPrice + supplementAmount;
+  const discountValue = calculateDiscount();
+  const totalPrice = tripPrice + supplementAmount - discountValue;
   const balance = totalPrice - totalPaid;
 
   const handleAddPayment = async () => {
@@ -200,6 +213,8 @@ export default function EditParticipantDialog({
           phone: values.phone || null,
           notes: values.notes || null,
           group_number: groupNum,
+          discount_type: discountType,
+          discount_amount: discountAmount || 0,
         })
         .eq("id", participant.id);
 
@@ -377,13 +392,49 @@ export default function EditParticipantDialog({
                     <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
                       Supplemento Singola
                     </span>
-                    <span className="text-lg font-semibold text-amber-600">€{singleRoomSupplement.toFixed(2)}</span>
+                    <span className="text-lg font-semibold text-amber-600">+€{singleRoomSupplement.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {discountValue > 0 && (
+                  <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      Sconto {discountType === "percentage" ? `(${discountAmount}%)` : ""}
+                    </span>
+                    <span className="text-lg font-semibold text-green-600">-€{discountValue.toFixed(2)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg border-t-2 border-primary/30">
                   <span className="text-sm font-bold">Totale Dovuto</span>
                   <span className="text-lg font-bold">€{totalPrice.toFixed(2)}</span>
+                </div>
+
+                {/* Campo Sconto */}
+                <div className="p-3 bg-muted/50 rounded-lg border space-y-2">
+                  <Label className="text-xs font-semibold">Applica Sconto</Label>
+                  <div className="flex gap-2">
+                    <select
+                      value={discountType || ""}
+                      onChange={(e) => setDiscountType(e.target.value || null)}
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Nessuno</option>
+                      <option value="fixed">Importo (€)</option>
+                      <option value="percentage">Percentuale (%)</option>
+                    </select>
+                    {discountType && (
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={discountAmount}
+                        onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                        placeholder={discountType === "percentage" ? "Es: 10" : "Es: 50"}
+                        className="w-24"
+                      />
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
