@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bus, Users, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Bus, Users, X, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +16,14 @@ interface Trip {
   title: string;
   destination: string;
   departure_date: string;
+}
+
+interface BusType {
+  id: string;
+  name: string;
+  rows: number;
+  seats_per_row: number;
+  total_seats: number;
 }
 
 interface BusConfig {
@@ -44,6 +54,10 @@ interface Participant {
 export default function BusPage() {
   const [selectedTrip, setSelectedTrip] = useState<string>("");
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
+  const [configMode, setConfigMode] = useState<"preset" | "manual">("preset");
+  const [selectedBusType, setSelectedBusType] = useState<string>("");
+  const [manualRows, setManualRows] = useState(13);
+  const [manualSeatsPerRow, setManualSeatsPerRow] = useState(4);
   const queryClient = useQueryClient();
 
   // Fetch trips
@@ -56,6 +70,19 @@ export default function BusPage() {
         .order("departure_date", { ascending: true });
       if (error) throw error;
       return data as Trip[];
+    },
+  });
+
+  // Fetch bus types
+  const { data: busTypes = [] } = useQuery({
+    queryKey: ["bus-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bus_types")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data as BusType[];
     },
   });
 
@@ -112,16 +139,32 @@ export default function BusPage() {
     enabled: !!selectedTrip,
   });
 
-  // Create default bus config if not exists
+  // Create bus config
   const createBusConfig = useMutation({
     mutationFn: async () => {
+      let rows: number, seatsPerRow: number, totalSeats: number, busTypeId: string | null = null;
+
+      if (configMode === "preset" && selectedBusType) {
+        const busType = busTypes.find((bt) => bt.id === selectedBusType);
+        if (!busType) throw new Error("Tipo bus non trovato");
+        rows = busType.rows;
+        seatsPerRow = busType.seats_per_row;
+        totalSeats = busType.total_seats;
+        busTypeId = busType.id;
+      } else {
+        rows = manualRows;
+        seatsPerRow = manualSeatsPerRow;
+        totalSeats = rows * seatsPerRow;
+      }
+
       const { data, error } = await supabase
         .from("bus_configurations")
         .insert({
           trip_id: selectedTrip,
-          rows: 13,
-          seats_per_row: 4,
-          total_seats: 52,
+          rows,
+          seats_per_row: seatsPerRow,
+          total_seats: totalSeats,
+          bus_type_id: busTypeId,
         })
         .select()
         .single();
@@ -131,6 +174,9 @@ export default function BusPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bus-config", selectedTrip] });
       toast.success("Configurazione bus creata");
+    },
+    onError: () => {
+      toast.error("Errore nella creazione della configurazione");
     },
   });
 
@@ -226,12 +272,16 @@ export default function BusPage() {
 
       // Left side (2 seats)
       for (let col = 0; col < 2; col++) {
-        leftSeats.push(renderSeat(seatNumber++));
+        if (seatNumber <= busConfig.total_seats) {
+          leftSeats.push(renderSeat(seatNumber++));
+        }
       }
 
       // Right side (2 seats)
       for (let col = 0; col < 2; col++) {
-        rightSeats.push(renderSeat(seatNumber++));
+        if (seatNumber <= busConfig.total_seats) {
+          rightSeats.push(renderSeat(seatNumber++));
+        }
       }
 
       rows.push(
@@ -255,6 +305,8 @@ export default function BusPage() {
       </div>
     );
   };
+
+  const selectedBusTypeData = busTypes.find((bt) => bt.id === selectedBusType);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -289,15 +341,105 @@ export default function BusPage() {
         </CardContent>
       </Card>
 
+      {/* Bus Configuration */}
       {selectedTrip && !busConfig && (
         <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground mb-4">
-              Nessuna configurazione bus per questo viaggio.
-            </p>
-            <Button onClick={() => createBusConfig.mutate()}>
-              Crea Configurazione Bus (52 posti)
-            </Button>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Configura Bus
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex gap-4">
+              <Button
+                variant={configMode === "preset" ? "default" : "outline"}
+                onClick={() => setConfigMode("preset")}
+              >
+                Seleziona Tipo Bus
+              </Button>
+              <Button
+                variant={configMode === "manual" ? "default" : "outline"}
+                onClick={() => setConfigMode("manual")}
+              >
+                Configurazione Manuale
+              </Button>
+            </div>
+
+            {configMode === "preset" ? (
+              <div className="space-y-4">
+                {busTypes.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    Nessun tipo bus configurato. Vai alla sezione Vettori per aggiungerne uno,
+                    oppure usa la configurazione manuale.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Tipo Bus</Label>
+                    <Select value={selectedBusType} onValueChange={setSelectedBusType}>
+                      <SelectTrigger className="w-full md:w-[300px]">
+                        <SelectValue placeholder="Seleziona tipo bus..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {busTypes.map((bt) => (
+                          <SelectItem key={bt.id} value={bt.id}>
+                            {bt.name} ({bt.total_seats} posti)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedBusTypeData && (
+                      <p className="text-sm text-muted-foreground">
+                        {selectedBusTypeData.rows} righe × {selectedBusTypeData.seats_per_row} posti per riga
+                      </p>
+                    )}
+                  </div>
+                )}
+                <Button
+                  onClick={() => createBusConfig.mutate()}
+                  disabled={!selectedBusType || createBusConfig.isPending}
+                >
+                  {createBusConfig.isPending ? "Creazione..." : "Crea Configurazione"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 max-w-sm">
+                  <div className="space-y-2">
+                    <Label>Numero Righe</Label>
+                    <Input
+                      type="number"
+                      value={manualRows}
+                      onChange={(e) => setManualRows(parseInt(e.target.value) || 1)}
+                      min={1}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Posti per Riga</Label>
+                    <Input
+                      type="number"
+                      value={manualSeatsPerRow}
+                      onChange={(e) => setManualSeatsPerRow(parseInt(e.target.value) || 1)}
+                      min={1}
+                    />
+                  </div>
+                </div>
+                <div className="bg-muted p-3 rounded-lg inline-block">
+                  <p className="text-sm text-muted-foreground">Posti totali:</p>
+                  <p className="text-xl font-bold text-primary">
+                    {manualRows * manualSeatsPerRow}
+                  </p>
+                </div>
+                <div>
+                  <Button
+                    onClick={() => createBusConfig.mutate()}
+                    disabled={createBusConfig.isPending}
+                  >
+                    {createBusConfig.isPending ? "Creazione..." : "Crea Configurazione Manuale"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -373,7 +515,7 @@ export default function BusPage() {
           {/* Bus Map */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Mappa Posti</CardTitle>
+              <CardTitle>Mappa Posti ({busConfig.total_seats} posti)</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-center">
               <div className="bg-muted/30 p-6 rounded-xl border-2 border-dashed">
