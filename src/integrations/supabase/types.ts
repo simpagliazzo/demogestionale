@@ -422,6 +422,7 @@ export type Database = {
           max_participants: number | null
           price: number
           return_date: string
+          single_room_supplement: number | null
           status: Database["public"]["Enums"]["trip_status"]
           title: string
           updated_at: string
@@ -445,6 +446,7 @@ export type Database = {
           max_participants?: number | null
           price: number
           return_date: string
+          single_room_supplement?: number | null
           status?: Database["public"]["Enums"]["trip_status"]
           title: string
           updated_at?: string
@@ -468,6 +470,7 @@ export type Database = {
           max_participants?: number | null
           price?: number
           return_date?: string
+          single_room_supplement?: number | null
           status?: Database["public"]["Enums"]["trip_status"]
           title?: string
           updated_at?: string

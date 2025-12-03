@@ -25,6 +25,7 @@ interface Trip {
   price: number;
   deposit_type: "fixed" | "percentage";
   deposit_amount: number;
+  single_room_supplement: number;
   max_participants: number | null;
   status: string;
   allotment_singole: number;
@@ -106,7 +107,21 @@ export default function TripDetails() {
   const [groupByRoom, setGroupByRoom] = useState<boolean>(false);
   const [groupByGroupNumber, setGroupByGroupNumber] = useState<boolean>(false);
   const [totalDeposits, setTotalDeposits] = useState<number>(0);
+  const [singleSupplement, setSingleSupplement] = useState<number>(0);
   const { isAdmin, isAgent } = useUserRole();
+
+  // Calcola il numero di partecipanti in camera singola
+  const getSingleRoomParticipantsCount = () => {
+    return participants.filter(p => p.notes?.includes("Camera: singola")).length;
+  };
+
+  // Calcola il totale dovuto comprensivo di supplementi singola
+  const getTotalDue = () => {
+    const baseTotal = participants.length * (trip?.price || 0);
+    const singleCount = getSingleRoomParticipantsCount();
+    const supplementTotal = singleCount * (trip?.single_room_supplement || 0);
+    return baseTotal + supplementTotal;
+  };
 
   useEffect(() => {
     loadTripDetails();
@@ -173,6 +188,7 @@ export default function TripDetails() {
         });
         setSelectedCarrier(tripData.carrier_id || "");
         setCompanion(tripData.companion_name || "");
+        setSingleSupplement(tripData.single_room_supplement || 0);
       }
 
       // Carica partecipanti
@@ -279,11 +295,12 @@ export default function TripDetails() {
           allotment_matrimoniali: allotmentData.matrimoniali,
           allotment_triple: allotmentData.triple,
           allotment_quadruple: allotmentData.quadruple,
+          single_room_supplement: singleSupplement,
         })
         .eq("id", trip.id);
 
       if (error) throw error;
-      toast.success("Allotment salvato con successo");
+      toast.success("Allotment e supplemento salvati con successo");
       loadTripDetails();
     } catch (error) {
       console.error("Errore salvataggio allotment:", error);
@@ -518,7 +535,10 @@ export default function TripDetails() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{trip.price.toLocaleString("it-IT")}</div>
-            <p className="text-xs text-muted-foreground">Acconto: {depositDisplay}</p>
+            <p className="text-xs text-muted-foreground">
+              Acconto: {depositDisplay}
+              {trip.single_room_supplement > 0 && ` • Suppl. singola: €${trip.single_room_supplement}`}
+            </p>
           </CardContent>
         </Card>
 
@@ -540,9 +560,12 @@ export default function TripDetails() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              €{((participants.length * trip.price) - totalDeposits).toLocaleString("it-IT")}
+              €{(getTotalDue() - totalDeposits).toLocaleString("it-IT")}
             </div>
-            <p className="text-xs text-muted-foreground">da incassare</p>
+            <p className="text-xs text-muted-foreground">
+              da incassare {getSingleRoomParticipantsCount() > 0 && trip.single_room_supplement > 0 && 
+                `(incl. ${getSingleRoomParticipantsCount()} suppl. singola)`}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -703,6 +726,20 @@ export default function TripDetails() {
                       min="0"
                       value={allotmentData.quadruple}
                       onChange={(e) => setAllotmentData({...allotmentData, quadruple: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                </div>
+                <div className="pt-3 border-t">
+                  <div className="space-y-1">
+                    <Label htmlFor="singleSupplement" className="text-xs font-medium">Supplemento Singola (€)</Label>
+                    <Input
+                      id="singleSupplement"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={singleSupplement}
+                      onChange={(e) => setSingleSupplement(parseFloat(e.target.value) || 0)}
+                      placeholder="Es: 50.00"
                     />
                   </div>
                 </div>
