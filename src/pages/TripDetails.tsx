@@ -1069,6 +1069,8 @@ export default function TripDetails() {
         tripPrice={trip?.price || 0}
         depositType={trip?.deposit_type || "fixed"}
         depositAmount={trip?.deposit_amount || 0}
+        singleRoomSupplement={trip?.single_room_supplement || 0}
+        isSingleRoom={selectedParticipant?.notes?.includes("Camera: singola") || false}
         open={editParticipantOpen}
         onOpenChange={setEditParticipantOpen}
         onSuccess={loadTripDetails}

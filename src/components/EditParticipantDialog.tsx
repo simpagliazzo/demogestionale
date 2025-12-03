@@ -43,6 +43,8 @@ interface EditParticipantDialogProps {
   tripPrice: number;
   depositType: "fixed" | "percentage";
   depositAmount: number;
+  singleRoomSupplement?: number;
+  isSingleRoom?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
@@ -53,6 +55,8 @@ export default function EditParticipantDialog({
   tripPrice,
   depositType,
   depositAmount,
+  singleRoomSupplement = 0,
+  isSingleRoom = false,
   open,
   onOpenChange,
   onSuccess,
@@ -114,7 +118,9 @@ export default function EditParticipantDialog({
 
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const depositDue = calculateDepositAmount();
-  const balance = tripPrice - totalPaid;
+  const supplementAmount = isSingleRoom ? singleRoomSupplement : 0;
+  const totalPrice = tripPrice + supplementAmount;
+  const balance = totalPrice - totalPaid;
 
   const handleAddPayment = async () => {
     if (!participant) return;
@@ -364,6 +370,20 @@ export default function EditParticipantDialog({
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                   <span className="text-sm font-medium">Prezzo Viaggio</span>
                   <span className="text-lg font-bold">€{tripPrice.toFixed(2)}</span>
+                </div>
+                
+                {isSingleRoom && singleRoomSupplement > 0 && (
+                  <div className="flex justify-between items-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                      Supplemento Singola
+                    </span>
+                    <span className="text-lg font-semibold text-amber-600">€{singleRoomSupplement.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center p-3 bg-muted rounded-lg border-t-2 border-primary/30">
+                  <span className="text-sm font-bold">Totale Dovuto</span>
+                  <span className="text-lg font-bold">€{totalPrice.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
