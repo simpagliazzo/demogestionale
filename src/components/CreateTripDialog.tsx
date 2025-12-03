@@ -26,6 +26,7 @@ const tripSchema = z.object({
   single_room_supplement: z.string().optional(),
   max_participants: z.string().optional(),
   status: z.enum(["planned", "confirmed", "ongoing", "completed", "cancelled"]),
+  trip_type: z.enum(["standard", "day_trip"]),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -57,10 +58,12 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
       single_room_supplement: "",
       max_participants: "",
       status: "planned",
+      trip_type: "standard",
     },
   });
 
   const depositType = form.watch("deposit_type");
+  const tripType = form.watch("trip_type");
 
   const onSubmit = async (values: TripFormValues) => {
     if (!user) {
@@ -82,6 +85,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
         single_room_supplement: values.single_room_supplement ? parseFloat(values.single_room_supplement) : 0,
         max_participants: values.max_participants ? parseInt(values.max_participants) : null,
         status: values.status,
+        trip_type: values.trip_type,
         created_by: user.id,
       });
 
@@ -255,24 +259,59 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="single_room_supplement"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Supplemento Singola (€)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="Es: 50.00"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div>
+              <FormLabel>Tipo Viaggio *</FormLabel>
+              <FormField
+                control={form.control}
+                name="trip_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        className="flex gap-4 mt-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="standard" id="standard" />
+                          <Label htmlFor="standard" className="font-normal cursor-pointer">
+                            Con pernottamento
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="day_trip" id="day_trip" />
+                          <Label htmlFor="day_trip" className="font-normal cursor-pointer">
+                            Giornaliero (solo bus)
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {tripType === "standard" && (
+              <FormField
+                control={form.control}
+                name="single_room_supplement"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supplemento Singola (€)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="Es: 50.00"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
