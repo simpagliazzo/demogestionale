@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
+import ParticipantAutocomplete from "@/components/ParticipantAutocomplete";
+import { ExistingParticipant } from "@/hooks/use-participant-search";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -281,7 +283,32 @@ export default function AddParticipantDialog({
             <div className="space-y-4">
               <Label className="text-base font-semibold">Partecipanti ({fields.length})</Label>
 
-              {fields.map((field, index) => (
+              {fields.map((field, index) => {
+                const handleParticipantSelect = (participant: ExistingParticipant) => {
+                  setValue(`participants.${index}.full_name`, participant.full_name);
+                  if (participant.date_of_birth) {
+                    // Convert YYYY-MM-DD to DD/MM/YYYY if needed
+                    const dateStr = participant.date_of_birth;
+                    if (dateStr.includes("-")) {
+                      const parts = dateStr.split("-");
+                      setValue(`participants.${index}.date_of_birth`, `${parts[2]}/${parts[1]}/${parts[0]}`);
+                    } else {
+                      setValue(`participants.${index}.date_of_birth`, dateStr);
+                    }
+                  }
+                  if (participant.place_of_birth) {
+                    setValue(`participants.${index}.place_of_birth`, participant.place_of_birth);
+                  }
+                  if (participant.email) {
+                    setValue(`participants.${index}.email`, participant.email);
+                  }
+                  if (participant.phone) {
+                    setValue(`participants.${index}.phone`, participant.phone);
+                  }
+                  toast.success(`Dati di ${participant.full_name} compilati automaticamente`);
+                };
+
+                return (
                 <div key={field.id} className="p-4 border rounded-lg space-y-4">
                   <h4 className="font-medium">Partecipante {index + 1}</h4>
 
@@ -289,10 +316,21 @@ export default function AddParticipantDialog({
                   <Label htmlFor={`participants.${index}.full_name`}>
                     Nome e Cognome <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    {...register(`participants.${index}.full_name`)}
-                    placeholder="Mario Rossi"
+                  <Controller
+                    name={`participants.${index}.full_name`}
+                    control={control}
+                    render={({ field: inputField }) => (
+                      <ParticipantAutocomplete
+                        value={inputField.value}
+                        onChange={inputField.onChange}
+                        onSelect={handleParticipantSelect}
+                        placeholder="Inizia a digitare per cercare..."
+                      />
+                    )}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Digita per cercare clienti esistenti o inserisci un nuovo nome
+                  </p>
                   {errors.participants?.[index]?.full_name && (
                     <p className="text-sm text-destructive">{errors.participants[index]?.full_name?.message}</p>
                   )}
@@ -348,7 +386,8 @@ export default function AddParticipantDialog({
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
