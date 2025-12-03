@@ -3,7 +3,6 @@ import {
   MapPin,
   Users,
   DollarSign,
-  Hotel,
   Bus,
   UserCircle,
   LogOut,
@@ -38,7 +37,6 @@ export function AppSidebar() {
 
   const managementItems = [
     { title: "Pagamenti", url: "/pagamenti", icon: DollarSign, requiresStaff: true },
-    { title: "Hotel & Camere", url: "/hotel", icon: Hotel, requiresStaff: true },
     { title: "Posti Bus", url: "/bus", icon: Bus, requiresStaff: true },
   ];
 

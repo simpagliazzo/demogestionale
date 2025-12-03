@@ -13,6 +13,7 @@ import HotelList from "./pages/HotelList";
 import CompanionList from "./pages/CompanionList";
 import Partecipanti from "./pages/Partecipanti";
 import Pagamenti from "./pages/Pagamenti";
+import BusPage from "./pages/Bus";
 import Vettori from "./pages/Vettori";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/viaggi/:id" element={<TripDetails />} />
               <Route path="/partecipanti" element={<Partecipanti />} />
               <Route path="/pagamenti" element={<Pagamenti />} />
+              <Route path="/bus" element={<BusPage />} />
               <Route path="/vettori" element={<Vettori />} />
             </Route>
             <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
