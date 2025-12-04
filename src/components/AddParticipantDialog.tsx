@@ -104,6 +104,28 @@ export default function AddParticipantDialog({
     }
   };
 
+  // Converte data da DD/MM/YYYY a YYYY-MM-DD per Supabase
+  const convertDateToISO = (dateStr: string | undefined): string | null => {
+    if (!dateStr || dateStr.trim() === "") return null;
+    
+    // Se è già in formato YYYY-MM-DD, ritornalo così
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    
+    // Converti da DD/MM/YYYY a YYYY-MM-DD
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      // Valida che siano numeri validi
+      if (day && month && year && !isNaN(parseInt(day)) && !isNaN(parseInt(month)) && !isNaN(parseInt(year))) {
+        return `${year.padStart(4, '20')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    
+    return null;
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
@@ -119,7 +141,7 @@ export default function AddParticipantDialog({
       const participantsToInsert = values.participants.map(p => ({
         trip_id: tripId,
         full_name: p.full_name,
-        date_of_birth: p.date_of_birth || null,
+        date_of_birth: convertDateToISO(p.date_of_birth),
         place_of_birth: p.place_of_birth || null,
         email: p.email || null,
         phone: p.phone || null,
