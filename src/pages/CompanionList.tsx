@@ -120,27 +120,64 @@ export default function CompanionList() {
     return base + supplement;
   };
 
-  const getParticipantsByGroupNumber = () => {
-    const byGroupNumber: Record<string, Participant[]> = {};
+  const getRoomType = (participant: Participant) => {
+    if (participant.notes?.includes("Camera: singola")) return 'singola';
+    if (participant.notes?.includes("Camera: doppia")) return 'doppia';
+    if (participant.notes?.includes("Camera: matrimoniale")) return 'matrimoniale';
+    if (participant.notes?.includes("Camera: tripla")) return 'tripla';
+    if (participant.notes?.includes("Camera: quadrupla")) return 'quadrupla';
+    return 'altro';
+  };
 
+  const getRoomLabel = (roomType: string) => {
+    const labels: Record<string, string> = {
+      singola: 'Singola',
+      doppia: 'Doppia',
+      matrimoniale: 'Matrimoniale',
+      tripla: 'Tripla',
+      quadrupla: 'Quadrupla',
+      altro: '-',
+    };
+    return labels[roomType] || '-';
+  };
+
+  // Raggruppa partecipanti per group_number e poi ordina per tipologia camera
+  const getParticipantsByRoom = () => {
+    // Prima raggruppa per group_number
+    const byGroupNumber: Record<string, Participant[]> = {};
+    
     participants.forEach((p) => {
-      const groupKey = p.group_number?.toString() || "senza-gruppo";
+      const groupKey = p.group_number?.toString() || `solo-${p.id}`;
       if (!byGroupNumber[groupKey]) {
         byGroupNumber[groupKey] = [];
       }
       byGroupNumber[groupKey].push(p);
     });
 
-    const sortedKeys = Object.keys(byGroupNumber).sort((a, b) => {
-      if (a === "senza-gruppo") return 1;
-      if (b === "senza-gruppo") return -1;
-      return parseInt(a) - parseInt(b);
+    // Converti in array di gruppi con info sulla camera
+    const roomGroups = Object.entries(byGroupNumber).map(([groupKey, groupParticipants]) => {
+      const roomType = getRoomType(groupParticipants[0]);
+      return {
+        groupKey,
+        groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
+        roomType,
+        participants: groupParticipants,
+      };
     });
 
-    return sortedKeys.map((key) => ({
-      groupNumber: key === "senza-gruppo" ? null : parseInt(key),
-      participants: byGroupNumber[key],
-    }));
+    // Ordina per tipologia camera (singola, doppia, matrimoniale, tripla, quadrupla, altro)
+    const roomOrder = ['singola', 'doppia', 'matrimoniale', 'tripla', 'quadrupla', 'altro'];
+    roomGroups.sort((a, b) => {
+      const orderA = roomOrder.indexOf(a.roomType);
+      const orderB = roomOrder.indexOf(b.roomType);
+      if (orderA !== orderB) return orderA - orderB;
+      // Se stesso tipo camera, ordina per numero gruppo
+      if (a.groupNumber === null) return 1;
+      if (b.groupNumber === null) return -1;
+      return a.groupNumber - b.groupNumber;
+    });
+
+    return roomGroups;
   };
 
   if (loading) {
@@ -155,7 +192,7 @@ export default function CompanionList() {
     return <div className="p-8 text-center">Viaggio non trovato</div>;
   }
 
-  const groups = getParticipantsByGroupNumber();
+  const roomGroups = getParticipantsByRoom();
   const totalDue = participants.reduce((sum, p) => sum + getParticipantTotal(p), 0);
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const totalBalance = totalDue - totalPaid;
@@ -206,29 +243,27 @@ export default function CompanionList() {
           <tr className="bg-muted">
             <th className="border p-2 text-left text-xs w-24">P. Carico</th>
             <th className="border p-2 text-left text-xs">Gr.</th>
+            <th className="border p-2 text-left text-xs">Camera</th>
             <th className="border p-2 text-left text-xs">Nominativo</th>
             <th className="border p-2 text-center text-xs">Posto Bus</th>
             <th className="border p-2 text-left text-xs">Telefono</th>
             <th className="border p-2 text-left text-xs">Data Nascita</th>
             <th className="border p-2 text-left text-xs">Luogo Nascita</th>
-            <th className="border p-2 text-left text-xs">Camera</th>
             <th className="border p-2 text-right text-xs">Pagato</th>
             <th className="border p-2 text-right text-xs">Saldo</th>
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) =>
+          {roomGroups.map((group) =>
             group.participants.map((p, idx) => {
               const total = getParticipantTotal(p);
               const paid = getParticipantPayments(p.id);
               const balance = total - paid;
-              const roomType = p.notes?.replace("Camera: ", "") || "-";
               const seatNumber = getParticipantSeatNumber(p.id);
 
               return (
                 <tr key={p.id} className={idx === 0 ? "border-t-2 border-primary/30" : ""}>
                   <td className="border p-2 text-xs bg-white min-w-[80px]">
-                    {/* Linea vuota per punto di carico individuale */}
                     <div className="border-b border-muted-foreground/30 h-4"></div>
                   </td>
                   {idx === 0 && (
@@ -237,6 +272,14 @@ export default function CompanionList() {
                       rowSpan={group.participants.length}
                     >
                       {group.groupNumber || "-"}
+                    </td>
+                  )}
+                  {idx === 0 && (
+                    <td
+                      className="border p-2 text-xs font-medium text-center bg-muted/30 capitalize"
+                      rowSpan={group.participants.length}
+                    >
+                      {getRoomLabel(group.roomType)}
                     </td>
                   )}
                   <td className="border p-2 text-xs font-medium">{p.full_name}</td>
@@ -254,7 +297,6 @@ export default function CompanionList() {
                     {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
                   </td>
                   <td className="border p-2 text-xs">{p.place_of_birth || "-"}</td>
-                  <td className="border p-2 text-xs capitalize">{roomType}</td>
                   <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
                   <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
                     €{balance.toFixed(2)}
