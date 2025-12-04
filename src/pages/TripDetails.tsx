@@ -1022,6 +1022,7 @@ export default function TripDetails() {
               <div className="space-y-6">
                 {getParticipantsByGroupNumber().map(({ groupNumber, participants: groupParticipants }) => {
                   const groupTotal = trip.price * groupParticipants.length;
+                  const groupDeposit = groupParticipants.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
                   return (
                     <div key={groupNumber ?? 'no-group'} className="border rounded-lg p-4 bg-card">
                       <div className="flex items-center justify-between mb-3 pb-3 border-b">
@@ -1033,38 +1034,51 @@ export default function TripDetails() {
                             ({groupParticipants.length} {groupParticipants.length === 1 ? 'persona' : 'persone'})
                           </span>
                         </div>
-                        <span className="text-lg font-bold text-primary">
-                          Totale: €{groupTotal.toFixed(2)}
-                        </span>
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-primary">
+                            Totale: €{groupTotal.toFixed(2)}
+                          </span>
+                          <p className="text-sm font-medium text-green-600">
+                            Acconti: €{groupDeposit.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
                       <div className="space-y-2">
-                        {groupParticipants.map((participant) => (
-                          <div
-                            key={participant.id}
-                            className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md"
-                            onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
-                          >
-                            <div className="flex-1">
-                              <p className="font-medium">{participant.full_name}</p>
-                              <div className="text-sm text-muted-foreground space-y-1 mt-1">
-                                {participant.date_of_birth && (
-                                  <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
-                                )}
-                                {participant.notes && (
-                                  <p className="text-xs italic">
-                                    {participant.notes.replace(/\s*\|\s*Camera:\s*\w+/g, '')}
-                                  </p>
+                        {groupParticipants.map((participant) => {
+                          const deposit = getParticipantDeposit(participant.id);
+                          return (
+                            <div
+                              key={participant.id}
+                              className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md"
+                              onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium">{participant.full_name}</p>
+                                <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                                  {participant.date_of_birth && (
+                                    <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                                  )}
+                                  {participant.notes && (
+                                    <p className="text-xs italic">
+                                      {participant.notes.replace(/\s*\|\s*Camera:\s*\w+/g, '')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-green-600">
+                                  Acconto: €{deposit.toFixed(2)}
+                                </p>
+                                {(participant.email || participant.phone) && (
+                                  <div className="text-sm text-muted-foreground mt-1">
+                                    {participant.email && <p>{participant.email}</p>}
+                                    {participant.phone && <p>{participant.phone}</p>}
+                                  </div>
                                 )}
                               </div>
                             </div>
-                            {(participant.email || participant.phone) && (
-                              <div className="text-sm text-muted-foreground text-right">
-                                {participant.email && <p>{participant.email}</p>}
-                                {participant.phone && <p>{participant.phone}</p>}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1094,55 +1108,69 @@ export default function TripDetails() {
                       <div className="space-y-3">
                         {roomGroups.map((group, groupIndex) => {
                           const groupTotal = trip.price * group.length;
+                          const groupDeposit = group.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
                           return (
                             <div
                               key={groupIndex}
                               className="border rounded-lg p-4 bg-card hover:bg-accent/30 transition-colors"
                             >
                               <div className="space-y-3">
-                                {group.map((participant, idx) => (
-                                  <div
-                                    key={participant.id}
-                                    className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md -mx-3"
-                                    onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
-                                  >
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant="outline" className="text-xs">
-                                          {idx + 1}
-                                        </Badge>
-                                        <p className="font-medium">{participant.full_name}</p>
-                                        {participant.group_number && (
-                                          <Badge variant="secondary" className="text-xs">
-                                            Gr. #{participant.group_number}
+                                {group.map((participant, idx) => {
+                                  const deposit = getParticipantDeposit(participant.id);
+                                  return (
+                                    <div
+                                      key={participant.id}
+                                      className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md -mx-3"
+                                      onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
+                                    >
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-xs">
+                                            {idx + 1}
                                           </Badge>
-                                        )}
+                                          <p className="font-medium">{participant.full_name}</p>
+                                          {participant.group_number && (
+                                            <Badge variant="secondary" className="text-xs">
+                                              Gr. #{participant.group_number}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground space-y-1 mt-1 ml-8">
+                                          {participant.date_of_birth && (
+                                            <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                                          )}
+                                          {participant.place_of_birth && (
+                                            <p>a {participant.place_of_birth}</p>
+                                          )}
+                                        </div>
                                       </div>
-                                      <div className="text-sm text-muted-foreground space-y-1 mt-1 ml-8">
-                                        {participant.date_of_birth && (
-                                          <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
-                                        )}
-                                        {participant.place_of_birth && (
-                                          <p>a {participant.place_of_birth}</p>
+                                      <div className="text-right">
+                                        <p className="text-sm font-medium text-green-600">
+                                          Acconto: €{deposit.toFixed(2)}
+                                        </p>
+                                        {(participant.email || participant.phone) && (
+                                          <div className="text-sm text-muted-foreground mt-1">
+                                            {participant.email && <p>{participant.email}</p>}
+                                            {participant.phone && <p>{participant.phone}</p>}
+                                          </div>
                                         )}
                                       </div>
                                     </div>
-                                    {(participant.email || participant.phone) && (
-                                      <div className="text-sm text-muted-foreground text-right">
-                                        {participant.email && <p>{participant.email}</p>}
-                                        {participant.phone && <p>{participant.phone}</p>}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                               <div className="mt-3 pt-3 border-t flex justify-between items-center">
                                 <span className="text-sm font-medium text-muted-foreground">
                                   Totale Camera ({group.length} {group.length === 1 ? 'persona' : 'persone'})
                                 </span>
-                                <span className="text-lg font-bold text-primary">
-                                  €{groupTotal.toFixed(2)}
-                                </span>
+                                <div className="text-right">
+                                  <span className="text-lg font-bold text-primary">
+                                    €{groupTotal.toFixed(2)}
+                                  </span>
+                                  <p className="text-sm font-medium text-green-600">
+                                    Acconti: €{groupDeposit.toFixed(2)}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           );
