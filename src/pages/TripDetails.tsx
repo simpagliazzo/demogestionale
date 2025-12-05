@@ -1046,34 +1046,32 @@ export default function TripDetails() {
                       <div className="space-y-2">
                         {groupParticipants.map((participant) => {
                           const deposit = getParticipantDeposit(participant.id);
+                          const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
                           return (
                             <div
                               key={participant.id}
                               className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md"
                               onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                             >
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <p className="font-medium">{participant.full_name}</p>
-                                <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                                <div className="text-sm text-muted-foreground mt-1">
                                   {participant.date_of_birth && (
-                                    <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
-                                  )}
-                                  {participant.notes && (
-                                    <p className="text-xs italic">
-                                      {participant.notes.replace(/\s*\|\s*Camera:\s*\w+/g, '')}
-                                    </p>
+                                    <span>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</span>
                                   )}
                                 </div>
+                                {cleanNotes && (
+                                  <p className="text-xs mt-1 text-orange-600 italic bg-orange-50 dark:bg-orange-950/30 px-2 py-1 rounded inline-block">
+                                    📝 {cleanNotes}
+                                  </p>
+                                )}
                               </div>
-                              <div className="text-right">
+                              <div className="text-right flex-shrink-0 ml-4">
                                 <p className="text-sm font-medium text-green-600">
                                   Acconto: €{deposit.toFixed(2)}
                                 </p>
-                                {(participant.email || participant.phone) && (
-                                  <div className="text-sm text-muted-foreground mt-1">
-                                    {participant.email && <p>{participant.email}</p>}
-                                    {participant.phone && <p>{participant.phone}</p>}
-                                  </div>
+                                {participant.phone && (
+                                  <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                                 )}
                               </div>
                             </div>
@@ -1117,13 +1115,14 @@ export default function TripDetails() {
                               <div className="space-y-3">
                                 {group.map((participant, idx) => {
                                   const deposit = getParticipantDeposit(participant.id);
+                                  const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
                                   return (
                                     <div
                                       key={participant.id}
                                       className="flex items-center justify-between cursor-pointer hover:bg-accent/50 p-3 rounded-md -mx-3"
                                       onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                                     >
-                                      <div className="flex-1">
+                                      <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                           <Badge variant="outline" className="text-xs">
                                             {idx + 1}
@@ -1135,24 +1134,26 @@ export default function TripDetails() {
                                             </Badge>
                                           )}
                                         </div>
-                                        <div className="text-sm text-muted-foreground space-y-1 mt-1 ml-8">
+                                        <div className="text-sm text-muted-foreground mt-1 ml-8">
                                           {participant.date_of_birth && (
-                                            <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                                            <span>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</span>
                                           )}
                                           {participant.place_of_birth && (
-                                            <p>a {participant.place_of_birth}</p>
+                                            <span> a {participant.place_of_birth}</span>
                                           )}
                                         </div>
+                                        {cleanNotes && (
+                                          <p className="text-xs mt-1 ml-8 text-orange-600 italic bg-orange-50 dark:bg-orange-950/30 px-2 py-1 rounded inline-block">
+                                            📝 {cleanNotes}
+                                          </p>
+                                        )}
                                       </div>
-                                      <div className="text-right">
+                                      <div className="text-right flex-shrink-0 ml-4">
                                         <p className="text-sm font-medium text-green-600">
                                           Acconto: €{deposit.toFixed(2)}
                                         </p>
-                                        {(participant.email || participant.phone) && (
-                                          <div className="text-sm text-muted-foreground mt-1">
-                                            {participant.email && <p>{participant.email}</p>}
-                                            {participant.phone && <p>{participant.phone}</p>}
-                                          </div>
+                                        {participant.phone && (
+                                          <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                                         )}
                                       </div>
                                     </div>
@@ -1191,7 +1192,7 @@ export default function TripDetails() {
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
                       onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                     >
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{participant.full_name}</p>
                           {participant.group_number && (
@@ -1200,27 +1201,26 @@ export default function TripDetails() {
                             </Badge>
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                        <div className="text-sm text-muted-foreground mt-1">
                           {participant.date_of_birth && (
-                            <p>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</p>
+                            <span>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</span>
                           )}
                           {participant.place_of_birth && (
-                            <p>a {participant.place_of_birth}</p>
-                          )}
-                          {cleanNotes && (
-                            <p className="text-xs mt-2 italic text-amber-600">Note: {cleanNotes}</p>
+                            <span> a {participant.place_of_birth}</span>
                           )}
                         </div>
+                        {cleanNotes && (
+                          <p className="text-xs mt-2 text-orange-600 italic bg-orange-50 dark:bg-orange-950/30 px-2 py-1 rounded inline-block">
+                            📝 {cleanNotes}
+                          </p>
+                        )}
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0 ml-4">
                         <div className="text-sm font-medium text-green-600">
                           Acconto: €{deposit.toFixed(2)}
                         </div>
-                        {(participant.email || participant.phone) && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {participant.email && <p>{participant.email}</p>}
-                            {participant.phone && <p>{participant.phone}</p>}
-                          </div>
+                        {participant.phone && (
+                          <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                         )}
                       </div>
                     </div>
