@@ -141,31 +141,36 @@ export default function CompanionList() {
     return labels[roomType] || '-';
   };
 
-  // Raggruppa partecipanti per group_number e poi ordina per tipologia camera
+  // Raggruppa partecipanti per combinazione tipologia camera + group_number
+  // Così partecipanti dello stesso gruppo ma con camere diverse restano separati
   const getParticipantsByRoom = () => {
-    // Prima raggruppa per group_number
-    const byGroupNumber: Record<string, Participant[]> = {};
+    // Raggruppa per combinazione univoca di (roomType, group_number)
+    const byRoomAndGroup: Record<string, Participant[]> = {};
     
     participants.forEach((p) => {
-      const groupKey = p.group_number?.toString() || `solo-${p.id}`;
-      if (!byGroupNumber[groupKey]) {
-        byGroupNumber[groupKey] = [];
+      const roomType = getRoomType(p);
+      const groupNum = p.group_number?.toString() || `solo-${p.id}`;
+      // Chiave univoca: tipologia camera + numero gruppo
+      const key = `${roomType}__${groupNum}`;
+      
+      if (!byRoomAndGroup[key]) {
+        byRoomAndGroup[key] = [];
       }
-      byGroupNumber[groupKey].push(p);
+      byRoomAndGroup[key].push(p);
     });
 
-    // Converti in array di gruppi con info sulla camera
-    const roomGroups = Object.entries(byGroupNumber).map(([groupKey, groupParticipants]) => {
-      const roomType = getRoomType(groupParticipants[0]);
+    // Converti in array di gruppi
+    const roomGroups = Object.entries(byRoomAndGroup).map(([key, groupParticipants]) => {
+      const [roomType, groupKey] = key.split('__');
       return {
-        groupKey,
+        groupKey: key,
         groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
         roomType,
         participants: groupParticipants,
       };
     });
 
-    // Ordina per tipologia camera (singola, doppia, matrimoniale, tripla, quadrupla, altro)
+    // Ordina per tipologia camera, poi per numero gruppo
     const roomOrder = ['singola', 'doppia', 'matrimoniale', 'tripla', 'quadrupla', 'altro'];
     roomGroups.sort((a, b) => {
       const orderA = roomOrder.indexOf(a.roomType);
