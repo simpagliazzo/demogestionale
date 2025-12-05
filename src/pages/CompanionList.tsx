@@ -141,8 +141,14 @@ export default function CompanionList() {
     return labels[roomType] || '-';
   };
 
+  // Estrae le note rimuovendo la parte della camera
+  const getDisplayNotes = (participant: Participant) => {
+    if (!participant.notes) return '';
+    return participant.notes.replace(/Camera:\s*(singola|doppia|matrimoniale|tripla|quadrupla)\s*/gi, '').trim();
+  };
+
   // Raggruppa partecipanti per combinazione tipologia camera + group_number
-  // Così partecipanti dello stesso gruppo ma con camere diverse restano separati
+  // Ordinati per numero gruppo (1, 2, 3...) poi per tipologia camera
   const getParticipantsByRoom = () => {
     // Raggruppa per combinazione univoca di (roomType, group_number)
     const byRoomAndGroup: Record<string, Participant[]> = {};
@@ -170,16 +176,19 @@ export default function CompanionList() {
       };
     });
 
-    // Ordina per tipologia camera, poi per numero gruppo
+    // Ordina per numero gruppo (1, 2, 3...), poi per tipologia camera
     const roomOrder = ['singola', 'doppia', 'matrimoniale', 'tripla', 'quadrupla', 'altro'];
     roomGroups.sort((a, b) => {
-      const orderA = roomOrder.indexOf(a.roomType);
-      const orderB = roomOrder.indexOf(b.roomType);
-      if (orderA !== orderB) return orderA - orderB;
-      // Se stesso tipo camera, ordina per numero gruppo
+      // Prima ordina per numero gruppo
+      if (a.groupNumber === null && b.groupNumber === null) {
+        // Entrambi senza gruppo: ordina per tipologia camera
+        return roomOrder.indexOf(a.roomType) - roomOrder.indexOf(b.roomType);
+      }
       if (a.groupNumber === null) return 1;
       if (b.groupNumber === null) return -1;
-      return a.groupNumber - b.groupNumber;
+      if (a.groupNumber !== b.groupNumber) return a.groupNumber - b.groupNumber;
+      // Stesso gruppo: ordina per tipologia camera
+      return roomOrder.indexOf(a.roomType) - roomOrder.indexOf(b.roomType);
     });
 
     return roomGroups;
@@ -246,16 +255,17 @@ export default function CompanionList() {
       <table className="w-full border-collapse mb-6">
         <thead>
           <tr className="bg-muted">
-            <th className="border p-2 text-left text-xs w-24">P. Carico</th>
-            <th className="border p-2 text-left text-xs">Gr.</th>
-            <th className="border p-2 text-left text-xs">Camera</th>
+            <th className="border p-2 text-left text-xs w-20">P. Carico</th>
+            <th className="border p-2 text-center text-xs w-10">Gr.</th>
+            <th className="border p-2 text-left text-xs w-20">Camera</th>
             <th className="border p-2 text-left text-xs">Nominativo</th>
-            <th className="border p-2 text-center text-xs">Posto Bus</th>
-            <th className="border p-2 text-left text-xs">Telefono</th>
-            <th className="border p-2 text-left text-xs">Data Nascita</th>
-            <th className="border p-2 text-left text-xs">Luogo Nascita</th>
-            <th className="border p-2 text-right text-xs">Pagato</th>
-            <th className="border p-2 text-right text-xs">Saldo</th>
+            <th className="border p-2 text-center text-xs w-12">Bus</th>
+            <th className="border p-2 text-left text-xs w-24">Telefono</th>
+            <th className="border p-2 text-left text-xs w-20">Data Nasc.</th>
+            <th className="border p-2 text-left text-xs">Luogo Nasc.</th>
+            <th className="border p-2 text-left text-xs">Note</th>
+            <th className="border p-2 text-right text-xs w-16">Pagato</th>
+            <th className="border p-2 text-right text-xs w-16">Saldo</th>
           </tr>
         </thead>
         <tbody>
@@ -265,10 +275,11 @@ export default function CompanionList() {
               const paid = getParticipantPayments(p.id);
               const balance = total - paid;
               const seatNumber = getParticipantSeatNumber(p.id);
+              const displayNotes = getDisplayNotes(p);
 
               return (
                 <tr key={p.id} className={idx === 0 ? "border-t-2 border-primary/30" : ""}>
-                  <td className="border p-2 text-xs bg-white min-w-[80px]">
+                  <td className="border p-2 text-xs bg-white">
                     <div className="border-b border-muted-foreground/30 h-4"></div>
                   </td>
                   {idx === 0 && (
@@ -302,6 +313,9 @@ export default function CompanionList() {
                     {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
                   </td>
                   <td className="border p-2 text-xs">{p.place_of_birth || "-"}</td>
+                  <td className="border p-2 text-xs text-orange-600 italic max-w-[150px]">
+                    {displayNotes || "-"}
+                  </td>
                   <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
                   <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
                     €{balance.toFixed(2)}
@@ -313,7 +327,7 @@ export default function CompanionList() {
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
-            <td colSpan={8} className="border p-2 text-xs text-right">TOTALI:</td>
+            <td colSpan={9} className="border p-2 text-xs text-right">TOTALI:</td>
             <td className="border p-2 text-xs text-right text-green-600">€{totalPaid.toFixed(2)}</td>
             <td className={`border p-2 text-xs text-right ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`}>
               €{totalBalance.toFixed(2)}
