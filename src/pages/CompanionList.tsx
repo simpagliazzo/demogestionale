@@ -147,35 +147,62 @@ export default function CompanionList() {
     return participant.notes.replace(/Camera:\s*(singola|doppia|matrimoniale|tripla|quadrupla)\s*/gi, '').trim();
   };
 
-  // Raggruppa partecipanti per camera (stesso gruppo + stessa tipologia)
-  // Ogni camera ha la tipologia mostrata una sola volta
+  // Capacità per tipologia di camera
+  const getRoomCapacity = (roomType: string) => {
+    const capacities: Record<string, number> = {
+      singola: 1,
+      doppia: 2,
+      matrimoniale: 2,
+      tripla: 3,
+      quadrupla: 4,
+      altro: 1,
+    };
+    return capacities[roomType] || 1;
+  };
+
+  // Raggruppa partecipanti per camera effettiva
+  // Divide in base alla capacità (es. 4 persone in doppia = 2 camere da 2)
   const getParticipantsByRoom = () => {
-    // Raggruppa per combinazione univoca di (group_number, roomType)
-    const byRoomAndGroup: Record<string, Participant[]> = {};
+    // Prima raggruppa per (group_number, roomType)
+    const byGroupAndType: Record<string, Participant[]> = {};
     
     participants.forEach((p) => {
       const roomType = getRoomType(p);
       const groupNum = p.group_number?.toString() || `solo-${p.id}`;
       const key = `${groupNum}__${roomType}`;
       
-      if (!byRoomAndGroup[key]) {
-        byRoomAndGroup[key] = [];
+      if (!byGroupAndType[key]) {
+        byGroupAndType[key] = [];
       }
-      byRoomAndGroup[key].push(p);
+      byGroupAndType[key].push(p);
     });
 
-    // Converti in array di gruppi-camera
-    const roomGroups = Object.entries(byRoomAndGroup).map(([key, groupParticipants]) => {
+    // Dividi ogni gruppo per capacità camera
+    const roomGroups: Array<{
+      groupKey: string;
+      groupNumber: number | null;
+      roomType: string;
+      participants: Participant[];
+    }> = [];
+
+    Object.entries(byGroupAndType).forEach(([key, groupParticipants]) => {
       const [groupKey, roomType] = key.split('__');
-      return {
-        groupKey: key,
-        groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
-        roomType,
-        participants: groupParticipants.sort((a, b) => a.full_name.localeCompare(b.full_name)),
-      };
+      const capacity = getRoomCapacity(roomType);
+      const sortedParticipants = groupParticipants.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      
+      // Dividi in chunk per capacità camera
+      for (let i = 0; i < sortedParticipants.length; i += capacity) {
+        const chunk = sortedParticipants.slice(i, i + capacity);
+        roomGroups.push({
+          groupKey: `${key}_${Math.floor(i / capacity)}`,
+          groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
+          roomType,
+          participants: chunk,
+        });
+      }
     });
 
-    // Ordina per numero gruppo (1, 2, 3...), poi per tipologia camera
+    // Ordina per numero gruppo, poi per tipologia camera
     const roomOrder = ['singola', 'doppia', 'matrimoniale', 'tripla', 'quadrupla', 'altro'];
     roomGroups.sort((a, b) => {
       if (a.groupNumber === null && b.groupNumber === null) {
