@@ -147,26 +147,47 @@ export default function CompanionList() {
     return participant.notes.replace(/Camera:\s*(singola|doppia|matrimoniale|tripla|quadrupla)\s*/gi, '').trim();
   };
 
-  // Raggruppa partecipanti per gruppo mantenendo ogni camera separata
-  // Ordinati per numero gruppo (1, 2, 3...) poi per tipologia camera
+  // Raggruppa partecipanti per camera (stesso gruppo + stessa tipologia)
+  // Ogni camera ha la tipologia mostrata una sola volta
   const getParticipantsByRoom = () => {
-    // Prima ordina per group_number, poi tipologia camera
-    const sorted = [...participants].sort((a, b) => {
-      const groupA = a.group_number ?? Infinity;
-      const groupB = b.group_number ?? Infinity;
-      if (groupA !== groupB) return groupA - groupB;
+    // Raggruppa per combinazione univoca di (group_number, roomType)
+    const byRoomAndGroup: Record<string, Participant[]> = {};
+    
+    participants.forEach((p) => {
+      const roomType = getRoomType(p);
+      const groupNum = p.group_number?.toString() || `solo-${p.id}`;
+      const key = `${groupNum}__${roomType}`;
       
-      const roomOrder = ['singola', 'doppia', 'matrimoniale', 'tripla', 'quadrupla', 'altro'];
-      return roomOrder.indexOf(getRoomType(a)) - roomOrder.indexOf(getRoomType(b));
+      if (!byRoomAndGroup[key]) {
+        byRoomAndGroup[key] = [];
+      }
+      byRoomAndGroup[key].push(p);
     });
 
-    // Ogni partecipante è una riga singola con la sua camera
-    return sorted.map((p) => ({
-      groupKey: p.id,
-      groupNumber: p.group_number,
-      roomType: getRoomType(p),
-      participants: [p],
-    }));
+    // Converti in array di gruppi-camera
+    const roomGroups = Object.entries(byRoomAndGroup).map(([key, groupParticipants]) => {
+      const [groupKey, roomType] = key.split('__');
+      return {
+        groupKey: key,
+        groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
+        roomType,
+        participants: groupParticipants.sort((a, b) => a.full_name.localeCompare(b.full_name)),
+      };
+    });
+
+    // Ordina per numero gruppo (1, 2, 3...), poi per tipologia camera
+    const roomOrder = ['singola', 'doppia', 'matrimoniale', 'tripla', 'quadrupla', 'altro'];
+    roomGroups.sort((a, b) => {
+      if (a.groupNumber === null && b.groupNumber === null) {
+        return roomOrder.indexOf(a.roomType) - roomOrder.indexOf(b.roomType);
+      }
+      if (a.groupNumber === null) return 1;
+      if (b.groupNumber === null) return -1;
+      if (a.groupNumber !== b.groupNumber) return a.groupNumber - b.groupNumber;
+      return roomOrder.indexOf(a.roomType) - roomOrder.indexOf(b.roomType);
+    });
+
+    return roomGroups;
   };
 
   if (loading) {
@@ -244,50 +265,62 @@ export default function CompanionList() {
           </tr>
         </thead>
         <tbody>
-          {roomGroups.map((group) => {
-            const p = group.participants[0];
-            const total = getParticipantTotal(p);
-            const paid = getParticipantPayments(p.id);
-            const balance = total - paid;
-            const seatNumber = getParticipantSeatNumber(p.id);
-            const displayNotes = getDisplayNotes(p);
+          {roomGroups.map((group) =>
+            group.participants.map((p, idx) => {
+              const total = getParticipantTotal(p);
+              const paid = getParticipantPayments(p.id);
+              const balance = total - paid;
+              const seatNumber = getParticipantSeatNumber(p.id);
+              const displayNotes = getDisplayNotes(p);
+              const isFirstInRoom = idx === 0;
 
-            return (
-              <tr key={p.id}>
-                <td className="border p-2 text-xs bg-white">
-                  <div className="border-b border-muted-foreground/30 h-4"></div>
-                </td>
-                <td className="border p-2 text-xs font-bold text-center bg-muted/50">
-                  {group.groupNumber || "-"}
-                </td>
-                <td className="border p-2 text-xs font-medium text-center bg-muted/30 capitalize">
-                  {getRoomLabel(group.roomType)}
-                </td>
-                <td className="border p-2 text-xs font-medium">{p.full_name}</td>
-                <td className="border p-2 text-xs text-center font-bold">
-                  {seatNumber ? (
-                    <span className="bg-primary/20 text-primary px-2 py-0.5 rounded">
-                      {seatNumber}
-                    </span>
-                  ) : (
-                    "-"
+              return (
+                <tr key={p.id} className={isFirstInRoom ? "border-t-2 border-foreground/40" : ""}>
+                  <td className="border p-2 text-xs bg-white">
+                    <div className="border-b border-muted-foreground/30 h-4"></div>
+                  </td>
+                  {isFirstInRoom && (
+                    <td
+                      className="border p-2 text-xs font-bold text-center bg-muted/50"
+                      rowSpan={group.participants.length}
+                    >
+                      {group.groupNumber || "-"}
+                    </td>
                   )}
-                </td>
-                <td className="border p-2 text-xs">{p.phone || "-"}</td>
-                <td className="border p-2 text-xs">
-                  {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
-                </td>
-                <td className="border p-2 text-xs">{p.place_of_birth || "-"}</td>
-                <td className="border p-2 text-xs text-orange-600 italic max-w-[150px]">
-                  {displayNotes || "-"}
-                </td>
-                <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
-                <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
-                  €{balance.toFixed(2)}
-                </td>
-              </tr>
-            );
-          })}
+                  {isFirstInRoom && (
+                    <td
+                      className="border p-2 text-xs font-semibold text-center bg-muted/30 capitalize"
+                      rowSpan={group.participants.length}
+                    >
+                      {getRoomLabel(group.roomType)}
+                    </td>
+                  )}
+                  <td className="border p-2 text-xs font-medium">{p.full_name}</td>
+                  <td className="border p-2 text-xs text-center font-bold">
+                    {seatNumber ? (
+                      <span className="bg-primary/20 text-primary px-2 py-0.5 rounded">
+                        {seatNumber}
+                      </span>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                  <td className="border p-2 text-xs">{p.phone || "-"}</td>
+                  <td className="border p-2 text-xs">
+                    {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
+                  </td>
+                  <td className="border p-2 text-xs">{p.place_of_birth || "-"}</td>
+                  <td className="border p-2 text-xs text-orange-600 italic max-w-[150px]">
+                    {displayNotes || "-"}
+                  </td>
+                  <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
+                  <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
+                    €{balance.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
