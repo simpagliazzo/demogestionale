@@ -56,6 +56,30 @@ export default function HotelList() {
     }
   };
 
+  // Estrae la tipologia di camera dalle note
+  const getRoomType = (participant: Participant) => {
+    if (!participant.notes) return "altro";
+    if (participant.notes.includes("Camera: singola")) return "singola";
+    if (participant.notes.includes("Camera: doppia")) return "doppia";
+    if (participant.notes.includes("Camera: matrimoniale")) return "matrimoniale";
+    if (participant.notes.includes("Camera: tripla")) return "tripla";
+    if (participant.notes.includes("Camera: quadrupla")) return "quadrupla";
+    return "altro";
+  };
+
+  // Capacità per tipologia di camera
+  const getRoomCapacity = (roomType: string) => {
+    const capacities: Record<string, number> = {
+      singola: 1,
+      doppia: 2,
+      matrimoniale: 2,
+      tripla: 3,
+      quadrupla: 4,
+      altro: 1,
+    };
+    return capacities[roomType] || 1;
+  };
+
   const getParticipantsByRoom = () => {
     const byRoom: Record<string, Participant[][]> = {
       singola: [],
@@ -65,30 +89,33 @@ export default function HotelList() {
       quadrupla: [],
     };
 
-    const grouped: Record<string, Participant[]> = {};
-
+    // Prima raggruppa per (group_number, roomType)
+    const byGroupAndType: Record<string, Participant[]> = {};
+    
     participants.forEach((p) => {
-      let roomType = "altro";
-      if (p.notes?.includes("Camera: singola")) roomType = "singola";
-      else if (p.notes?.includes("Camera: doppia")) roomType = "doppia";
-      else if (p.notes?.includes("Camera: matrimoniale")) roomType = "matrimoniale";
-      else if (p.notes?.includes("Camera: tripla")) roomType = "tripla";
-      else if (p.notes?.includes("Camera: quadrupla")) roomType = "quadrupla";
-
-      const groupKey = `${roomType}-${p.created_at}`;
-      if (!grouped[groupKey]) {
-        grouped[groupKey] = [];
+      const roomType = getRoomType(p);
+      const groupNum = p.group_number?.toString() || `solo-${p.id}`;
+      const key = `${groupNum}__${roomType}`;
+      
+      if (!byGroupAndType[key]) {
+        byGroupAndType[key] = [];
       }
-      grouped[groupKey].push(p);
+      byGroupAndType[key].push(p);
     });
 
-    Object.values(grouped).forEach((group) => {
-      const firstParticipant = group[0];
-      if (firstParticipant.notes?.includes("Camera: singola")) byRoom.singola.push(group);
-      else if (firstParticipant.notes?.includes("Camera: doppia")) byRoom.doppia.push(group);
-      else if (firstParticipant.notes?.includes("Camera: matrimoniale")) byRoom.matrimoniale.push(group);
-      else if (firstParticipant.notes?.includes("Camera: tripla")) byRoom.tripla.push(group);
-      else if (firstParticipant.notes?.includes("Camera: quadrupla")) byRoom.quadrupla.push(group);
+    // Dividi ogni gruppo per capacità camera e assegna alla tipologia corretta
+    Object.entries(byGroupAndType).forEach(([key, groupParticipants]) => {
+      const [, roomType] = key.split('__');
+      const capacity = getRoomCapacity(roomType);
+      const sortedParticipants = groupParticipants.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      
+      // Dividi in chunk per capacità camera
+      for (let i = 0; i < sortedParticipants.length; i += capacity) {
+        const chunk = sortedParticipants.slice(i, i + capacity);
+        if (byRoom[roomType]) {
+          byRoom[roomType].push(chunk);
+        }
+      }
     });
 
     return byRoom;
