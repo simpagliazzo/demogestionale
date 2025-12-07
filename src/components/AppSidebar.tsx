@@ -7,6 +7,7 @@ import {
   UserCircle,
   LogOut,
   Plane,
+  Archive,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ export function AppSidebar() {
   const mainItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     { title: "Viaggi", url: "/viaggi", icon: MapPin },
+    { title: "Archivio Viaggi", url: "/archivio", icon: Archive },
     { title: "Partecipanti", url: "/partecipanti", icon: Users },
   ];
 

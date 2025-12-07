@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, Users, DollarSign, MapPin } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CalendarDays, Users, DollarSign, MapPin, Search } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -21,6 +22,14 @@ interface UpcomingTrip {
   participantCount: number;
 }
 
+interface AllTrip {
+  id: string;
+  title: string;
+  destination: string;
+  departure_date: string;
+  return_date: string;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
@@ -30,6 +39,8 @@ export default function Dashboard() {
     totalRevenue: 0,
   });
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
+  const [allTrips, setAllTrips] = useState<AllTrip[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +58,17 @@ export default function Dashboard() {
 
       const today = new Date().toISOString().split("T")[0];
       const upcoming = trips?.filter((trip) => trip.departure_date >= today) || [];
+
+      // Salva tutti i viaggi per la ricerca
+      setAllTrips(
+        trips?.map((t) => ({
+          id: t.id,
+          title: t.title,
+          destination: t.destination,
+          departure_date: t.departure_date,
+          return_date: t.return_date,
+        })) || []
+      );
 
       // Carica partecipanti
       const { data: participants, error: participantsError } = await supabase
@@ -97,6 +119,15 @@ export default function Dashboard() {
     }
   };
 
+  // Filtra viaggi per la ricerca
+  const filteredTrips = allTrips.filter((trip) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      trip.title.toLowerCase().includes(query) ||
+      trip.destination.toLowerCase().includes(query)
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -107,11 +138,46 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="font-display text-4xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Panoramica generale dell'agenzia viaggi
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-4xl font-bold mb-2">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Panoramica generale dell'agenzia viaggi
+          </p>
+        </div>
+        
+        {/* Barra di ricerca viaggi */}
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cerca viaggio..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+          {searchQuery && filteredTrips.length > 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-64 overflow-y-auto">
+              {filteredTrips.map((trip) => (
+                <div
+                  key={trip.id}
+                  className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
+                  onClick={() => {
+                    navigate(`/viaggi/${trip.id}`);
+                    setSearchQuery("");
+                  }}
+                >
+                  <p className="font-medium">{trip.title}</p>
+                  <p className="text-sm text-muted-foreground">{trip.destination}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {searchQuery && filteredTrips.length === 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg p-3">
+              <p className="text-sm text-muted-foreground">Nessun viaggio trovato</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
