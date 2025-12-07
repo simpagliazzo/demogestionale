@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CalendarDays, Users, DollarSign, MapPin, Search } from "lucide-react";
@@ -32,6 +33,8 @@ interface AllTrip {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [userName, setUserName] = useState<string>("");
   const [stats, setStats] = useState<DashboardStats>({
     totalTrips: 0,
     upcomingTrips: 0,
@@ -42,6 +45,24 @@ export default function Dashboard() {
   const [allTrips, setAllTrips] = useState<AllTrip[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadUserName = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    
+    if (data) {
+      setUserName(data.full_name);
+    }
+  };
 
   useEffect(() => {
     loadDashboardData();
@@ -140,7 +161,9 @@ export default function Dashboard() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-bold mb-2">Dashboard</h1>
+          <h1 className="font-display text-4xl font-bold mb-2">
+            {userName ? `Ciao, ${userName.split(" ")[0]}!` : "Dashboard"}
+          </h1>
           <p className="text-muted-foreground">
             Panoramica generale dell'agenzia viaggi
           </p>

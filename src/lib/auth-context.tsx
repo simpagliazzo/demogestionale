@@ -38,6 +38,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Log login event (defer to avoid deadlock)
+        if (event === "SIGNED_IN" && session?.user) {
+          setTimeout(() => {
+            supabase.from("activity_logs").insert([{
+              user_id: session.user.id,
+              action_type: "login",
+              details: { timestamp: new Date().toISOString() },
+              user_agent: navigator.userAgent,
+            }]);
+          }, 0);
+        }
+
+        // Log logout event
+        if (event === "SIGNED_OUT") {
+          // User already logged out, can't insert
+        }
       }
     );
 
