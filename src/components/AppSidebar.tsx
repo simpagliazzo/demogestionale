@@ -8,6 +8,7 @@ import {
   LogOut,
   Plane,
   Archive,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ export function AppSidebar() {
   const adminItems = [
     { title: "Vettori Bus", url: "/vettori", icon: Bus, requiresAdmin: true },
     { title: "Gestione Utenti", url: "/utenti", icon: Users, requiresAdmin: true },
+    { title: "Log Attività", url: "/log", icon: FileText, requiresAdmin: true },
   ];
 
   return (

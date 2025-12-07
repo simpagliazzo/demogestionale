@@ -17,6 +17,7 @@ import Pagamenti from "./pages/Pagamenti";
 import BusPage from "./pages/Bus";
 import Vettori from "./pages/Vettori";
 import GestioneUtenti from "./pages/GestioneUtenti";
+import LogAttivita from "./pages/LogAttivita";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/bus" element={<BusPage />} />
               <Route path="/vettori" element={<Vettori />} />
               <Route path="/utenti" element={<GestioneUtenti />} />
+              <Route path="/log" element={<LogAttivita />} />
             </Route>
             <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
             <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
