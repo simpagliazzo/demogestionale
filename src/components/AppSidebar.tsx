@@ -28,7 +28,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
-  const { signOut, user } = useAuth();
+  const { signOut, profile } = useAuth();
   const { isAdmin, isAgent } = useUserRole();
 
   const mainItems = [
@@ -39,14 +39,14 @@ export function AppSidebar() {
   ];
 
   const managementItems = [
-    { title: "Pagamenti", url: "/pagamenti", icon: DollarSign, requiresStaff: true },
-    { title: "Posti Bus", url: "/bus", icon: Bus, requiresStaff: true },
+    { title: "Pagamenti", url: "/pagamenti", icon: DollarSign },
+    { title: "Posti Bus", url: "/bus", icon: Bus },
+    { title: "Vettori Bus", url: "/vettori", icon: Bus },
   ];
 
   const adminItems = [
-    { title: "Vettori Bus", url: "/vettori", icon: Bus, requiresAdmin: true },
-    { title: "Gestione Utenti", url: "/utenti", icon: Users, requiresAdmin: true },
-    { title: "Log Attività", url: "/log", icon: FileText, requiresAdmin: true },
+    { title: "Gestione Utenti", url: "/utenti", icon: Users },
+    { title: "Log Attività", url: "/log", icon: FileText },
   ];
 
   return (
@@ -141,7 +141,9 @@ export function AppSidebar() {
         <div className="p-4 space-y-2">
           <div className="flex items-center gap-3 text-sm text-sidebar-foreground/80">
             <UserCircle className="h-5 w-5" />
-            <span className="truncate">{user?.email}</span>
+            <div className="truncate">
+              <p className="font-medium truncate">{profile?.full_name || "Operatore"}</p>
+            </div>
           </div>
           <Button
             variant="ghost"

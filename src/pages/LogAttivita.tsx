@@ -74,16 +74,17 @@ export default function LogAttivita() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (roleLoading) return;
     if (!isAdmin) {
       navigate("/");
       return;
     }
     loadLogs();
-  }, [isAdmin, navigate]);
+  }, [isAdmin, roleLoading, navigate]);
 
   const loadLogs = async () => {
     try {
@@ -128,7 +129,7 @@ export default function LogAttivita() {
   const createCount = todayLogs.filter((l) => l.action_type === "create").length;
   const updateCount = todayLogs.filter((l) => l.action_type === "update").length;
 
-  if (loading) {
+  if (roleLoading || loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
