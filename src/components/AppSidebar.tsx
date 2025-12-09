@@ -62,8 +62,7 @@ export function AppSidebar() {
             <h2 className="font-display text-lg font-bold text-sidebar-foreground">
               TravelManager
             </h2>
-            <p className="text-xs text-sidebar-foreground/60">Gestionale Viaggi                
-© Ischianonsolohotel</p>
+            <p className="text-xs text-sidebar-foreground/60">Gestionale Viaggi                    © Ischianonsolohotel</p>
           </div>
         </div>
       </SidebarHeader>
