@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import ParticipantAutocomplete from "@/components/ParticipantAutocomplete";
 import { ExistingParticipant } from "@/hooks/use-participant-search";
+import { useActivityLog } from "@/hooks/use-activity-log";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -46,6 +47,7 @@ export default function AddParticipantDialog({
   onSuccess,
 }: AddParticipantDialogProps) {
   const { user } = useAuth();
+  const { logCreate } = useActivityLog();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
   const [nextGroupNumber, setNextGroupNumber] = useState<number>(1);
@@ -152,9 +154,18 @@ export default function AddParticipantDialog({
         created_by: user?.id || null,
       }));
 
-      const { error } = await supabase.from("participants").insert(participantsToInsert);
+      const { data: insertedData, error } = await supabase.from("participants").insert(participantsToInsert).select();
 
       if (error) throw error;
+
+      // Log activity for each participant added
+      for (const participant of insertedData || []) {
+        await logCreate("participant", participant.id, participant.full_name, {
+          trip_id: tripId,
+          group_number: groupNum,
+          room_type: values.room_type,
+        });
+      }
 
       toast.success(`${values.participants.length} partecipante/i aggiunto/i con successo (Gruppo #${groupNum})`);
       reset();
