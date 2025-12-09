@@ -3,9 +3,16 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+  phone: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -13,6 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
+  profile: null,
   loading: true,
   signOut: async () => {},
 });
@@ -28,8 +36,21 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const loadProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, phone")
+      .eq("id", userId)
+      .single();
+    
+    if (data) {
+      setProfile(data);
+    }
+  };
 
   useEffect(() => {
     // Imposta il listener per i cambiamenti di autenticazione
@@ -38,6 +59,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Load profile (defer to avoid deadlock)
+        if (session?.user) {
+          setTimeout(() => {
+            loadProfile(session.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
 
         // Log login event (defer to avoid deadlock)
         if (event === "SIGNED_IN" && session?.user) {
@@ -50,11 +80,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }]);
           }, 0);
         }
-
-        // Log logout event
-        if (event === "SIGNED_OUT") {
-          // User already logged out, can't insert
-        }
       }
     );
 
@@ -63,18 +88,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      if (session?.user) {
+        loadProfile(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
+    setProfile(null);
     await supabase.auth.signOut();
     navigate("/auth");
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -33,8 +33,7 @@ interface AllTrip {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [userName, setUserName] = useState<string>("");
+  const { profile } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalTrips: 0,
     upcomingTrips: 0,
@@ -45,24 +44,6 @@ export default function Dashboard() {
   const [allTrips, setAllTrips] = useState<AllTrip[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadUserName = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-    
-    if (data) {
-      setUserName(data.full_name);
-    }
-  };
 
   useEffect(() => {
     loadDashboardData();
@@ -148,6 +129,8 @@ export default function Dashboard() {
       trip.destination.toLowerCase().includes(query)
     );
   });
+
+  const userName = profile?.full_name;
 
   if (loading) {
     return (
