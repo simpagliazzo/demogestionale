@@ -83,13 +83,15 @@ export function useActivityLog() {
   const logDelete = async (
     entityType: string,
     entityId: string,
-    entityName: string
+    entityName: string,
+    details?: Record<string, unknown>
   ) => {
     await logActivity({
       actionType: "delete",
       entityType,
       entityId,
       entityName,
+      details,
     });
   };
 

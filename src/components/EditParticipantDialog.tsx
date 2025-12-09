@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { useActivityLog } from "@/hooks/use-activity-log";
 
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
@@ -65,6 +66,7 @@ export default function EditParticipantDialog({
   onSuccess,
 }: EditParticipantDialogProps) {
   const { user } = useAuth();
+  const { logCreate, logUpdate, logDelete } = useActivityLog();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
@@ -188,7 +190,7 @@ export default function EditParticipantDialog({
     }
 
     try {
-      const { error } = await supabase
+      const { data: paymentData, error } = await supabase
         .from("payments")
         .insert({
           participant_id: participant.id,
@@ -196,9 +198,19 @@ export default function EditParticipantDialog({
           payment_type: newPaymentType.trim(),
           notes: newPaymentNotes?.trim() || null,
           created_by: user?.id || null,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Log payment creation
+      await logCreate("payment", paymentData.id, `€${amount} - ${newPaymentType}`, {
+        participant_id: participant.id,
+        participant_name: participant.full_name,
+        amount,
+        payment_type: newPaymentType,
+      });
 
       toast.success("Pagamento aggiunto con successo");
       setNewPaymentAmount("");
@@ -215,12 +227,24 @@ export default function EditParticipantDialog({
     if (!confirm("Sei sicuro di voler eliminare questo pagamento?")) return;
 
     try {
+      // Get payment details before deleting for logging
+      const paymentToDelete = payments.find(p => p.id === paymentId);
+      
       const { error } = await supabase
         .from("payments")
         .delete()
         .eq("id", paymentId);
 
       if (error) throw error;
+
+      // Log payment deletion
+      if (paymentToDelete) {
+        await logDelete("payment", paymentId, `€${paymentToDelete.amount} - ${paymentToDelete.payment_type}`, {
+          participant_name: participant?.full_name,
+          amount: paymentToDelete.amount,
+          payment_type: paymentToDelete.payment_type,
+        });
+      }
 
       toast.success("Pagamento eliminato");
       loadPayments();
@@ -254,6 +278,16 @@ export default function EditParticipantDialog({
 
       if (error) throw error;
 
+      // Log participant update
+      await logUpdate("participant", participant.id, values.full_name, {
+        changes: {
+          full_name: values.full_name,
+          discount_type: discountType,
+          discount_amount: discountAmount,
+          group_number: groupNum,
+        },
+      });
+
       toast.success("Partecipante aggiornato con successo");
       onOpenChange(false);
       onSuccess();
@@ -278,6 +312,9 @@ export default function EditParticipantDialog({
         .eq("id", participant.id);
 
       if (error) throw error;
+
+      // Log participant deletion
+      await logDelete("participant", participant.id, participant.full_name);
 
       toast.success("Partecipante eliminato con successo");
       onOpenChange(false);
