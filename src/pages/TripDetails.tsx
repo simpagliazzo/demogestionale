@@ -1030,6 +1030,7 @@ export default function TripDetails() {
                 {getParticipantsByGroupNumber().map(({ groupNumber, participants: groupParticipants }) => {
                   const groupTotal = groupParticipants.reduce((sum, p) => sum + getParticipantPrice(p), 0);
                   const groupDeposit = groupParticipants.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
+                  const groupRemaining = groupTotal - groupDeposit;
                   return (
                     <div key={groupNumber ?? 'no-group'} className="border rounded-lg p-4 bg-card">
                       <div className="flex items-center justify-between mb-3 pb-3 border-b">
@@ -1048,14 +1049,20 @@ export default function TripDetails() {
                           <p className="text-sm font-medium text-green-600">
                             Acconti: €{groupDeposit.toFixed(2)}
                           </p>
+                          {groupRemaining > 0 && (
+                            <p className="text-sm font-bold text-red-600">
+                              Da pagare: €{groupRemaining.toFixed(2)}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-2">
                         {groupParticipants.map((participant) => {
                           const deposit = getParticipantDeposit(participant.id);
                           const participantPrice = getParticipantPrice(participant);
+                          const remaining = participantPrice - deposit;
                           const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
-                          const hasDiscount = participant.discount_amount && participant.discount_amount > 0;
+                          const hasDiscount = participant.discount_type && participant.discount_amount && participant.discount_amount > 0;
                           return (
                             <div
                               key={participant.id}
@@ -1085,6 +1092,11 @@ export default function TripDetails() {
                                 <p className="text-sm font-medium text-green-600">
                                   Acconto: €{deposit.toFixed(2)}
                                 </p>
+                                {remaining > 0 && (
+                                  <p className="text-sm font-bold text-red-600">
+                                    Saldo: €{remaining.toFixed(2)}
+                                  </p>
+                                )}
                                 {participant.phone && (
                                   <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                                 )}
@@ -1122,6 +1134,7 @@ export default function TripDetails() {
                         {roomGroups.map((group, groupIndex) => {
                           const groupTotal = group.reduce((sum, p) => sum + getParticipantPrice(p), 0);
                           const groupDeposit = group.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
+                          const groupRemaining = groupTotal - groupDeposit;
                           return (
                             <div
                               key={groupIndex}
@@ -1131,8 +1144,9 @@ export default function TripDetails() {
                                 {group.map((participant, idx) => {
                                   const deposit = getParticipantDeposit(participant.id);
                                   const participantPrice = getParticipantPrice(participant);
+                                  const remaining = participantPrice - deposit;
                                   const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
-                                  const hasDiscount = participant.discount_amount && participant.discount_amount > 0;
+                                  const hasDiscount = participant.discount_type && participant.discount_amount && participant.discount_amount > 0;
                                   return (
                                     <div
                                       key={participant.id}
@@ -1175,6 +1189,11 @@ export default function TripDetails() {
                                         <p className="text-sm font-medium text-green-600">
                                           Acconto: €{deposit.toFixed(2)}
                                         </p>
+                                        {remaining > 0 && (
+                                          <p className="text-sm font-bold text-red-600">
+                                            Saldo: €{remaining.toFixed(2)}
+                                          </p>
+                                        )}
                                         {participant.phone && (
                                           <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                                         )}
@@ -1194,6 +1213,11 @@ export default function TripDetails() {
                                   <p className="text-sm font-medium text-green-600">
                                     Acconti: €{groupDeposit.toFixed(2)}
                                   </p>
+                                  {groupRemaining > 0 && (
+                                    <p className="text-sm font-bold text-red-600">
+                                      Da pagare: €{groupRemaining.toFixed(2)}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1209,8 +1233,9 @@ export default function TripDetails() {
                 {getFilteredAndSortedParticipants().map((participant) => {
                   const deposit = getParticipantDeposit(participant.id);
                   const participantPrice = getParticipantPrice(participant);
+                  const remaining = participantPrice - deposit;
                   const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
-                  const hasDiscount = participant.discount_amount && participant.discount_amount > 0;
+                  const hasDiscount = participant.discount_type && participant.discount_amount && participant.discount_amount > 0;
                   return (
                     <div
                       key={participant.id}
@@ -1250,6 +1275,11 @@ export default function TripDetails() {
                         <div className="text-sm font-medium text-green-600">
                           Acconto: €{deposit.toFixed(2)}
                         </div>
+                        {remaining > 0 && (
+                          <p className="text-sm font-bold text-red-600">
+                            Saldo: €{remaining.toFixed(2)}
+                          </p>
+                        )}
                         {participant.phone && (
                           <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                         )}
