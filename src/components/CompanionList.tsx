@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
 
 interface Participant {
   id: string;
@@ -14,6 +15,8 @@ interface Participant {
   notes: string | null;
   created_at: string;
   group_number: number | null;
+  discount_type: string | null;
+  discount_amount: number | null;
 }
 
 interface Payment {
@@ -30,6 +33,7 @@ interface Trip {
   deposit_amount: number;
   deposit_type: "fixed" | "percentage";
   companion_name: string | null;
+  single_room_supplement: number | null;
 }
 
 export default function CompanionList() {
@@ -155,6 +159,15 @@ export default function CompanionList() {
     return trip.deposit_amount;
   };
 
+  // Calcola il prezzo effettivo per un partecipante (con sconto e supplemento singola)
+  const getParticipantPrice = (participant: Participant) => {
+    const basePrice = trip?.price || 0;
+    const discountedPrice = calculateDiscountedPrice(basePrice, participant.discount_type, participant.discount_amount);
+    const isSingle = participant.notes?.includes("Camera: singola");
+    const supplement = isSingle ? (trip?.single_room_supplement || 0) : 0;
+    return discountedPrice + supplement;
+  };
+
   if (loading) {
     return <div className="p-8">Caricamento...</div>;
   }
@@ -272,7 +285,8 @@ export default function CompanionList() {
                   <tbody>
                     {groupParticipants.map((participant) => {
                       const paid = payments[participant.id] || 0;
-                      const remaining = (trip?.price || 0) - paid;
+                      const participantPrice = getParticipantPrice(participant);
+                      const remaining = participantPrice - paid;
                       
                       // Estrai tipo camera dalle note
                       let roomType = '-';
@@ -284,7 +298,7 @@ export default function CompanionList() {
                       
                       return (
                         <tr key={participant.id} className="hover:bg-muted/50">
-                          <td className="border border-border p-1.5">{participant.full_name}</td>
+                          <td className="border border-border p-1.5">{formatNameSurnameFirst(participant.full_name)}</td>
                           <td className="border border-border p-1.5 whitespace-nowrap">
                             {participant.date_of_birth 
                               ? format(new Date(participant.date_of_birth), "dd/MM/yyyy")
@@ -304,7 +318,7 @@ export default function CompanionList() {
                             {roomType}
                           </td>
                           <td className="border border-border p-1.5 text-right whitespace-nowrap">
-                            €{trip?.price.toFixed(2)}
+                            €{participantPrice.toFixed(2)}
                           </td>
                           <td className="border border-border p-1.5 text-right whitespace-nowrap">
                             €{paid.toFixed(2)}
@@ -321,13 +335,13 @@ export default function CompanionList() {
                         Totale Gruppo:
                       </td>
                       <td className="border border-border p-1.5 text-right whitespace-nowrap">
-                        €{((trip?.price || 0) * groupParticipants.length).toFixed(2)}
+                        €{groupParticipants.reduce((sum, p) => sum + getParticipantPrice(p), 0).toFixed(2)}
                       </td>
                       <td className="border border-border p-1.5 text-right whitespace-nowrap text-green-600">
                         €{groupParticipants.reduce((sum, p) => sum + (payments[p.id] || 0), 0).toFixed(2)}
                       </td>
                       <td className="border border-border p-1.5 text-right whitespace-nowrap text-orange-600">
-                        €{(((trip?.price || 0) * groupParticipants.length) - groupParticipants.reduce((sum, p) => sum + (payments[p.id] || 0), 0)).toFixed(2)}
+                        €{(groupParticipants.reduce((sum, p) => sum + getParticipantPrice(p), 0) - groupParticipants.reduce((sum, p) => sum + (payments[p.id] || 0), 0)).toFixed(2)}
                       </td>
                     </tr>
                   </tbody>
@@ -365,7 +379,8 @@ export default function CompanionList() {
                     {roomGroups.map((group, groupIndex) => (
                       group.map((participant, idx) => {
                         const paid = payments[participant.id] || 0;
-                        const remaining = (trip?.price || 0) - paid;
+                        const participantPrice = getParticipantPrice(participant);
+                        const remaining = participantPrice - paid;
                         
                         return (
                           <tr key={participant.id} className="hover:bg-muted/50">
@@ -377,7 +392,7 @@ export default function CompanionList() {
                                 #{groupIndex + 1}
                               </td>
                             )}
-                            <td className="border border-border p-1.5">{participant.full_name}</td>
+                            <td className="border border-border p-1.5">{formatNameSurnameFirst(participant.full_name)}</td>
                             <td className="border border-border p-1.5 whitespace-nowrap">
                               {participant.date_of_birth 
                                 ? format(new Date(participant.date_of_birth), "dd/MM/yyyy")
@@ -397,7 +412,7 @@ export default function CompanionList() {
                               {participant.group_number || "-"}
                             </td>
                             <td className="border border-border p-1.5 text-right whitespace-nowrap">
-                              €{trip?.price.toFixed(2)}
+                              €{participantPrice.toFixed(2)}
                             </td>
                             <td className="border border-border p-1.5 text-right whitespace-nowrap">
                               €{paid.toFixed(2)}
@@ -422,12 +437,12 @@ export default function CompanionList() {
               <p>Totale partecipanti: {participants.length}</p>
             </div>
             <div>
-              <p>Incasso totale previsto: €{((trip?.price || 0) * participants.length).toFixed(2)}</p>
+              <p>Incasso totale previsto: €{participants.reduce((sum, p) => sum + getParticipantPrice(p), 0).toFixed(2)}</p>
               <p className="text-green-600">Totale versato: €{Object.values(payments).reduce((a, b) => a + b, 0).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-orange-600">
-                Totale da incassare: €{(((trip?.price || 0) * participants.length) - Object.values(payments).reduce((a, b) => a + b, 0)).toFixed(2)}
+                Totale da incassare: €{(participants.reduce((sum, p) => sum + getParticipantPrice(p), 0) - Object.values(payments).reduce((a, b) => a + b, 0)).toFixed(2)}
               </p>
             </div>
           </div>
