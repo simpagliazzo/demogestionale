@@ -71,14 +71,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Log login event (defer to avoid deadlock)
         if (event === "SIGNED_IN" && session?.user) {
-          setTimeout(() => {
-            supabase.from("activity_logs").insert([{
-              user_id: session.user.id,
-              action_type: "login",
-              details: { timestamp: new Date().toISOString() },
-              user_agent: navigator.userAgent,
-            }]);
-          }, 0);
+          setTimeout(async () => {
+            try {
+              await supabase.from("activity_logs").insert([{
+                user_id: session.user.id,
+                action_type: "login",
+                details: { timestamp: new Date().toISOString() },
+                user_agent: navigator.userAgent,
+              }]);
+            } catch (error) {
+              console.error("Errore logging accesso:", error);
+            }
+          }, 100);
         }
       }
     );

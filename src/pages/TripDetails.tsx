@@ -14,6 +14,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "sonner";
 import AddParticipantDialog from "@/components/AddParticipantDialog";
 import EditParticipantDialog from "@/components/EditParticipantDialog";
+import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
 
 interface Trip {
   id: string;
@@ -126,12 +127,18 @@ export default function TripDetails() {
     return participants.filter(p => p.notes?.includes("Camera: singola")).length;
   };
 
-  // Calcola il totale dovuto comprensivo di supplementi singola
+  // Calcola il prezzo effettivo per un partecipante (con sconto e supplemento singola)
+  const getParticipantPrice = (participant: Participant) => {
+    const basePrice = trip?.price || 0;
+    const discountedPrice = calculateDiscountedPrice(basePrice, participant.discount_type, participant.discount_amount);
+    const isSingle = participant.notes?.includes("Camera: singola");
+    const supplement = isSingle ? (trip?.single_room_supplement || 0) : 0;
+    return discountedPrice + supplement;
+  };
+
+  // Calcola il totale dovuto comprensivo di supplementi singola e sconti
   const getTotalDue = () => {
-    const baseTotal = participants.length * (trip?.price || 0);
-    const singleCount = getSingleRoomParticipantsCount();
-    const supplementTotal = singleCount * (trip?.single_room_supplement || 0);
-    return baseTotal + supplementTotal;
+    return participants.reduce((total, p) => total + getParticipantPrice(p), 0);
   };
 
   useEffect(() => {
@@ -1021,7 +1028,7 @@ export default function TripDetails() {
             ) : groupByGroupNumber ? (
               <div className="space-y-6">
                 {getParticipantsByGroupNumber().map(({ groupNumber, participants: groupParticipants }) => {
-                  const groupTotal = trip.price * groupParticipants.length;
+                  const groupTotal = groupParticipants.reduce((sum, p) => sum + getParticipantPrice(p), 0);
                   const groupDeposit = groupParticipants.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
                   return (
                     <div key={groupNumber ?? 'no-group'} className="border rounded-lg p-4 bg-card">
@@ -1046,7 +1053,9 @@ export default function TripDetails() {
                       <div className="space-y-2">
                         {groupParticipants.map((participant) => {
                           const deposit = getParticipantDeposit(participant.id);
+                          const participantPrice = getParticipantPrice(participant);
                           const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
+                          const hasDiscount = participant.discount_amount && participant.discount_amount > 0;
                           return (
                             <div
                               key={participant.id}
@@ -1054,7 +1063,7 @@ export default function TripDetails() {
                               onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium">{participant.full_name}</p>
+                                <p className="font-medium">{formatNameSurnameFirst(participant.full_name)}</p>
                                 <div className="text-sm text-muted-foreground mt-1">
                                   {participant.date_of_birth && (
                                     <span>Nato/a il {format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</span>
@@ -1067,6 +1076,12 @@ export default function TripDetails() {
                                 )}
                               </div>
                               <div className="text-right flex-shrink-0 ml-4">
+                                <p className="text-sm font-bold">
+                                  €{participantPrice.toFixed(2)}
+                                  {hasDiscount && (
+                                    <span className="ml-1 text-xs text-green-600">(scontato)</span>
+                                  )}
+                                </p>
                                 <p className="text-sm font-medium text-green-600">
                                   Acconto: €{deposit.toFixed(2)}
                                 </p>
@@ -1105,7 +1120,7 @@ export default function TripDetails() {
                       </h3>
                       <div className="space-y-3">
                         {roomGroups.map((group, groupIndex) => {
-                          const groupTotal = trip.price * group.length;
+                          const groupTotal = group.reduce((sum, p) => sum + getParticipantPrice(p), 0);
                           const groupDeposit = group.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
                           return (
                             <div
@@ -1115,7 +1130,9 @@ export default function TripDetails() {
                               <div className="space-y-3">
                                 {group.map((participant, idx) => {
                                   const deposit = getParticipantDeposit(participant.id);
+                                  const participantPrice = getParticipantPrice(participant);
                                   const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
+                                  const hasDiscount = participant.discount_amount && participant.discount_amount > 0;
                                   return (
                                     <div
                                       key={participant.id}
@@ -1127,7 +1144,7 @@ export default function TripDetails() {
                                           <Badge variant="outline" className="text-xs">
                                             {idx + 1}
                                           </Badge>
-                                          <p className="font-medium">{participant.full_name}</p>
+                                          <p className="font-medium">{formatNameSurnameFirst(participant.full_name)}</p>
                                           {participant.group_number && (
                                             <Badge variant="secondary" className="text-xs">
                                               Gr. #{participant.group_number}
@@ -1149,6 +1166,12 @@ export default function TripDetails() {
                                         )}
                                       </div>
                                       <div className="text-right flex-shrink-0 ml-4">
+                                        <p className="text-sm font-bold">
+                                          €{participantPrice.toFixed(2)}
+                                          {hasDiscount && (
+                                            <span className="ml-1 text-xs text-green-600">(scontato)</span>
+                                          )}
+                                        </p>
                                         <p className="text-sm font-medium text-green-600">
                                           Acconto: €{deposit.toFixed(2)}
                                         </p>
@@ -1185,7 +1208,9 @@ export default function TripDetails() {
               <div className="space-y-2">
                 {getFilteredAndSortedParticipants().map((participant) => {
                   const deposit = getParticipantDeposit(participant.id);
+                  const participantPrice = getParticipantPrice(participant);
                   const cleanNotes = participant.notes?.replace(/Camera:\s*\w+\s*\|?\s*/g, '').trim();
+                  const hasDiscount = participant.discount_amount && participant.discount_amount > 0;
                   return (
                     <div
                       key={participant.id}
@@ -1194,7 +1219,7 @@ export default function TripDetails() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{participant.full_name}</p>
+                          <p className="font-medium">{formatNameSurnameFirst(participant.full_name)}</p>
                           {participant.group_number && (
                             <Badge variant="secondary" className="text-xs">
                               Gruppo #{participant.group_number}
@@ -1216,6 +1241,12 @@ export default function TripDetails() {
                         )}
                       </div>
                       <div className="text-right flex-shrink-0 ml-4">
+                        <p className="text-sm font-bold">
+                          €{participantPrice.toFixed(2)}
+                          {hasDiscount && (
+                            <span className="ml-1 text-xs text-green-600">(scontato)</span>
+                          )}
+                        </p>
                         <div className="text-sm font-medium text-green-600">
                           Acconto: €{deposit.toFixed(2)}
                         </div>

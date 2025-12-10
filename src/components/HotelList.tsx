@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { formatNameSurnameFirst } from "@/lib/format-utils";
 
 interface Participant {
   id: string;
@@ -187,7 +188,7 @@ export default function HotelList() {
                             #{groupIndex + 1}
                           </td>
                         )}
-                        <td className="border border-border p-2">{participant.full_name}</td>
+                        <td className="border border-border p-2">{formatNameSurnameFirst(participant.full_name)}</td>
                         <td className="border border-border p-2">
                           {participant.date_of_birth 
                             ? format(new Date(participant.date_of_birth), "dd/MM/yyyy")
