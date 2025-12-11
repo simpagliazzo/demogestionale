@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
 
 interface Trip {
   id: string;
@@ -25,6 +26,8 @@ interface Participant {
   notes: string | null;
   created_at: string;
   group_number: number | null;
+  discount_type: string | null;
+  discount_amount: number | null;
 }
 
 interface Payment {
@@ -116,8 +119,13 @@ export default function CompanionList() {
 
   const getParticipantTotal = (participant: Participant) => {
     const base = trip?.price || 0;
+    const discountedPrice = calculateDiscountedPrice(base, participant.discount_type, participant.discount_amount);
     const supplement = isSingleRoom(participant) ? (trip?.single_room_supplement || 0) : 0;
-    return base + supplement;
+    return discountedPrice + supplement;
+  };
+
+  const hasDiscount = (participant: Participant) => {
+    return participant.discount_type && participant.discount_amount && participant.discount_amount > 0;
   };
 
   const getRoomType = (participant: Participant) => {
@@ -322,7 +330,7 @@ export default function CompanionList() {
                       {getRoomLabel(group.roomType)}
                     </td>
                   )}
-                  <td className="border p-2 text-xs font-medium">{p.full_name}</td>
+                  <td className="border p-2 text-xs font-medium">{formatNameSurnameFirst(p.full_name)}</td>
                   <td className="border p-2 text-xs text-center font-bold">
                     {seatNumber ? (
                       <span className="bg-primary/20 text-primary px-2 py-0.5 rounded">
@@ -343,6 +351,9 @@ export default function CompanionList() {
                   <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
                   <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
                     €{balance.toFixed(2)}
+                    {hasDiscount(p) && (
+                      <span className="ml-1 text-orange-500 text-[10px]">(sconto)</span>
+                    )}
                   </td>
                 </tr>
               );
