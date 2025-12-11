@@ -319,6 +319,9 @@ export default function CompanionList() {
                           </td>
                           <td className="border border-border p-1.5 text-right whitespace-nowrap">
                             €{participantPrice.toFixed(2)}
+                            {participant.discount_type && participant.discount_amount && participant.discount_amount > 0 && (
+                              <span className="text-xs text-orange-600 ml-1">(scontato)</span>
+                            )}
                           </td>
                           <td className="border border-border p-1.5 text-right whitespace-nowrap">
                             €{paid.toFixed(2)}
@@ -413,6 +416,9 @@ export default function CompanionList() {
                             </td>
                             <td className="border border-border p-1.5 text-right whitespace-nowrap">
                               €{participantPrice.toFixed(2)}
+                              {participant.discount_type && participant.discount_amount && participant.discount_amount > 0 && (
+                                <span className="text-xs text-orange-600 ml-1">(scontato)</span>
+                              )}
                             </td>
                             <td className="border border-border p-1.5 text-right whitespace-nowrap">
                               €{paid.toFixed(2)}
