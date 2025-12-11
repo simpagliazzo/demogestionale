@@ -347,7 +347,7 @@ export default function AddParticipantDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor={`participants.${index}.full_name`}>
-                    Nome e Cognome <span className="text-destructive">*</span>
+                    Cognome e Nome <span className="text-destructive">*</span>
                   </Label>
                   <Controller
                     name={`participants.${index}.full_name`}
