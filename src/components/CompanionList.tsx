@@ -61,12 +61,6 @@ export default function CompanionList() {
         .select("id, full_name, date_of_birth, place_of_birth, email, phone, notes, created_at, group_number, discount_type, discount_amount")
         .eq("trip_id", id)
         .order("full_name");
-      
-      console.log("Participants loaded:", participantsData?.map(p => ({
-        name: p.full_name,
-        discount_type: p.discount_type,
-        discount_amount: p.discount_amount
-      })));
 
       setTrip(tripData);
       setParticipants(participantsData || []);
