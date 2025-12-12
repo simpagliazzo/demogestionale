@@ -59,9 +59,8 @@ export function AppSidebar() {
             <Plane className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold text-sidebar-foreground">
-              TravelManager
-            </h2>
+            <h2 className="font-display text-lg font-bold text-sidebar-foreground">Gladiatours
+Manager</h2>
             <p className="text-xs text-sidebar-foreground/60">Gestionale Viaggi                    © Ischianonsolohotel</p>
           </div>
         </div>
