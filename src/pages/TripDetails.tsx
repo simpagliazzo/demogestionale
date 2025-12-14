@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 import AddParticipantDialog from "@/components/AddParticipantDialog";
 import EditParticipantDialog from "@/components/EditParticipantDialog";
+import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
 
 interface Trip {
@@ -120,7 +122,9 @@ export default function TripDetails() {
   const [singleSupplement, setSingleSupplement] = useState<number>(0);
   const [hotelData, setHotelData] = useState({ name: "", address: "", phone: "" });
   const [participantPayments, setParticipantPayments] = useState<ParticipantPayment[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { isAdmin, isAgent } = useUserRole();
+  const { canDeleteTrips } = usePermissions();
 
   // Calcola il numero di partecipanti in camera singola
   const getSingleRoomParticipantsCount = () => {
@@ -583,7 +587,26 @@ export default function TripDetails() {
             {trip.destination}
           </div>
         </div>
+        
+        {canDeleteTrips && (
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => setDeleteDialogOpen(true)}
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Elimina Viaggio
+          </Button>
+        )}
       </div>
+
+      <DeleteTripDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        tripId={trip.id}
+        tripTitle={trip.title}
+      />
 
       {trip.description && (
         <Card>
