@@ -270,7 +270,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           place_of_birth: string | null
-          trip_id: string
+          trip_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -286,7 +286,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           place_of_birth?: string | null
-          trip_id: string
+          trip_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -302,7 +302,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           place_of_birth?: string | null
-          trip_id?: string
+          trip_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -404,6 +404,27 @@ export type Database = {
           phone?: string | null
           place_of_birth?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: Database["public"]["Enums"]["permission_type"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: Database["public"]["Enums"]["permission_type"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: Database["public"]["Enums"]["permission_type"]
+          role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
       }
@@ -602,6 +623,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_permission: {
+        Args: {
+          _permission: Database["public"]["Enums"]["permission_type"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -614,6 +642,16 @@ export type Database = {
       app_role: "admin" | "agente" | "accompagnatore" | "cliente"
       deposit_type: "fixed" | "percentage"
       payment_status: "pending" | "completed" | "partial"
+      permission_type:
+        | "manage_trips"
+        | "delete_trips"
+        | "manage_participants"
+        | "manage_payments"
+        | "manage_bus"
+        | "manage_carriers"
+        | "view_prices"
+        | "manage_hotels"
+        | "view_activity_logs"
       trip_status:
         | "planned"
         | "confirmed"
@@ -750,6 +788,17 @@ export const Constants = {
       app_role: ["admin", "agente", "accompagnatore", "cliente"],
       deposit_type: ["fixed", "percentage"],
       payment_status: ["pending", "completed", "partial"],
+      permission_type: [
+        "manage_trips",
+        "delete_trips",
+        "manage_participants",
+        "manage_payments",
+        "manage_bus",
+        "manage_carriers",
+        "view_prices",
+        "manage_hotels",
+        "view_activity_logs",
+      ],
       trip_status: [
         "planned",
         "confirmed",

@@ -21,9 +21,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Users, Shield, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Users, Shield, UserCheck, UserX, Loader2, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { RolePermissionsDialog } from "@/components/RolePermissionsDialog";
 
 interface UserWithRole {
   id: string;
@@ -55,6 +56,8 @@ export default function GestioneUtenti() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -159,6 +162,11 @@ export default function GestioneUtenti() {
   const usersWithRole = users.filter((u) => u.role);
   const usersWithoutRole = users.filter((u) => !u.role);
 
+  const openPermissionsDialog = (role: UserRole) => {
+    setSelectedRole(role);
+    setPermissionsDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -169,6 +177,44 @@ export default function GestioneUtenti() {
           Autorizza e gestisci gli accessi degli utenti registrati
         </p>
       </div>
+
+      {/* Gestione Permessi Ruoli */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Gestione Permessi per Ruolo
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            {(["admin", "agente", "accompagnatore", "cliente"] as UserRole[]).map((role) => (
+              <Button
+                key={role}
+                variant={role === "admin" ? "secondary" : "outline"}
+                onClick={() => openPermissionsDialog(role)}
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                {ROLE_LABELS[role]}
+                {role === "admin" && <Badge variant="secondary" className="ml-1">Tutti</Badge>}
+              </Button>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground mt-3">
+            Clicca su un ruolo per configurare i permessi assegnati.
+          </p>
+        </CardContent>
+      </Card>
+
+      {selectedRole && (
+        <RolePermissionsDialog
+          open={permissionsDialogOpen}
+          onOpenChange={setPermissionsDialogOpen}
+          role={selectedRole}
+          roleName={ROLE_LABELS[selectedRole]}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
