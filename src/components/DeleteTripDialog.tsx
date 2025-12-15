@@ -9,11 +9,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useActivityLog } from "@/hooks/use-activity-log";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth-context";
 
 interface DeleteTripDialogProps {
   open: boolean;
@@ -29,10 +32,59 @@ export function DeleteTripDialog({
   tripTitle,
 }: DeleteTripDialogProps) {
   const [deleting, setDeleting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
   const { logDelete } = useActivityLog();
+  const { user } = useAuth();
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setPassword("");
+      setPasswordError("");
+    }
+    onOpenChange(isOpen);
+  };
+
+  const verifyPassword = async (): Promise<boolean> => {
+    if (!user?.email) {
+      setPasswordError("Errore: utente non autenticato");
+      return false;
+    }
+
+    setVerifying(true);
+    setPasswordError("");
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: password,
+      });
+
+      if (error) {
+        setPasswordError("Password non corretta");
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      setPasswordError("Errore durante la verifica della password");
+      return false;
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const handleDelete = async () => {
+    if (!password.trim()) {
+      setPasswordError("Inserisci la tua password per confermare");
+      return;
+    }
+
+    const isValid = await verifyPassword();
+    if (!isValid) return;
+
     setDeleting(true);
     try {
       // Prima eliminiamo i dati correlati che non devono essere mantenuti
@@ -107,12 +159,14 @@ export function DeleteTripDialog({
       toast.error("Errore nell'eliminazione del viaggio");
     } finally {
       setDeleting(false);
-      onOpenChange(false);
+      handleOpenChange(false);
     }
   };
 
+  const isProcessing = deleting || verifying;
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Eliminare il viaggio?</AlertDialogTitle>
@@ -126,14 +180,37 @@ export function DeleteTripDialog({
             Questa azione non può essere annullata.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        
+        <div className="py-4 space-y-3">
+          <Label htmlFor="confirm-password" className="flex items-center gap-2 text-sm font-medium">
+            <Lock className="h-4 w-4" />
+            Conferma con la tua password
+          </Label>
+          <Input
+            id="confirm-password"
+            type="password"
+            placeholder="Inserisci la tua password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordError("");
+            }}
+            disabled={isProcessing}
+            className={passwordError ? "border-destructive" : ""}
+          />
+          {passwordError && (
+            <p className="text-sm text-destructive">{passwordError}</p>
+          )}
+        </div>
+
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Annulla</AlertDialogCancel>
+          <AlertDialogCancel disabled={isProcessing}>Annulla</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            disabled={deleting}
+            disabled={isProcessing || !password.trim()}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Elimina Viaggio
           </AlertDialogAction>
         </AlertDialogFooter>
