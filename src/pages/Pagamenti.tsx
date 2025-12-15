@@ -14,6 +14,7 @@ interface PaymentWithDetails {
   amount: number;
   payment_date: string;
   payment_type: string;
+  payment_method: string | null;
   notes: string | null;
   participant: {
     full_name: string;
@@ -26,6 +27,13 @@ interface PaymentWithDetails {
     };
   };
 }
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  contanti: "Contanti",
+  carta: "Carta",
+  bonifico: "Bonifico",
+  assegno: "Assegno",
+};
 
 export default function Pagamenti() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,6 +48,7 @@ export default function Pagamenti() {
           amount,
           payment_date,
           payment_type,
+          payment_method,
           notes,
           participant:participants(
             full_name,
@@ -159,13 +168,14 @@ export default function Pagamenti() {
                 <TableHead>Viaggio</TableHead>
                 <TableHead>Tipo Viaggio</TableHead>
                 <TableHead>Tipo Pagamento</TableHead>
+                <TableHead>Modalità</TableHead>
                 <TableHead className="text-right">Importo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     {searchTerm ? "Nessun pagamento trovato" : "Nessun pagamento registrato"}
                   </TableCell>
                 </TableRow>
@@ -195,6 +205,13 @@ export default function Pagamenti() {
                       <Badge className={`${paymentTypeColors[payment.payment_type] || "bg-gray-500"} text-white`}>
                         {paymentTypeLabels[payment.payment_type] || payment.payment_type}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {payment.payment_method && (
+                        <Badge variant="secondary">
+                          {PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       €{payment.amount.toLocaleString("it-IT")}

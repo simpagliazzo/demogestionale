@@ -338,6 +338,7 @@ export type Database = {
           notes: string | null
           participant_id: string
           payment_date: string
+          payment_method: string | null
           payment_type: string
         }
         Insert: {
@@ -348,6 +349,7 @@ export type Database = {
           notes?: string | null
           participant_id: string
           payment_date?: string
+          payment_method?: string | null
           payment_type: string
         }
         Update: {
@@ -358,6 +360,7 @@ export type Database = {
           notes?: string | null
           participant_id?: string
           payment_date?: string
+          payment_method?: string | null
           payment_type?: string
         }
         Relationships: [
