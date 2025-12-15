@@ -28,8 +28,16 @@ interface Payment {
   amount: number;
   payment_date: string;
   payment_type: string;
+  payment_method: string | null;
   notes: string | null;
 }
+
+const PAYMENT_METHODS = [
+  { value: "contanti", label: "Contanti" },
+  { value: "carta", label: "Carta di Credito" },
+  { value: "bonifico", label: "Bonifico" },
+  { value: "assegno", label: "Assegno" },
+];
 
 interface EditParticipantDialogProps {
   participant: {
@@ -71,6 +79,7 @@ export default function EditParticipantDialog({
   const [payments, setPayments] = useState<Payment[]>([]);
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("acconto");
+  const [newPaymentMethod, setNewPaymentMethod] = useState("contanti");
   const [newPaymentNotes, setNewPaymentNotes] = useState("");
   const [discountType, setDiscountType] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -196,6 +205,7 @@ export default function EditParticipantDialog({
           participant_id: participant.id,
           amount,
           payment_type: newPaymentType.trim(),
+          payment_method: newPaymentMethod,
           notes: newPaymentNotes?.trim() || null,
           created_by: user?.id || null,
         })
@@ -205,16 +215,18 @@ export default function EditParticipantDialog({
       if (error) throw error;
 
       // Log payment creation
-      await logCreate("payment", paymentData.id, `€${amount} - ${newPaymentType}`, {
+      await logCreate("payment", paymentData.id, `€${amount} - ${newPaymentType} (${newPaymentMethod})`, {
         participant_id: participant.id,
         participant_name: participant.full_name,
         amount,
         payment_type: newPaymentType,
+        payment_method: newPaymentMethod,
       });
 
       toast.success("Pagamento aggiunto con successo");
       setNewPaymentAmount("");
       setNewPaymentType("acconto");
+      setNewPaymentMethod("contanti");
       setNewPaymentNotes("");
       loadPayments();
     } catch (error) {
@@ -538,10 +550,15 @@ export default function EditParticipantDialog({
                   payments.map((payment) => (
                     <div key={payment.id} className="flex justify-between items-start p-3 bg-card border rounded-lg">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">
                             {payment.payment_type}
                           </Badge>
+                          {payment.payment_method && (
+                            <Badge variant="secondary" className="text-xs">
+                              {PAYMENT_METHODS.find(m => m.value === payment.payment_method)?.label || payment.payment_method}
+                            </Badge>
+                          )}
                           <span className="text-sm text-muted-foreground">
                             {new Date(payment.payment_date).toLocaleDateString("it-IT")}
                           </span>
@@ -584,12 +601,29 @@ export default function EditParticipantDialog({
                 
                 <div className="space-y-2">
                   <Label>Tipo Pagamento</Label>
-                  <Input
-                    type="text"
-                    placeholder="es: acconto, saldo, bonifico..."
+                  <select
                     value={newPaymentType}
                     onChange={(e) => setNewPaymentType(e.target.value)}
-                  />
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="acconto">Acconto</option>
+                    <option value="saldo">Saldo</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Modalità Pagamento</Label>
+                  <select
+                    value={newPaymentMethod}
+                    onChange={(e) => setNewPaymentMethod(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {PAYMENT_METHODS.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div className="space-y-2">
