@@ -325,8 +325,18 @@ export default function EditParticipantDialog({
 
       if (error) throw error;
 
-      // Log participant deletion
-      await logDelete("participant", participant.id, participant.full_name);
+      // Log participant deletion with full data for restore
+      await logDelete("participant", participant.id, participant.full_name, {
+        full_name: participant.full_name,
+        email: participant.email,
+        phone: participant.phone,
+        date_of_birth: participant.date_of_birth,
+        place_of_birth: participant.place_of_birth,
+        notes: participant.notes,
+        group_number: participant.group_number,
+        discount_type: participant.discount_type,
+        discount_amount: participant.discount_amount,
+      });
 
       toast.success("Partecipante eliminato con successo");
       onOpenChange(false);
