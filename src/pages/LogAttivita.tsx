@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Search, 
   LogIn, 
@@ -13,12 +16,26 @@ import {
   Trash2, 
   Activity,
   User,
-  Calendar
+  Calendar,
+  RotateCcw
 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
+interface ParticipantDetails {
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  date_of_birth?: string | null;
+  place_of_birth?: string | null;
+  notes?: string | null;
+  group_number?: number | null;
+  discount_type?: string | null;
+  discount_amount?: number | null;
+}
 
 interface ActivityLog {
   id: string;
@@ -27,12 +44,19 @@ interface ActivityLog {
   entity_type: string | null;
   entity_id: string | null;
   entity_name: string | null;
-  details: unknown;
+  details: ParticipantDetails | Record<string, unknown> | null;
   user_agent: string | null;
   created_at: string;
   profile?: {
     full_name: string;
   } | null;
+}
+
+interface Trip {
+  id: string;
+  title: string;
+  destination: string;
+  departure_date: string;
 }
 
 const actionIcons: Record<string, React.ReactNode> = {
@@ -74,6 +98,11 @@ export default function LogAttivita() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string>("");
+  const [isRestoring, setIsRestoring] = useState(false);
   const { isAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
 
@@ -84,7 +113,16 @@ export default function LogAttivita() {
       return;
     }
     loadLogs();
+    loadTrips();
   }, [isAdmin, roleLoading, navigate]);
+
+  const loadTrips = async () => {
+    const { data } = await supabase
+      .from("trips")
+      .select("id, title, destination, departure_date")
+      .order("departure_date", { ascending: false });
+    if (data) setTrips(data);
+  };
 
   const loadLogs = async () => {
     try {
@@ -104,6 +142,55 @@ export default function LogAttivita() {
       console.error("Errore caricamento log:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const canRestore = (log: ActivityLog) => {
+    return (
+      log.action_type === "delete" &&
+      log.entity_type === "participant" &&
+      log.details &&
+      typeof log.details === "object" &&
+      "full_name" in log.details
+    );
+  };
+
+  const openRestoreDialog = (log: ActivityLog) => {
+    setSelectedLog(log);
+    setSelectedTripId("");
+    setRestoreDialogOpen(true);
+  };
+
+  const handleRestore = async () => {
+    if (!selectedLog || !selectedTripId || !selectedLog.details) return;
+    
+    setIsRestoring(true);
+    try {
+      const details = selectedLog.details as ParticipantDetails;
+      
+      const { error } = await supabase.from("participants").insert({
+        full_name: details.full_name,
+        email: details.email || null,
+        phone: details.phone || null,
+        date_of_birth: details.date_of_birth || null,
+        place_of_birth: details.place_of_birth || null,
+        notes: details.notes || null,
+        group_number: details.group_number || null,
+        discount_type: details.discount_type || null,
+        discount_amount: details.discount_amount || 0,
+        trip_id: selectedTripId,
+      });
+
+      if (error) throw error;
+
+      toast.success(`Partecipante "${details.full_name}" ripristinato con successo`);
+      setRestoreDialogOpen(false);
+      setSelectedLog(null);
+    } catch (error) {
+      console.error("Errore ripristino:", error);
+      toast.error("Errore durante il ripristino del partecipante");
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -275,12 +362,62 @@ export default function LogAttivita() {
                       )}
                     </div>
                   </div>
+
+                  {canRestore(log) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openRestoreDialog(log)}
+                      className="shrink-0"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Ripristina
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog Ripristino Partecipante */}
+      <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ripristina Partecipante</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Stai per ripristinare il partecipante <strong>{selectedLog?.entity_name}</strong>.
+              Seleziona il viaggio a cui assegnarlo:
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="trip-select">Viaggio</Label>
+              <Select value={selectedTripId} onValueChange={setSelectedTripId}>
+                <SelectTrigger id="trip-select">
+                  <SelectValue placeholder="Seleziona un viaggio..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {trips.map((trip) => (
+                    <SelectItem key={trip.id} value={trip.id}>
+                      {trip.title} - {trip.destination} ({format(new Date(trip.departure_date), "dd/MM/yyyy")})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestoreDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleRestore} disabled={!selectedTripId || isRestoring}>
+              {isRestoring ? "Ripristino..." : "Ripristina"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
