@@ -410,6 +410,107 @@ export type Database = {
         }
         Relationships: []
       }
+      quotes: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          departure_date: string | null
+          destination: string
+          flights: Json | null
+          hotel_address: string | null
+          hotel_check_in: string | null
+          hotel_check_out: string | null
+          hotel_name: string | null
+          hotel_nights: number | null
+          hotel_price_per_night: number | null
+          hotel_room_type: string | null
+          hotel_total: number | null
+          id: string
+          markup_amount: number | null
+          markup_percentage: number | null
+          notes: string | null
+          num_passengers: number | null
+          other_items: Json | null
+          return_date: string | null
+          status: string | null
+          subtotal: number | null
+          total_price: number | null
+          transfers: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          departure_date?: string | null
+          destination: string
+          flights?: Json | null
+          hotel_address?: string | null
+          hotel_check_in?: string | null
+          hotel_check_out?: string | null
+          hotel_name?: string | null
+          hotel_nights?: number | null
+          hotel_price_per_night?: number | null
+          hotel_room_type?: string | null
+          hotel_total?: number | null
+          id?: string
+          markup_amount?: number | null
+          markup_percentage?: number | null
+          notes?: string | null
+          num_passengers?: number | null
+          other_items?: Json | null
+          return_date?: string | null
+          status?: string | null
+          subtotal?: number | null
+          total_price?: number | null
+          transfers?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          departure_date?: string | null
+          destination?: string
+          flights?: Json | null
+          hotel_address?: string | null
+          hotel_check_in?: string | null
+          hotel_check_out?: string | null
+          hotel_name?: string | null
+          hotel_nights?: number | null
+          hotel_price_per_night?: number | null
+          hotel_room_type?: string | null
+          hotel_total?: number | null
+          id?: string
+          markup_amount?: number | null
+          markup_percentage?: number | null
+          notes?: string | null
+          num_passengers?: number | null
+          other_items?: Json | null
+          return_date?: string | null
+          status?: string | null
+          subtotal?: number | null
+          total_price?: number | null
+          transfers?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string

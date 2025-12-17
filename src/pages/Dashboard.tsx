@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, Users, DollarSign, MapPin, Search } from "lucide-react";
+import { CalendarDays, Users, DollarSign, MapPin, Search, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -237,6 +237,22 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Pagamenti ricevuti
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="border-l-4 border-l-orange-500 cursor-pointer hover:bg-accent/5 transition-colors"
+          onClick={() => navigate("/preventivi")}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Preventivi</CardTitle>
+            <FileText className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-medium">Viaggi Individuali</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Crea e gestisci preventivi
             </p>
           </CardContent>
         </Card>
