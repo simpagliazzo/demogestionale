@@ -237,48 +237,41 @@ export function QuoteDetailDialog({
 
     const flightsText = quote.flights
       .map((f) => {
-        const baggage = f.baggage_type ? `\n   🧳 ${BAGGAGE_LABELS[f.baggage_type] || f.baggage_type}` : "";
-        return `✈️ ${f.type}: ${f.airline} ${f.departure_time}-${f.arrival_time}${baggage}`;
+        const baggage = f.baggage_type ? `\n   Bagaglio: ${BAGGAGE_LABELS[f.baggage_type] || f.baggage_type}` : "";
+        return `> VOLO ${f.type}: ${f.airline} (${f.departure_time}-${f.arrival_time})${baggage}`;
       })
       .join("\n");
 
     const hotelText = quote.hotel_name
-      ? `🏨 Hotel: ${quote.hotel_name}\n   ${quote.hotel_room_type || ""}\n   Check-in: ${quote.hotel_check_in ? format(new Date(quote.hotel_check_in), "d MMM yyyy", { locale: it }) : ""}\n   Check-out: ${quote.hotel_check_out ? format(new Date(quote.hotel_check_out), "d MMM yyyy", { locale: it }) : ""}`
+      ? `> HOTEL: ${quote.hotel_name}${quote.hotel_room_type ? `\n   Camera: ${quote.hotel_room_type}` : ""}${quote.hotel_check_in ? `\n   Check-in: ${format(new Date(quote.hotel_check_in), "d MMM yyyy", { locale: it })}` : ""}${quote.hotel_check_out ? `\n   Check-out: ${format(new Date(quote.hotel_check_out), "d MMM yyyy", { locale: it })}` : ""}`
       : "";
 
     const transfersText = quote.transfers.length > 0
-      ? quote.transfers.map((t) => `🚗 Transfer: ${t.type}`).join("\n")
+      ? quote.transfers.map((t) => `> TRANSFER: ${t.type}`).join("\n")
       : "";
 
     const otherText = quote.other_items.length > 0
-      ? quote.other_items.map((o) => `📦 ${o.description}`).join("\n")
+      ? quote.other_items.map((o) => `> ${o.description}`).join("\n")
       : "";
 
-    const message = `
-*PREVENTIVO VIAGGIO*
-━━━━━━━━━━━━━━━━━
+    const messageParts = [
+      `*PREVENTIVO VIAGGIO*`,
+      ``,
+      `*Destinazione:* ${quote.destination}`,
+      `*Passeggeri:* ${quote.num_passengers}`,
+      quote.departure_date ? `*Partenza:* ${format(new Date(quote.departure_date), "d MMMM yyyy", { locale: it })}` : null,
+      quote.return_date ? `*Ritorno:* ${format(new Date(quote.return_date), "d MMMM yyyy", { locale: it })}` : null,
+      ``,
+      flightsText || null,
+      hotelText || null,
+      transfersText || null,
+      otherText || null,
+      ``,
+      `*TOTALE: EUR ${quote.total_price.toFixed(2)}*`,
+      quote.notes ? `\nNote: ${quote.notes}` : null,
+    ].filter(Boolean).join("\n");
 
-📍 *Destinazione:* ${quote.destination}
-👥 *Passeggeri:* ${quote.num_passengers}
-${quote.departure_date ? `📅 *Partenza:* ${format(new Date(quote.departure_date), "d MMMM yyyy", { locale: it })}` : ""}
-${quote.return_date ? `📅 *Ritorno:* ${format(new Date(quote.return_date), "d MMMM yyyy", { locale: it })}` : ""}
-
-${flightsText}
-
-${hotelText}
-
-${transfersText}
-
-${otherText}
-
-━━━━━━━━━━━━━━━━━
-💰 *TOTALE: €${quote.total_price.toFixed(2)}*
-━━━━━━━━━━━━━━━━━
-
-${quote.notes ? `📝 Note: ${quote.notes}` : ""}
-    `.trim();
-
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(messageParts)}`;
     window.open(whatsappUrl, "_blank");
   };
 
