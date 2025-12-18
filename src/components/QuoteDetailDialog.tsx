@@ -27,8 +27,19 @@ interface Flight {
   airline: string;
   departure_time: string;
   arrival_time: string;
+  baggage_type?: string;
   price: number;
 }
+
+const BAGGAGE_LABELS: Record<string, string> = {
+  zaino: "Solo zaino personale",
+  bagaglio_mano: "Bagaglio a mano (max 10kg)",
+  bagaglio_mano_plus: "Bagaglio a mano priority (max 10kg + zaino)",
+  stiva_15kg: "Bagaglio da stiva 15kg",
+  stiva_20kg: "Bagaglio da stiva 20kg",
+  stiva_23kg: "Bagaglio da stiva 23kg",
+  stiva_32kg: "Bagaglio da stiva 32kg",
+};
 
 interface Transfer {
   type: string;
@@ -204,7 +215,10 @@ export function QuoteDetailDialog({
     if (!quote) return;
 
     const flightsText = quote.flights
-      .map((f) => `✈️ ${f.type}: ${f.airline} ${f.departure_time}-${f.arrival_time}`)
+      .map((f) => {
+        const baggage = f.baggage_type ? `\n   🧳 ${BAGGAGE_LABELS[f.baggage_type] || f.baggage_type}` : "";
+        return `✈️ ${f.type}: ${f.airline} ${f.departure_time}-${f.arrival_time}${baggage}`;
+      })
       .join("\n");
 
     const hotelText = quote.hotel_name
@@ -376,11 +390,18 @@ ${quote.notes ? `📝 Note: ${quote.notes}` : ""}
               <CardContent>
                 <div className="space-y-2">
                   {quote.flights.map((flight, index) => (
-                    <div key={index} className="text-sm flex justify-between">
-                      <span>
-                        {flight.type}: {flight.airline} ({flight.departure_time} - {flight.arrival_time})
-                      </span>
-                      <span className="print:hidden">€{(flight.price * quote.num_passengers).toFixed(2)}</span>
+                    <div key={index} className="text-sm border-b pb-2 last:border-0 last:pb-0">
+                      <div className="flex justify-between">
+                        <span>
+                          {flight.type}: {flight.airline} ({flight.departure_time} - {flight.arrival_time})
+                        </span>
+                        <span className="print:hidden">€{(flight.price * quote.num_passengers).toFixed(2)}</span>
+                      </div>
+                      {flight.baggage_type && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          🧳 {BAGGAGE_LABELS[flight.baggage_type] || flight.baggage_type}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -495,7 +516,7 @@ ${quote.notes ? `📝 Note: ${quote.notes}` : ""}
                   <span>€{quote.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Markup ({quote.markup_percentage}%)</span>
+                  <span>Markup {quote.markup_percentage > 0 ? `(${quote.markup_percentage}%)` : "(fisso)"}</span>
                   <span>€{quote.markup_amount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-medium pt-1 border-t">

@@ -13,6 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Trash2, Plane, Hotel, Car, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,8 +28,20 @@ interface Flight {
   airline: string;
   departure_time: string;
   arrival_time: string;
+  baggage_type: string;
   price: number;
 }
+
+const BAGGAGE_OPTIONS = [
+  { value: "", label: "Seleziona bagaglio" },
+  { value: "zaino", label: "Solo zaino personale" },
+  { value: "bagaglio_mano", label: "Bagaglio a mano (max 10kg)" },
+  { value: "bagaglio_mano_plus", label: "Bagaglio a mano priority (max 10kg + zaino)" },
+  { value: "stiva_15kg", label: "Bagaglio da stiva 15kg" },
+  { value: "stiva_20kg", label: "Bagaglio da stiva 20kg" },
+  { value: "stiva_23kg", label: "Bagaglio da stiva 23kg" },
+  { value: "stiva_32kg", label: "Bagaglio da stiva 32kg" },
+];
 
 interface Transfer {
   type: string;
@@ -62,7 +81,7 @@ export function CreateQuoteDialog({
 
   // Flights
   const [flights, setFlights] = useState<Flight[]>([
-    { type: "Andata", airline: "", departure_time: "", arrival_time: "", price: 0 },
+    { type: "Andata", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 },
   ]);
 
   // Hotel
@@ -80,7 +99,9 @@ export function CreateQuoteDialog({
   const [otherItems, setOtherItems] = useState<OtherItem[]>([]);
 
   // Markup
+  const [markupType, setMarkupType] = useState<"percentage" | "fixed">("percentage");
   const [markupPercentage, setMarkupPercentage] = useState(0);
+  const [markupFixed, setMarkupFixed] = useState(0);
 
   // Notes
   const [notes, setNotes] = useState("");
@@ -101,7 +122,9 @@ export function CreateQuoteDialog({
     const otherTotal = otherItems.reduce((sum, o) => sum + (o.price || 0), 0);
     
     const subtotal = flightsTotal + hotelTotal + transfersTotal + otherTotal;
-    const markupAmount = subtotal * (markupPercentage / 100);
+    const markupAmount = markupType === "percentage" 
+      ? subtotal * (markupPercentage / 100) 
+      : markupFixed;
     const total = subtotal + markupAmount;
 
     return { flightsTotal, hotelTotal, hotelNights, transfersTotal, otherTotal, subtotal, markupAmount, total };
@@ -110,7 +133,7 @@ export function CreateQuoteDialog({
   const totals = calculateTotals();
 
   const addFlight = () => {
-    setFlights([...flights, { type: "Ritorno", airline: "", departure_time: "", arrival_time: "", price: 0 }]);
+    setFlights([...flights, { type: "Ritorno", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 }]);
   };
 
   const removeFlight = (index: number) => {
@@ -184,7 +207,7 @@ export function CreateQuoteDialog({
         transfers: transfers.filter(t => t.type || t.price > 0) as unknown as any,
         other_items: otherItems.filter(o => o.description || o.price > 0) as unknown as any,
         subtotal: totals.subtotal,
-        markup_percentage: markupPercentage,
+        markup_percentage: markupType === "percentage" ? markupPercentage : 0,
         markup_amount: totals.markupAmount,
         total_price: totals.total,
         notes: notes || null,
@@ -219,7 +242,7 @@ export function CreateQuoteDialog({
     setDepartureDate("");
     setReturnDate("");
     setNumPassengers(1);
-    setFlights([{ type: "Andata", airline: "", departure_time: "", arrival_time: "", price: 0 }]);
+    setFlights([{ type: "Andata", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 }]);
     setHotelName("");
     setHotelAddress("");
     setHotelRoomType("");
@@ -228,7 +251,9 @@ export function CreateQuoteDialog({
     setHotelPricePerNight(0);
     setTransfers([]);
     setOtherItems([]);
+    setMarkupType("percentage");
     setMarkupPercentage(0);
+    setMarkupFixed(0);
     setNotes("");
   };
 
@@ -342,7 +367,7 @@ export function CreateQuoteDialog({
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Tipo</Label>
                       <Input
@@ -374,6 +399,26 @@ export function CreateQuoteDialog({
                         onChange={(e) => updateFlight(index, "arrival_time", e.target.value)}
                         placeholder="10:30"
                       />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bagaglio</Label>
+                      <Select
+                        value={flight.baggage_type}
+                        onValueChange={(value) => updateFlight(index, "baggage_type", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona bagaglio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BAGGAGE_OPTIONS.filter(o => o.value).map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Prezzo (per pax)</Label>
@@ -593,16 +638,44 @@ export function CreateQuoteDialog({
                   <span>€{totals.subtotal.toFixed(2)}</span>
                 </div>
 
-                <div className="bg-muted/50 p-3 rounded-lg space-y-2">
-                  <div className="flex items-center gap-3">
-                    <Label className="text-sm">Markup %</Label>
-                    <Input
-                      type="number"
-                      className="w-24"
-                      value={markupPercentage}
-                      onChange={(e) => setMarkupPercentage(parseFloat(e.target.value) || 0)}
-                      placeholder="10"
-                    />
+                <div className="bg-muted/50 p-3 rounded-lg space-y-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Label className="text-sm">Markup</Label>
+                    <Select
+                      value={markupType}
+                      onValueChange={(v) => setMarkupType(v as "percentage" | "fixed")}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Percentuale %</SelectItem>
+                        <SelectItem value="fixed">Fisso €</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {markupType === "percentage" ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          className="w-20"
+                          value={markupPercentage}
+                          onChange={(e) => setMarkupPercentage(parseFloat(e.target.value) || 0)}
+                          placeholder="10"
+                        />
+                        <span className="text-sm">%</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">€</span>
+                        <Input
+                          type="number"
+                          className="w-24"
+                          value={markupFixed}
+                          onChange={(e) => setMarkupFixed(parseFloat(e.target.value) || 0)}
+                          placeholder="50"
+                        />
+                      </div>
+                    )}
                     <span className="text-sm text-muted-foreground">
                       = €{totals.markupAmount.toFixed(2)}
                     </span>
