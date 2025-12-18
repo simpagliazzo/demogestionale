@@ -214,6 +214,27 @@ export function QuoteDetailDialog({
   const handleWhatsApp = () => {
     if (!quote) return;
 
+    // Pulisci il numero di telefono: rimuovi tutti i caratteri non numerici
+    let phone = quote.customer_phone?.replace(/[^\d]/g, "") || "";
+    
+    if (!phone) {
+      toast({
+        title: "Numero mancante",
+        description: "Inserisci un numero di telefono per inviare via WhatsApp",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Se inizia con 0, sostituisci con prefisso italiano 39
+    if (phone.startsWith("0")) {
+      phone = "39" + phone.substring(1);
+    }
+    // Se non ha prefisso internazionale (numero corto), aggiungi 39
+    else if (phone.length <= 10) {
+      phone = "39" + phone;
+    }
+
     const flightsText = quote.flights
       .map((f) => {
         const baggage = f.baggage_type ? `\n   🧳 ${BAGGAGE_LABELS[f.baggage_type] || f.baggage_type}` : "";
@@ -257,7 +278,6 @@ ${otherText}
 ${quote.notes ? `📝 Note: ${quote.notes}` : ""}
     `.trim();
 
-    const phone = quote.customer_phone?.replace(/\s+/g, "") || "";
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
   };
