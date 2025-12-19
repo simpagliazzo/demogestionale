@@ -254,8 +254,13 @@ export function QuoteDetailDialog({
       ? quote.other_items.map((o) => `> ${o.description}`).join("\n")
       : "";
 
+    const issueDate = format(new Date(quote.created_at), "d MMMM yyyy", { locale: it });
+    
+    const validityText = `Il presente preventivo e valido fino al ${issueDate} salvo disponibilita al momento della conferma. L'inizio del viaggio e subordinato al versamento dell'acconto del 50% entro la data di emissione del preventivo.`;
+
     const messageParts = [
       `*PREVENTIVO VIAGGIO*`,
+      `Data emissione: ${issueDate}`,
       ``,
       `*Destinazione:* ${quote.destination}`,
       `*Passeggeri:* ${quote.num_passengers}`,
@@ -269,10 +274,19 @@ export function QuoteDetailDialog({
       ``,
       `*TOTALE: EUR ${quote.total_price.toFixed(2)}*`,
       quote.notes ? `\nNote: ${quote.notes}` : null,
+      ``,
+      validityText,
     ].filter(Boolean).join("\n");
 
+    // Crea un link e clicca programmaticamente
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(messageParts)}`;
-    window.location.href = whatsappUrl;
+    const link = document.createElement("a");
+    link.href = whatsappUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -334,7 +348,7 @@ export function QuoteDetailDialog({
           <div className="hidden print:block text-center mb-6">
             <h1 className="text-2xl font-bold">PREVENTIVO DI VIAGGIO</h1>
             <p className="text-muted-foreground">
-              Data: {format(new Date(), "d MMMM yyyy", { locale: it })}
+              Data di emissione: {format(new Date(quote.created_at), "d MMMM yyyy", { locale: it })}
             </p>
           </div>
 
@@ -514,6 +528,13 @@ export function QuoteDetailDialog({
               </div>
             </CardContent>
           </Card>
+
+          {/* Validity disclaimer - visible in print */}
+          <div className="hidden print:block mt-6 p-4 border rounded text-sm text-muted-foreground">
+            <p>
+              Il presente preventivo è valido fino al {format(new Date(quote.created_at), "d MMMM yyyy", { locale: it })} salvo disponibilità al momento della conferma. L'inizio del viaggio è subordinato al versamento dell'acconto del 50% entro la data di emissione del preventivo.
+            </p>
+          </div>
 
           {/* Internal costs - hidden in print */}
           <Card className="print:hidden bg-muted/30">
