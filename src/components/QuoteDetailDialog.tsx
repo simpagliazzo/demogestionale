@@ -271,8 +271,8 @@ export function QuoteDetailDialog({
       quote.notes ? `\nNote: ${quote.notes}` : null,
     ].filter(Boolean).join("\n");
 
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(messageParts)}`;
-    window.open(whatsappUrl, "_blank");
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(messageParts)}`;
+    window.location.href = whatsappUrl;
   };
 
   if (loading) {
