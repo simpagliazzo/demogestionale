@@ -19,6 +19,7 @@ import Vettori from "./pages/Vettori";
 import GestioneUtenti from "./pages/GestioneUtenti";
 import LogAttivita from "./pages/LogAttivita";
 import Preventivi from "./pages/Preventivi";
+import QuotePublic from "./pages/QuotePublic";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -54,6 +55,7 @@ const App = () => (
             </Route>
             <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
             <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
+            <Route path="/preventivo/:id" element={<QuotePublic />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
