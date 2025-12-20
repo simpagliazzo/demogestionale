@@ -258,6 +258,9 @@ export function QuoteDetailDialog({
     
     const validityText = `Il presente preventivo e valido fino al ${issueDate} salvo disponibilita al momento della conferma. L'inizio del viaggio e subordinato al versamento dell'acconto del 50% entro la data di emissione del preventivo.`;
 
+    // Generate public link for the quote
+    const publicLink = `${window.location.origin}/preventivo/${quote.id}`;
+
     const messageParts = [
       `*PREVENTIVO VIAGGIO*`,
       `Data emissione: ${issueDate}`,
@@ -267,13 +270,10 @@ export function QuoteDetailDialog({
       quote.departure_date ? `*Partenza:* ${format(new Date(quote.departure_date), "d MMMM yyyy", { locale: it })}` : null,
       quote.return_date ? `*Ritorno:* ${format(new Date(quote.return_date), "d MMMM yyyy", { locale: it })}` : null,
       ``,
-      flightsText || null,
-      hotelText || null,
-      transfersText || null,
-      otherText || null,
+      `📄 *Visualizza preventivo completo:*`,
+      publicLink,
       ``,
       `*TOTALE: EUR ${quote.total_price.toFixed(2)}*`,
-      quote.notes ? `\nNote: ${quote.notes}` : null,
       ``,
       validityText,
     ].filter(Boolean).join("\n");
