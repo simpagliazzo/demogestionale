@@ -289,6 +289,11 @@ export function QuoteDetailDialog({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Aggiorna automaticamente lo stato a "inviato"
+    if (quote.status === "draft") {
+      updateStatus("sent");
+    }
   };
 
   if (loading) {
