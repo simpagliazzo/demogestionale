@@ -16,11 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plane, Hotel, Car, Package, Send, Printer, Trash2, MessageCircle } from "lucide-react";
+import { Plane, Hotel, Car, Package, Send, Printer, Trash2, MessageCircle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useReactToPrint } from "react-to-print";
+import { CreateQuoteDialog } from "./CreateQuoteDialog";
 
 interface Flight {
   type: string;
@@ -110,6 +111,7 @@ export function QuoteDetailDialog({
   const { toast } = useToast();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -328,6 +330,10 @@ export function QuoteDetailDialog({
               <SelectItem value="rejected">Rifiutato</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Modifica
+          </Button>
           <Button variant="outline" onClick={() => handlePrint()}>
             <Printer className="h-4 w-4 mr-2" />
             Stampa
@@ -561,6 +567,18 @@ export function QuoteDetailDialog({
             </CardContent>
           </Card>
         </div>
+
+        {/* Edit Dialog */}
+        <CreateQuoteDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSuccess={() => {
+            setEditDialogOpen(false);
+            fetchQuote();
+            onUpdate();
+          }}
+          editQuote={quote}
+        />
       </DialogContent>
     </Dialog>
   );

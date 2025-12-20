@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -28,7 +28,7 @@ interface Flight {
   airline: string;
   departure_time: string;
   arrival_time: string;
-  baggage_type: string;
+  baggage_type?: string;
   price: number;
 }
 
@@ -53,16 +53,41 @@ interface OtherItem {
   price: number;
 }
 
+interface QuoteData {
+  id: string;
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
+  destination: string;
+  departure_date: string | null;
+  return_date: string | null;
+  num_passengers: number;
+  flights: Flight[];
+  hotel_name: string | null;
+  hotel_address: string | null;
+  hotel_room_type: string | null;
+  hotel_check_in: string | null;
+  hotel_check_out: string | null;
+  hotel_price_per_night: number;
+  transfers: Transfer[];
+  other_items: OtherItem[];
+  markup_percentage: number;
+  notes: string | null;
+  status: string;
+}
+
 interface CreateQuoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  editQuote?: QuoteData | null;
 }
 
 export function CreateQuoteDialog({
   open,
   onOpenChange,
   onSuccess,
+  editQuote,
 }: CreateQuoteDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -105,6 +130,33 @@ export function CreateQuoteDialog({
 
   // Notes
   const [notes, setNotes] = useState("");
+
+  // Load edit data when editQuote changes
+  useEffect(() => {
+    if (editQuote) {
+      setCustomerName(editQuote.customer_name || "");
+      setCustomerEmail(editQuote.customer_email || "");
+      setCustomerPhone(editQuote.customer_phone || "");
+      setDestination(editQuote.destination || "");
+      setDepartureDate(editQuote.departure_date || "");
+      setReturnDate(editQuote.return_date || "");
+      setNumPassengers(editQuote.num_passengers || 1);
+      setFlights(editQuote.flights?.length > 0 ? editQuote.flights : [{ type: "Andata", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 }]);
+      setHotelName(editQuote.hotel_name || "");
+      setHotelAddress(editQuote.hotel_address || "");
+      setHotelRoomType(editQuote.hotel_room_type || "");
+      setHotelCheckIn(editQuote.hotel_check_in || "");
+      setHotelCheckOut(editQuote.hotel_check_out || "");
+      setHotelPricePerNight(editQuote.hotel_price_per_night || 0);
+      setTransfers(editQuote.transfers || []);
+      setOtherItems(editQuote.other_items || []);
+      setMarkupPercentage(editQuote.markup_percentage || 0);
+      setMarkupType(editQuote.markup_percentage > 0 ? "percentage" : "fixed");
+      setNotes(editQuote.notes || "");
+    } else {
+      resetForm();
+    }
+  }, [editQuote, open]);
 
   const calculateHotelNights = () => {
     if (!hotelCheckIn || !hotelCheckOut) return 0;
@@ -186,8 +238,7 @@ export function CreateQuoteDialog({
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("quotes").insert([{
-        created_by: user?.id,
+      const quoteData = {
         customer_name: customerName,
         customer_email: customerEmail || null,
         customer_phone: customerPhone || null,
@@ -211,15 +262,37 @@ export function CreateQuoteDialog({
         markup_amount: totals.markupAmount,
         total_price: totals.total,
         notes: notes || null,
-        status: "draft",
-      }]);
+      };
 
-      if (error) throw error;
+      if (editQuote) {
+        // Update existing quote
+        const { error } = await supabase
+          .from("quotes")
+          .update(quoteData)
+          .eq("id", editQuote.id);
 
-      toast({
-        title: "Preventivo creato",
-        description: "Il preventivo è stato salvato come bozza",
-      });
+        if (error) throw error;
+
+        toast({
+          title: "Preventivo aggiornato",
+          description: "Le modifiche sono state salvate",
+        });
+      } else {
+        // Create new quote
+        const { error } = await supabase.from("quotes").insert([{
+          ...quoteData,
+          created_by: user?.id,
+          status: "draft",
+        }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Preventivo creato",
+          description: "Il preventivo è stato salvato come bozza",
+        });
+      }
+
       resetForm();
       onSuccess();
     } catch (error) {
@@ -261,7 +334,7 @@ export function CreateQuoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nuovo Preventivo</DialogTitle>
+          <DialogTitle>{editQuote ? "Modifica Preventivo" : "Nuovo Preventivo"}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="cliente" className="w-full">
@@ -697,7 +770,7 @@ export function CreateQuoteDialog({
                 Annulla
               </Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Salvataggio..." : "Salva Preventivo"}
+                {saving ? "Salvataggio..." : (editQuote ? "Aggiorna Preventivo" : "Salva Preventivo")}
               </Button>
             </div>
           </TabsContent>
