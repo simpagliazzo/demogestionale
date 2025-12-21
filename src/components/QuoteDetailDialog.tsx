@@ -213,7 +213,7 @@ export function QuoteDetailDialog({
     documentTitle: `Preventivo_${quote?.customer_name}_${quote?.destination}`,
   });
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     if (!quote) return;
 
     // Pulisci il numero di telefono: rimuovi tutti i caratteri non numerici
@@ -290,9 +290,13 @@ export function QuoteDetailDialog({
     link.click();
     document.body.removeChild(link);
 
-    // Aggiorna automaticamente lo stato a "inviato"
-    if (quote.status === "draft") {
-      updateStatus("sent");
+    // Aggiorna automaticamente lo stato a "inviato" se non è già stato accettato/rifiutato
+    if (quote.status === "draft" || quote.status === "sent") {
+      await updateStatus("sent");
+      toast({
+        title: "Preventivo inviato",
+        description: "Il preventivo è stato inviato e lo stato è stato aggiornato",
+      });
     }
   };
 
