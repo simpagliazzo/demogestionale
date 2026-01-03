@@ -61,6 +61,48 @@ export type Database = {
           },
         ]
       }
+      blacklist: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          full_name: string
+          id: string
+          participant_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          participant_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          participant_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklist_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blacklist_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bus_carriers: {
         Row: {
           contact_person: string | null
