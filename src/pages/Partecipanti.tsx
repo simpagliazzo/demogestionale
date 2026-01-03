@@ -4,10 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Calendar, Eye } from "lucide-react";
+import { Search, MapPin, Calendar, Eye, Edit, Ban } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { useUserRole } from "@/hooks/use-user-role";
+import EditParticipantStandaloneDialog from "@/components/EditParticipantStandaloneDialog";
+import AddToBlacklistDialog from "@/components/AddToBlacklistDialog";
 
 interface ParticipantWithTrip {
   id: string;
@@ -16,6 +19,7 @@ interface ParticipantWithTrip {
   phone: string | null;
   date_of_birth: string | null;
   place_of_birth: string | null;
+  notes: string | null;
   created_at: string;
   trip: {
     id: string;
@@ -45,9 +49,12 @@ const statusLabels = {
 
 export default function Partecipanti() {
   const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
   const [participants, setParticipants] = useState<ParticipantWithTrip[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editParticipant, setEditParticipant] = useState<ParticipantWithTrip | null>(null);
+  const [blacklistParticipant, setBlacklistParticipant] = useState<ParticipantWithTrip | null>(null);
 
   useEffect(() => {
     loadParticipants();
@@ -64,6 +71,7 @@ export default function Partecipanti() {
           phone,
           date_of_birth,
           place_of_birth,
+          notes,
           created_at,
           trip:trips (
             id,
@@ -78,7 +86,6 @@ export default function Partecipanti() {
 
       if (error) throw error;
       
-      // Include tutti i partecipanti (anche quelli senza viaggio)
       setParticipants((data || []) as ParticipantWithTrip[]);
     } catch (error) {
       console.error("Errore caricamento partecipanti:", error);
@@ -253,17 +260,39 @@ export default function Partecipanti() {
                         )}
                       </div>
 
-                      {participant.trip && (
+                      <div className="flex flex-col gap-2 shrink-0">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/viaggi/${participant.trip!.id}`)}
-                          className="shrink-0"
+                          onClick={() => setEditParticipant(participant)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Vedi Viaggio
+                          <Edit className="h-4 w-4 mr-2" />
+                          Modifica
                         </Button>
-                      )}
+
+                        {participant.trip && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/viaggi/${participant.trip!.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Vedi Viaggio
+                          </Button>
+                        )}
+
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBlacklistParticipant(participant)}
+                            className="bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:text-white"
+                          >
+                            <Ban className="h-4 w-4 mr-2" />
+                            Blacklist
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -272,6 +301,20 @@ export default function Partecipanti() {
           )}
         </CardContent>
       </Card>
+
+      <EditParticipantStandaloneDialog
+        participant={editParticipant}
+        open={!!editParticipant}
+        onOpenChange={(open) => !open && setEditParticipant(null)}
+        onSuccess={loadParticipants}
+      />
+
+      <AddToBlacklistDialog
+        participant={blacklistParticipant}
+        open={!!blacklistParticipant}
+        onOpenChange={(open) => !open && setBlacklistParticipant(null)}
+        onSuccess={loadParticipants}
+      />
     </div>
   );
 }

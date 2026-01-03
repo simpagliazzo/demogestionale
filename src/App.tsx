@@ -20,6 +20,7 @@ import GestioneUtenti from "./pages/GestioneUtenti";
 import LogAttivita from "./pages/LogAttivita";
 import Preventivi from "./pages/Preventivi";
 import QuotePublic from "./pages/QuotePublic";
+import Blacklist from "./pages/Blacklist";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/utenti" element={<GestioneUtenti />} />
               <Route path="/log" element={<LogAttivita />} />
               <Route path="/preventivi" element={<Preventivi />} />
+              <Route path="/blacklist" element={<Blacklist />} />
             </Route>
             <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
             <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />

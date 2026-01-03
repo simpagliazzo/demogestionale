@@ -1,9 +1,10 @@
-import { LayoutDashboard, MapPin, Users, DollarSign, Bus, UserCircle, LogOut, Plane, Archive, FileText } from "lucide-react";
+import { LayoutDashboard, MapPin, Users, DollarSign, Bus, UserCircle, LogOut, Plane, Archive, FileText, AlertTriangle } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/lib/auth-context";
 import { useUserRole } from "@/hooks/use-user-role";
 import { Button } from "@/components/ui/button";
+
 export function AppSidebar() {
   const {
     signOut,
@@ -13,6 +14,7 @@ export function AppSidebar() {
     isAdmin,
     isAgent
   } = useUserRole();
+  
   const mainItems = [{
     title: "Dashboard",
     url: "/",
@@ -30,6 +32,7 @@ export function AppSidebar() {
     url: "/partecipanti",
     icon: Users
   }];
+  
   const managementItems = [{
     title: "Pagamenti",
     url: "/pagamenti",
@@ -43,6 +46,7 @@ export function AppSidebar() {
     url: "/vettori",
     icon: Bus
   }];
+  
   const adminItems = [{
     title: "Gestione Utenti",
     url: "/utenti",
@@ -51,7 +55,12 @@ export function AppSidebar() {
     title: "Log Attività",
     url: "/log",
     icon: FileText
+  }, {
+    title: "Blacklist",
+    url: "/blacklist",
+    icon: AlertTriangle
   }];
+  
   return <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -61,7 +70,7 @@ export function AppSidebar() {
           <div>
             <h2 className="font-display text-lg font-bold text-sidebar-foreground">Gladiatours
 Manager</h2>
-            <p className="text-xs text-sidebar-foreground/60">Gestionale Viaggi                    © Ischianonsolohotel</p>
+            <p className="text-xs text-sidebar-foreground/60">Gestionale Viaggi                    © Ischianonsolohotel</p>
           </div>
         </div>
       </SidebarHeader>
