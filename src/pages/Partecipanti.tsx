@@ -24,7 +24,7 @@ interface ParticipantWithTrip {
     departure_date: string;
     return_date: string;
     status: string;
-  };
+  } | null;
 }
 
 const statusColors = {
@@ -78,9 +78,8 @@ export default function Partecipanti() {
 
       if (error) throw error;
       
-      // Filtra solo i partecipanti con viaggio associato
-      const validParticipants = data?.filter(p => p.trip) as ParticipantWithTrip[];
-      setParticipants(validParticipants || []);
+      // Include tutti i partecipanti (anche quelli senza viaggio)
+      setParticipants((data || []) as ParticipantWithTrip[]);
     } catch (error) {
       console.error("Errore caricamento partecipanti:", error);
     } finally {
@@ -96,8 +95,8 @@ export default function Partecipanti() {
       p.full_name.toLowerCase().includes(query) ||
       p.email?.toLowerCase().includes(query) ||
       p.phone?.includes(query) ||
-      p.trip.title.toLowerCase().includes(query) ||
-      p.trip.destination.toLowerCase().includes(query)
+      p.trip?.title.toLowerCase().includes(query) ||
+      p.trip?.destination.toLowerCase().includes(query)
     );
   };
 
@@ -201,28 +200,36 @@ export default function Partecipanti() {
                           </div>
                         )}
 
-                        <div className="pt-2 border-t">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm font-medium">Viaggio attuale:</span>
-                            <Badge className={`${statusColors[participant.trip.status as keyof typeof statusColors]} text-white`}>
-                              {statusLabels[participant.trip.status as keyof typeof statusLabels]}
+                        {participant.trip ? (
+                          <div className="pt-2 border-t">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-sm font-medium">Viaggio attuale:</span>
+                              <Badge className={`${statusColors[participant.trip.status as keyof typeof statusColors]} text-white`}>
+                                {statusLabels[participant.trip.status as keyof typeof statusLabels]}
+                              </Badge>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <p className="font-medium">{participant.trip.title}</p>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <MapPin className="h-3 w-3" />
+                                {participant.trip.destination}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(participant.trip.departure_date), "dd MMM yyyy", { locale: it })}
+                                {" - "}
+                                {format(new Date(participant.trip.return_date), "dd MMM yyyy", { locale: it })}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-2 border-t">
+                            <Badge variant="outline" className="text-muted-foreground">
+                              Nessun viaggio associato
                             </Badge>
                           </div>
-                          
-                          <div className="space-y-1">
-                            <p className="font-medium">{participant.trip.title}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-3 w-3" />
-                              {participant.trip.destination}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(participant.trip.departure_date), "dd MMM yyyy", { locale: it })}
-                              {" - "}
-                              {format(new Date(participant.trip.return_date), "dd MMM yyyy", { locale: it })}
-                            </div>
-                          </div>
-                        </div>
+                        )}
 
                         {hasMultipleTrips && (
                           <details className="pt-2">
@@ -230,15 +237,15 @@ export default function Partecipanti() {
                               Mostra storico viaggi ({tripHistory.length})
                             </summary>
                             <div className="mt-3 space-y-2 pl-4 border-l-2 border-primary/20">
-                              {tripHistory.map((trip, index) => (
+                              {tripHistory.filter(t => t.trip).map((trip, index) => (
                                 <div key={trip.id} className="text-sm">
                                   <div className="flex items-center gap-2">
                                     <Badge variant="outline" className="text-xs">
-                                      {format(new Date(trip.trip.departure_date), "MMM yyyy", { locale: it })}
+                                      {format(new Date(trip.trip!.departure_date), "MMM yyyy", { locale: it })}
                                     </Badge>
-                                    <span className="font-medium">{trip.trip.title}</span>
+                                    <span className="font-medium">{trip.trip!.title}</span>
                                   </div>
-                                  <p className="text-muted-foreground ml-2">{trip.trip.destination}</p>
+                                  <p className="text-muted-foreground ml-2">{trip.trip!.destination}</p>
                                 </div>
                               ))}
                             </div>
@@ -246,15 +253,17 @@ export default function Partecipanti() {
                         )}
                       </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/viaggi/${participant.trip.id}`)}
-                        className="shrink-0"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Vedi Viaggio
-                      </Button>
+                      {participant.trip && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/viaggi/${participant.trip!.id}`)}
+                          className="shrink-0"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Vedi Viaggio
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
