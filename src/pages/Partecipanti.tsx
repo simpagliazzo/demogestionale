@@ -51,6 +51,7 @@ export default function Partecipanti() {
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
   const [participants, setParticipants] = useState<ParticipantWithTrip[]>([]);
+  const [blacklistedNames, setBlacklistedNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [editParticipant, setEditParticipant] = useState<ParticipantWithTrip | null>(null);
@@ -58,7 +59,29 @@ export default function Partecipanti() {
 
   useEffect(() => {
     loadParticipants();
+    loadBlacklist();
   }, []);
+
+  const loadBlacklist = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("blacklist")
+        .select("full_name");
+      
+      if (error) {
+        console.error("Errore caricamento blacklist:", error);
+        return;
+      }
+      
+      setBlacklistedNames((data || []).map(b => b.full_name.toLowerCase()));
+    } catch (error) {
+      console.error("Errore caricamento blacklist:", error);
+    }
+  };
+
+  const isInBlacklist = (name: string) => {
+    return blacklistedNames.includes(name.toLowerCase());
+  };
 
   const loadParticipants = async () => {
     try {
@@ -180,6 +203,11 @@ export default function Partecipanti() {
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-3">
                           <h3 className="font-semibold text-lg">{participant.full_name}</h3>
+                          {isInBlacklist(participant.full_name) && (
+                            <Badge variant="destructive" className="text-xs font-bold uppercase">
+                              Blacklist
+                            </Badge>
+                          )}
                           {hasMultipleTrips && (
                             <Badge variant="secondary" className="text-xs">
                               {tripHistory.length} viaggi
@@ -313,7 +341,10 @@ export default function Partecipanti() {
         participant={blacklistParticipant}
         open={!!blacklistParticipant}
         onOpenChange={(open) => !open && setBlacklistParticipant(null)}
-        onSuccess={loadParticipants}
+        onSuccess={() => {
+          loadParticipants();
+          loadBlacklist();
+        }}
       />
     </div>
   );
