@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +15,8 @@ import { useAuth } from "@/lib/auth-context";
 import ParticipantAutocomplete from "@/components/ParticipantAutocomplete";
 import { ExistingParticipant } from "@/hooks/use-participant-search";
 import { useActivityLog } from "@/hooks/use-activity-log";
-
+import { AlertTriangle } from "lucide-react";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
   date_of_birth: z.string().optional(),
@@ -52,6 +53,7 @@ export default function AddParticipantDialog({
   const [numParticipants, setNumParticipants] = useState<number | null>(null);
   const [nextGroupNumber, setNextGroupNumber] = useState<number>(1);
   const [useExistingGroup, setUseExistingGroup] = useState<boolean>(false);
+  const [blacklistAlert, setBlacklistAlert] = useState<{ names: string[]; reasons: { [key: string]: string | null } } | null>(null);
 
   const isDayTrip = tripType === "day_trip";
 
@@ -131,28 +133,36 @@ export default function AddParticipantDialog({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // Verifica se qualche partecipante è in blacklist
+      // Verifica se qualche partecipante è in blacklist (case-insensitive con ilike)
       const participantNames = values.participants.map(p => p.full_name.trim().toLowerCase());
       
-      const { data: blacklistEntries, error: blacklistError } = await supabase
+      // Recupera tutta la blacklist per fare un confronto case-insensitive
+      const { data: allBlacklist, error: blacklistError } = await supabase
         .from("blacklist")
-        .select("full_name")
-        .in("full_name", values.participants.map(p => p.full_name.trim()));
+        .select("full_name, reason");
 
       if (blacklistError) {
         console.error("Errore verifica blacklist:", blacklistError);
-      } else if (blacklistEntries && blacklistEntries.length > 0) {
-        // Controllo case-insensitive
-        const blacklistedNames = blacklistEntries
-          .map(b => b.full_name.toLowerCase())
-          .filter(name => participantNames.includes(name));
+      } else if (allBlacklist && allBlacklist.length > 0) {
+        // Trova i nomi che matchano (case-insensitive)
+        const matchedBlacklist = allBlacklist.filter(b => 
+          participantNames.includes(b.full_name.toLowerCase())
+        );
         
-        if (blacklistedNames.length > 0) {
-          const matchedOriginal = values.participants
-            .filter(p => blacklistedNames.includes(p.full_name.trim().toLowerCase()))
+        if (matchedBlacklist.length > 0) {
+          const matchedNames = values.participants
+            .filter(p => matchedBlacklist.some(b => b.full_name.toLowerCase() === p.full_name.trim().toLowerCase()))
             .map(p => p.full_name);
           
-          toast.error(`Impossibile aggiungere: ${matchedOriginal.join(", ")} è presente nella blacklist`);
+          const reasons: { [key: string]: string | null } = {};
+          matchedBlacklist.forEach(b => {
+            const originalName = values.participants.find(p => p.full_name.trim().toLowerCase() === b.full_name.toLowerCase())?.full_name;
+            if (originalName) {
+              reasons[originalName] = b.reason;
+            }
+          });
+          
+          setBlacklistAlert({ names: matchedNames, reasons });
           setIsSubmitting(false);
           return;
         }
@@ -466,6 +476,47 @@ export default function AddParticipantDialog({
           </form>
         )}
       </DialogContent>
+
+      {/* Alert dialog per blacklist */}
+      <AlertDialog open={!!blacklistAlert} onOpenChange={(open) => !open && setBlacklistAlert(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-6 w-6" />
+              ATTENZIONE - BLACKLIST
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 pt-2">
+                <p className="text-base font-medium text-foreground">
+                  Impossibile procedere con l'iscrizione!
+                </p>
+                {blacklistAlert?.names.map((name) => (
+                  <div key={name} className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                    <p className="font-semibold text-destructive">{name}</p>
+                    {blacklistAlert.reasons[name] && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <span className="font-medium">Motivazione:</span> {blacklistAlert.reasons[name]}
+                      </p>
+                    )}
+                    {!blacklistAlert.reasons[name] && (
+                      <p className="text-sm text-muted-foreground mt-1 italic">
+                        Nessuna motivazione specificata
+                      </p>
+                    )}
+                  </div>
+                ))}
+                <p className="text-sm text-muted-foreground">
+                  Questo nominativo è stato inserito nella blacklist e non può prenotare.
+                  Solo un amministratore può rimuoverlo dalla blacklist.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Chiudi</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
