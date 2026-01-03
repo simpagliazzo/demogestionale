@@ -131,6 +131,33 @@ export default function AddParticipantDialog({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
+      // Verifica se qualche partecipante è in blacklist
+      const participantNames = values.participants.map(p => p.full_name.trim().toLowerCase());
+      
+      const { data: blacklistEntries, error: blacklistError } = await supabase
+        .from("blacklist")
+        .select("full_name")
+        .in("full_name", values.participants.map(p => p.full_name.trim()));
+
+      if (blacklistError) {
+        console.error("Errore verifica blacklist:", blacklistError);
+      } else if (blacklistEntries && blacklistEntries.length > 0) {
+        // Controllo case-insensitive
+        const blacklistedNames = blacklistEntries
+          .map(b => b.full_name.toLowerCase())
+          .filter(name => participantNames.includes(name));
+        
+        if (blacklistedNames.length > 0) {
+          const matchedOriginal = values.participants
+            .filter(p => blacklistedNames.includes(p.full_name.trim().toLowerCase()))
+            .map(p => p.full_name);
+          
+          toast.error(`Impossibile aggiungere: ${matchedOriginal.join(", ")} è presente nella blacklist`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Determina il numero di gruppo da usare
       let groupNum: number;
       if (useExistingGroup && values.group_number) {
