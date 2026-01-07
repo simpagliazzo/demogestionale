@@ -125,94 +125,96 @@ export default function PaymentReceiptDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <span>Ricevuta Pagamento</span>
             <Badge variant="outline">{PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type}</Badge>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Contenuto stampabile */}
-        <div ref={printRef} className="space-y-4 print:p-8">
-          {/* Header con logo/titolo - visibile solo in stampa */}
-          <div className="hidden print:block text-center border-b pb-4 mb-4">
-            <h1 className="text-2xl font-bold">RICEVUTA DI PAGAMENTO</h1>
-            <p className="text-sm text-muted-foreground mt-1">Documento non valido ai fini fiscali</p>
-          </div>
+        {/* Contenuto scrollabile */}
+        <div className="flex-1 overflow-y-auto pr-2">
+          <div ref={printRef} className="space-y-4 print:p-8">
+            {/* Header con logo/titolo - visibile solo in stampa */}
+            <div className="hidden print:block text-center border-b pb-4 mb-4">
+              <h1 className="text-2xl font-bold">RICEVUTA DI PAGAMENTO</h1>
+              <p className="text-sm text-muted-foreground mt-1">Documento non valido ai fini fiscali</p>
+            </div>
 
-          {/* Info Ricevuta */}
-          <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">Data: {paymentDate}</p>
-                <p className="text-3xl font-bold text-primary">€{payment.amount.toFixed(2)}</p>
-                <div className="flex justify-center gap-2 flex-wrap">
-                  <Badge>{PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type}</Badge>
-                  <Badge variant="secondary">
-                    {PAYMENT_METHOD_LABELS[payment.payment_method || ""] || payment.payment_method || "N/D"}
-                  </Badge>
+            {/* Info Ricevuta */}
+            <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">Data: {paymentDate}</p>
+                  <p className="text-3xl font-bold text-primary">€{payment.amount.toFixed(2)}</p>
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    <Badge>{PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type}</Badge>
+                    <Badge variant="secondary">
+                      {PAYMENT_METHOD_LABELS[payment.payment_method || ""] || payment.payment_method || "N/D"}
+                    </Badge>
+                  </div>
+                  {payment.notes && (
+                    <p className="text-sm text-muted-foreground italic mt-2">"{payment.notes}"</p>
+                  )}
                 </div>
-                {payment.notes && (
-                  <p className="text-sm text-muted-foreground italic mt-2">"{payment.notes}"</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Info Partecipante */}
-          <Card>
-            <CardContent className="pt-4">
-              <h3 className="font-semibold text-sm text-muted-foreground mb-2">INTESTATARIO</h3>
-              <p className="text-lg font-bold">{participantName}</p>
-              {participantPhone && <p className="text-sm text-muted-foreground">{participantPhone}</p>}
-            </CardContent>
-          </Card>
+            {/* Info Partecipante */}
+            <Card>
+              <CardContent className="pt-4">
+                <h3 className="font-semibold text-sm text-muted-foreground mb-2">INTESTATARIO</h3>
+                <p className="text-lg font-bold">{participantName}</p>
+                {participantPhone && <p className="text-sm text-muted-foreground">{participantPhone}</p>}
+              </CardContent>
+            </Card>
 
-          {/* Info Viaggio */}
-          <Card>
-            <CardContent className="pt-4">
-              <h3 className="font-semibold text-sm text-muted-foreground mb-2">VIAGGIO</h3>
-              <p className="font-bold">{tripTitle}</p>
-              <p className="text-sm text-muted-foreground">{tripDestination}</p>
-              <p className="text-sm">
-                {format(new Date(tripDepartureDate), "d MMM", { locale: it })} - {format(new Date(tripReturnDate), "d MMM yyyy", { locale: it })}
-              </p>
-            </CardContent>
-          </Card>
+            {/* Info Viaggio */}
+            <Card>
+              <CardContent className="pt-4">
+                <h3 className="font-semibold text-sm text-muted-foreground mb-2">VIAGGIO</h3>
+                <p className="font-bold">{tripTitle}</p>
+                <p className="text-sm text-muted-foreground">{tripDestination}</p>
+                <p className="text-sm">
+                  {format(new Date(tripDepartureDate), "d MMM", { locale: it })} - {format(new Date(tripReturnDate), "d MMM yyyy", { locale: it })}
+                </p>
+              </CardContent>
+            </Card>
 
-          {/* Riepilogo Pagamenti */}
-          <Card className="bg-muted/50">
-            <CardContent className="pt-4">
-              <h3 className="font-semibold text-sm text-muted-foreground mb-3">RIEPILOGO</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Totale viaggio</span>
-                  <span className="font-semibold">€{totalPrice.toFixed(2)}</span>
+            {/* Riepilogo Pagamenti */}
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <h3 className="font-semibold text-sm text-muted-foreground mb-3">RIEPILOGO</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Totale viaggio</span>
+                    <span className="font-semibold">€{totalPrice.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-600">
+                    <span>Totale pagato</span>
+                    <span className="font-semibold">€{totalPaid.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span className="font-bold">Saldo residuo</span>
+                    <span className={`font-bold ${balance > 0 ? "text-amber-600" : "text-green-600"}`}>
+                      {balance > 0 ? `€${balance.toFixed(2)}` : "SALDATO ✓"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-green-600">
-                  <span>Totale pagato</span>
-                  <span className="font-semibold">€{totalPaid.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between border-t pt-2">
-                  <span className="font-bold">Saldo residuo</span>
-                  <span className={`font-bold ${balance > 0 ? "text-amber-600" : "text-green-600"}`}>
-                    {balance > 0 ? `€${balance.toFixed(2)}` : "SALDATO ✓"}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Disclaimer - visibile solo in stampa */}
-          <div className="hidden print:block text-center text-xs text-muted-foreground border-t pt-4 mt-6">
-            <p>Documento proforma - Non valido ai fini fiscali</p>
-            <p className="mt-1">Stampato il {format(new Date(), "d MMMM yyyy", { locale: it })}</p>
+            {/* Disclaimer - visibile solo in stampa */}
+            <div className="hidden print:block text-center text-xs text-muted-foreground border-t pt-4 mt-6">
+              <p>Documento proforma - Non valido ai fini fiscali</p>
+              <p className="mt-1">Stampato il {format(new Date(), "d MMMM yyyy", { locale: it })}</p>
+            </div>
           </div>
         </div>
 
-        {/* Azioni */}
-        <div className="flex gap-2 mt-4 print:hidden">
+        {/* Azioni - sempre visibili */}
+        <div className="flex gap-2 pt-4 border-t print:hidden flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             <X className="h-4 w-4 mr-2" />
             Chiudi
