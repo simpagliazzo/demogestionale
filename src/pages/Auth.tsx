@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -13,17 +13,38 @@ import { Plane } from "lucide-react";
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetMode, setResetMode] = useState(false);
+  const [updatePasswordMode, setUpdatePasswordMode] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    if (user) {
+    // Controlla se l'utente arriva da un link di recupero password
+    const checkRecoveryToken = async () => {
+      // Supabase gestisce automaticamente il token dall'URL hash
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+      
+      if (type === 'recovery' && accessToken) {
+        setUpdatePasswordMode(true);
+        toast.info("Inserisci la tua nuova password");
+      }
+    };
+    
+    checkRecoveryToken();
+  }, []);
+
+  useEffect(() => {
+    // Non reindirizzare se siamo in modalità aggiornamento password
+    if (user && !updatePasswordMode) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, navigate, updatePasswordMode]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +125,45 @@ export default function Auth() {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast.error("Le password non corrispondono");
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast.error("La password deve essere di almeno 6 caratteri");
+      return;
+    }
+    
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password aggiornata con successo!");
+      setUpdatePasswordMode(false);
+      setPassword("");
+      setConfirmPassword("");
+      
+      // Pulisci l'URL dal token
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      navigate("/");
+    } catch (error: any) {
+      console.error("Errore durante l'aggiornamento della password:", error);
+      toast.error(error.message || "Errore durante l'aggiornamento della password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-secondary to-accent p-4">
       <div className="w-full max-w-md">
@@ -119,12 +179,50 @@ export default function Auth() {
 
         <Card className="shadow-2xl border-0">
           <CardHeader>
-            <CardTitle>Benvenuto</CardTitle>
+            <CardTitle>
+              {updatePasswordMode ? "Reimposta Password" : "Benvenuto"}
+            </CardTitle>
             <CardDescription>
-              Accedi al tuo account o registrati per iniziare
+              {updatePasswordMode 
+                ? "Inserisci la tua nuova password" 
+                : "Accedi al tuo account o registrati per iniziare"}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {updatePasswordMode ? (
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nuova Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Conferma Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  La password deve essere di almeno 6 caratteri.
+                </p>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Aggiornamento..." : "Aggiorna Password"}
+                </Button>
+              </form>
+            ) : (
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Accedi</TabsTrigger>
@@ -241,6 +339,7 @@ export default function Auth() {
                 </form>
               </TabsContent>
             </Tabs>
+            )}
           </CardContent>
         </Card>
       </div>
