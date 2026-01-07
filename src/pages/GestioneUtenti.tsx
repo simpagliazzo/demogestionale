@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole, UserRole } from "@/hooks/use-user-role";
+import { useAuth } from "@/lib/auth-context";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Users, Shield, UserCheck, UserX, Loader2, Settings } from "lucide-react";
+import { Users, Shield, UserCheck, UserX, Loader2, Settings, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { RolePermissionsDialog } from "@/components/RolePermissionsDialog";
@@ -37,6 +48,7 @@ interface UserWithRole {
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: "Super Admin",
   admin: "Amministratore",
   agente: "Agente",
   accompagnatore: "Accompagnatore",
@@ -44,6 +56,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 const ROLE_COLORS: Record<UserRole, string> = {
+  super_admin: "bg-purple-500/10 text-purple-700 border-purple-200",
   admin: "bg-red-500/10 text-red-700 border-red-200",
   agente: "bg-blue-500/10 text-blue-700 border-blue-200",
   accompagnatore: "bg-green-500/10 text-green-700 border-green-200",
@@ -51,13 +64,17 @@ const ROLE_COLORS: Record<UserRole, string> = {
 };
 
 export default function GestioneUtenti() {
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, isSuperAdmin, role: currentUserRole, loading: roleLoading } = useUserRole();
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -147,6 +164,55 @@ export default function GestioneUtenti() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!userToDelete || !isSuperAdmin) return;
+    
+    setDeleting(userToDelete.id);
+    try {
+      // Elimina prima il ruolo se esiste
+      if (userToDelete.role_id) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("id", userToDelete.role_id);
+        if (roleError) throw roleError;
+      }
+      
+      // Elimina il profilo (la cascade eliminerà anche i dati correlati)
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", userToDelete.id);
+      
+      if (profileError) throw profileError;
+      
+      toast.success(`Utente ${userToDelete.full_name} eliminato con successo`);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      loadUsers();
+    } catch (error) {
+      console.error("Errore eliminazione utente:", error);
+      toast.error("Errore nell'eliminazione dell'utente");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const openDeleteDialog = (user: UserWithRole) => {
+    // Non permettere di eliminare se stessi
+    if (user.id === currentUser?.id) {
+      toast.error("Non puoi eliminare il tuo stesso account");
+      return;
+    }
+    // Non permettere agli admin normali di eliminare super_admin
+    if (user.role === "super_admin" && currentUserRole !== "super_admin") {
+      toast.error("Solo un Super Admin può eliminare un altro Super Admin");
+      return;
+    }
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
   if (roleLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -188,16 +254,16 @@ export default function GestioneUtenti() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            {(["admin", "agente", "accompagnatore", "cliente"] as UserRole[]).map((role) => (
+            {(["super_admin", "admin", "agente", "accompagnatore", "cliente"] as UserRole[]).map((role) => (
               <Button
                 key={role}
-                variant={role === "admin" ? "secondary" : "outline"}
+                variant={(role === "admin" || role === "super_admin") ? "secondary" : "outline"}
                 onClick={() => openPermissionsDialog(role)}
                 className="gap-2"
               >
                 <Settings className="h-4 w-4" />
                 {ROLE_LABELS[role]}
-                {role === "admin" && <Badge variant="secondary" className="ml-1">Tutti</Badge>}
+                {(role === "admin" || role === "super_admin") && <Badge variant="secondary" className="ml-1">Tutti</Badge>}
               </Button>
             ))}
           </div>
@@ -287,6 +353,7 @@ export default function GestioneUtenti() {
                           )}
                         </SelectTrigger>
                         <SelectContent>
+                          {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                           <SelectItem value="admin">Amministratore</SelectItem>
                           <SelectItem value="agente">Agente</SelectItem>
                           <SelectItem value="accompagnatore">Accompagnatore</SelectItem>
@@ -316,6 +383,7 @@ export default function GestioneUtenti() {
                 <TableHead>Ruolo Attuale</TableHead>
                 <TableHead>Registrato il</TableHead>
                 <TableHead>Modifica Ruolo</TableHead>
+                {isSuperAdmin && <TableHead>Azioni</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -352,6 +420,7 @@ export default function GestioneUtenti() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Nessun ruolo</SelectItem>
+                        {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                         <SelectItem value="admin">Amministratore</SelectItem>
                         <SelectItem value="agente">Agente</SelectItem>
                         <SelectItem value="accompagnatore">Accompagnatore</SelectItem>
@@ -359,12 +428,60 @@ export default function GestioneUtenti() {
                       </SelectContent>
                     </Select>
                   </TableCell>
+                  {isSuperAdmin && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteDialog(user)}
+                        disabled={deleting === user.id || user.id === currentUser?.id}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        {deleting === user.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      {/* Dialog conferma eliminazione */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">
+              Eliminare l'utente?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare definitivamente l'utente <strong>{userToDelete?.full_name}</strong>.
+              <br /><br />
+              Questa azione è irreversibile e rimuoverà tutti i dati associati all'utente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={!!deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
