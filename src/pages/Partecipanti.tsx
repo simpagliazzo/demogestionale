@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Calendar, Eye, Edit, Ban, UserPlus } from "lucide-react";
+import { Search, MapPin, Calendar, Eye, Edit, Ban, UserPlus, Merge } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import EditParticipantStandaloneDialog from "@/components/EditParticipantStandaloneDialog";
 import AddToBlacklistDialog from "@/components/AddToBlacklistDialog";
 import AddParticipantStandaloneDialog from "@/components/AddParticipantStandaloneDialog";
+import MergeParticipantsDialog from "@/components/MergeParticipantsDialog";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 
 interface ParticipantWithTrip {
@@ -60,6 +61,7 @@ export default function Partecipanti() {
   const [editParticipant, setEditParticipant] = useState<ParticipantWithTrip | null>(null);
   const [blacklistParticipant, setBlacklistParticipant] = useState<ParticipantWithTrip | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [mergeParticipants, setMergeParticipants] = useState<ParticipantWithTrip[]>([]);
 
   useEffect(() => {
     loadParticipants();
@@ -149,6 +151,13 @@ export default function Partecipanti() {
     );
   };
 
+  const handleMergeClick = (participantName: string) => {
+    const duplicates = participants.filter(
+      p => p.full_name.toLowerCase() === participantName.toLowerCase()
+    );
+    setMergeParticipants(duplicates);
+  };
+
   const filteredParticipants = getFilteredParticipants();
 
   if (loading) {
@@ -228,8 +237,14 @@ export default function Partecipanti() {
                             </Badge>
                           )}
                           {hasMultipleTrips && (
-                            <Badge variant="secondary" className="text-xs">
-                              {tripHistory.length} viaggi
+                            <Badge 
+                              variant="secondary" 
+                              className="text-xs cursor-pointer hover:bg-yellow-200"
+                              onClick={() => handleMergeClick(participant.full_name)}
+                              title="Clicca per unire i record duplicati"
+                            >
+                              <Merge className="h-3 w-3 mr-1" />
+                              {tripHistory.length} record
                             </Badge>
                           )}
                         </div>
@@ -373,6 +388,13 @@ export default function Partecipanti() {
       <AddParticipantStandaloneDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
+        onSuccess={loadParticipants}
+      />
+
+      <MergeParticipantsDialog
+        participants={mergeParticipants}
+        open={mergeParticipants.length > 1}
+        onOpenChange={(open) => !open && setMergeParticipants([])}
         onSuccess={loadParticipants}
       />
     </div>
