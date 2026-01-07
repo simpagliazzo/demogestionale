@@ -5,12 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, FileText, Trash2, Download, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/use-user-role";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface TripFileUploadProps {
   tripId: string;
@@ -25,8 +19,6 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
   const [files, setFiles] = useState<TripFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState<string>("");
   const { isAdmin, isAgent } = useUserRole();
 
   useEffect(() => {
@@ -133,20 +125,11 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
       if (error) throw error;
 
       const url = URL.createObjectURL(data);
-      setPreviewUrl(url);
-      setPreviewFileName(formatFileName(fileName));
+      window.open(url, '_blank');
     } catch (error) {
       console.error("Errore preview:", error);
       toast.error("Errore nell'apertura del documento");
     }
-  };
-
-  const closePreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setPreviewUrl(null);
-    setPreviewFileName("");
   };
 
   const formatFileName = (name: string) => {
@@ -154,7 +137,6 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
   };
 
   return (
-    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
@@ -246,23 +228,5 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
         )}
       </CardContent>
     </Card>
-
-    <Dialog open={!!previewUrl} onOpenChange={(open) => !open && closePreview()}>
-      <DialogContent className="max-w-4xl h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>{previewFileName}</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 h-full min-h-0">
-          {previewUrl && (
-            <iframe
-              src={previewUrl}
-              className="w-full h-full rounded border"
-              title={previewFileName}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-    </>
   );
 }
