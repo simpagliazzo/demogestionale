@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText, Trash2, Download, Loader2, Eye } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Loader2, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/use-user-role";
 
@@ -19,6 +19,8 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
   const [files, setFiles] = useState<TripFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string>("");
   const { isAdmin, isAgent } = useUserRole();
 
   useEffect(() => {
@@ -120,21 +122,25 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
     try {
       const { data, error } = await supabase.storage
         .from("trip-files")
-        .createSignedUrl(`${tripId}/${fileName}`, 3600);
+        .download(`${tripId}/${fileName}`);
 
       if (error) throw error;
 
-      const link = document.createElement('a');
-      link.href = data.signedUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const url = URL.createObjectURL(data);
+      setPreviewUrl(url);
+      setPreviewFileName(formatFileName(fileName));
     } catch (error) {
       console.error("Errore preview:", error);
       toast.error("Errore nell'apertura del documento");
     }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewFileName("");
   };
 
   const formatFileName = (name: string) => {
@@ -142,6 +148,7 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
@@ -233,5 +240,32 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
         )}
       </CardContent>
     </Card>
+
+    {/* PDF Preview Overlay */}
+    {previewUrl && (
+      <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
+        <div className="flex items-center justify-between p-4 bg-background border-b">
+          <h3 className="font-semibold truncate">{previewFileName}</h3>
+          <Button variant="ghost" size="icon" onClick={closePreview}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        <div className="flex-1 p-4">
+          <object
+            data={previewUrl}
+            type="application/pdf"
+            className="w-full h-full rounded"
+          >
+            <p className="text-white text-center p-8">
+              Il tuo browser non supporta la visualizzazione PDF.{" "}
+              <a href={previewUrl} download className="underline">
+                Scarica il file
+              </a>
+            </p>
+          </object>
+        </div>
+      </div>
+    )}
+  </>
   );
 }
