@@ -250,19 +250,12 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="flex-1 p-4">
-          <object
-            data={previewUrl}
+        <div className="flex-1 p-4 overflow-auto">
+          <embed
+            src={previewUrl + "#toolbar=1&navpanes=0"}
             type="application/pdf"
-            className="w-full h-full rounded"
-          >
-            <p className="text-white text-center p-8">
-              Il tuo browser non supporta la visualizzazione PDF.{" "}
-              <a href={previewUrl} download className="underline">
-                Scarica il file
-              </a>
-            </p>
-          </object>
+            className="w-full h-full min-h-[70vh] rounded bg-white"
+          />
         </div>
       </div>
     )}
