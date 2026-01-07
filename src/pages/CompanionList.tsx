@@ -16,6 +16,17 @@ interface Trip {
   single_room_supplement: number;
 }
 
+interface Guide {
+  id: string;
+  full_name: string;
+  phone: string | null;
+}
+
+interface TripGuide {
+  id: string;
+  guide?: Guide;
+}
+
 interface Participant {
   id: string;
   full_name: string;
@@ -46,6 +57,7 @@ export default function CompanionList() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
+  const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,6 +107,24 @@ export default function CompanionList() {
 
         setSeatAssignments(seatsData || []);
       }
+
+      // Carica guide del viaggio
+      const { data: tripGuidesData } = await supabase
+        .from("trip_guides")
+        .select(`
+          id,
+          guides:guide_id (
+            id,
+            full_name,
+            phone
+          )
+        `)
+        .eq("trip_id", id);
+
+      setTripGuides((tripGuidesData || []).map((tg: any) => ({
+        id: tg.id,
+        guide: tg.guides
+      })));
     } catch (error) {
       console.error("Errore:", error);
     } finally {
@@ -262,6 +292,17 @@ export default function CompanionList() {
         </p>
         {trip.companion_name && (
           <p className="text-sm font-medium mt-2">Accompagnatore: {trip.companion_name}</p>
+        )}
+        {tripGuides.length > 0 && (
+          <p className="text-sm font-medium mt-1">
+            Guide: {tripGuides.map((tg, index) => (
+              <span key={tg.id}>
+                {index > 0 && ", "}
+                {tg.guide?.full_name}
+                {tg.guide?.phone && ` (Tel: ${tg.guide.phone})`}
+              </span>
+            ))}
+          </p>
         )}
         <h2 className="text-xl font-semibold mt-4">LISTA ACCOMPAGNATORE</h2>
       </div>
