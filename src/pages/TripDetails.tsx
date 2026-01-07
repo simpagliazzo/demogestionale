@@ -895,65 +895,63 @@ export default function TripDetails() {
             </div>
 
             {/* Guide */}
-            {trip?.trip_type !== 'day_trip' && (
-              <div className="pt-3 border-t">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Guide ({tripGuides.length})</p>
-                {(isAdmin || isAgent) ? (
-                  <div className="space-y-2">
-                    {tripGuides.map((tg) => (
-                      <div key={tg.id} className="p-2 border rounded-lg bg-muted/50 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm">{tg.guide?.full_name}</p>
-                          {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-destructive hover:text-destructive"
-                          onClick={() => removeGuideFromTrip(tg.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+            <div className="pt-3 border-t">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Guide ({tripGuides.length})</p>
+              {(isAdmin || isAgent) ? (
+                <div className="space-y-2">
+                  {tripGuides.map((tg) => (
+                    <div key={tg.id} className="p-2 border rounded-lg bg-muted/50 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{tg.guide?.full_name}</p>
+                        {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
                       </div>
-                    ))}
-                    
-                    {availableGuides.filter(g => !tripGuides.some(tg => tg.guide_id === g.id)).length > 0 && (
-                      <Select onValueChange={(value) => addGuideToTrip(value)}>
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="+ Aggiungi guida..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableGuides
-                            .filter(g => !tripGuides.some(tg => tg.guide_id === g.id))
-                            .map((guide) => (
-                              <SelectItem key={guide.id} value={guide.id}>
-                                {guide.full_name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    
-                    {tripGuides.length === 0 && availableGuides.length === 0 && (
-                      <p className="text-xs text-muted-foreground">Nessuna guida disponibile. Creane una nella sezione "Accompagnatori e Guide".</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {tripGuides.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Nessuna guida assegnata</p>
-                    ) : (
-                      tripGuides.map((tg) => (
-                        <div key={tg.id}>
-                          <p className="font-medium text-sm">{tg.guide?.full_name}</p>
-                          {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={() => removeGuideFromTrip(tg.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {availableGuides.filter(g => !tripGuides.some(tg => tg.guide_id === g.id)).length > 0 && (
+                    <Select onValueChange={(value) => addGuideToTrip(value)}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="+ Aggiungi guida..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableGuides
+                          .filter(g => !tripGuides.some(tg => tg.guide_id === g.id))
+                          .map((guide) => (
+                            <SelectItem key={guide.id} value={guide.id}>
+                              {guide.full_name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {tripGuides.length === 0 && availableGuides.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nessuna guida disponibile. Creane una nella sezione "Accompagnatori e Guide".</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {tripGuides.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nessuna guida assegnata</p>
+                  ) : (
+                    tripGuides.map((tg) => (
+                      <div key={tg.id}>
+                        <p className="font-medium text-sm">{tg.guide?.full_name}</p>
+                        {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
