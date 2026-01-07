@@ -126,30 +126,29 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
         <div className="flex items-center gap-2">
           <input
             type="file"
-            accept=".pdf"
+            accept=".pdf,application/pdf"
             onChange={handleUpload}
             className="hidden"
             id={`doc-upload-${participantId}`}
             disabled={uploading}
           />
-          <label htmlFor={`doc-upload-${participantId}`}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 cursor-pointer h-7 text-xs"
-              asChild
-              disabled={uploading}
-            >
-              <span>
-                {uploading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Upload className="h-3 w-3" />
-                )}
-                Doc. Identità
-              </span>
-            </Button>
-          </label>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 h-7 text-xs"
+            disabled={uploading}
+            onClick={(e) => {
+              e.stopPropagation();
+              document.getElementById(`doc-upload-${participantId}`)?.click();
+            }}
+          >
+            {uploading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Upload className="h-3 w-3" />
+            )}
+            Doc. Identità
+          </Button>
         </div>
       )}
 

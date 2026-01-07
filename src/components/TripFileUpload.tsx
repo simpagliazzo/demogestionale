@@ -133,29 +133,25 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
           <div className="flex items-center gap-2">
             <input
               type="file"
-              accept=".pdf"
+              accept=".pdf,application/pdf"
               onChange={handleUpload}
               className="hidden"
               id="trip-file-upload"
               disabled={uploading}
             />
-            <label htmlFor="trip-file-upload">
-              <Button
-                variant="outline"
-                className="gap-2 cursor-pointer"
-                asChild
-                disabled={uploading}
-              >
-                <span>
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  Carica PDF
-                </span>
-              </Button>
-            </label>
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={uploading}
+              onClick={() => document.getElementById("trip-file-upload")?.click()}
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              Carica PDF
+            </Button>
             <span className="text-xs text-muted-foreground">Max 5MB</span>
           </div>
         )}
