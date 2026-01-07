@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText, Trash2, Download, Loader2, Eye, X } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/use-user-role";
+import { PdfViewer } from "./PdfViewer";
 
 interface TripFileUploadProps {
   tripId: string;
@@ -241,23 +242,13 @@ export function TripFileUpload({ tripId }: TripFileUploadProps) {
       </CardContent>
     </Card>
 
-    {/* PDF Preview Overlay */}
+    {/* PDF Preview */}
     {previewUrl && (
-      <div className="fixed inset-0 z-50 bg-black/80 flex flex-col">
-        <div className="flex items-center justify-between p-4 bg-background border-b">
-          <h3 className="font-semibold truncate">{previewFileName}</h3>
-          <Button variant="ghost" size="icon" onClick={closePreview}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <div className="flex-1 p-4 overflow-auto">
-          <embed
-            src={previewUrl + "#toolbar=1&navpanes=0"}
-            type="application/pdf"
-            className="w-full h-full min-h-[70vh] rounded bg-white"
-          />
-        </div>
-      </div>
+      <PdfViewer
+        url={previewUrl}
+        fileName={previewFileName}
+        onClose={closePreview}
+      />
     )}
   </>
   );
