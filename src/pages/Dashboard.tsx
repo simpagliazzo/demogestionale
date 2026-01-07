@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { CalendarDays, Users, DollarSign, MapPin, Search, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-
+import { TripCalendar } from "@/components/TripCalendar";
 interface DashboardStats {
   totalTrips: number;
   upcomingTrips: number;
@@ -257,6 +257,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <TripCalendar trips={allTrips} />
 
       <Card>
         <CardHeader>
