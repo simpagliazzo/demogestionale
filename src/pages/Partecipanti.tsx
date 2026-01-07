@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { formatNameSurnameFirst } from "@/lib/format-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -131,10 +132,12 @@ export default function Partecipanti() {
       );
     }
     
-    // Ordina alfabeticamente per nome
-    return filtered.sort((a, b) => 
-      a.full_name.localeCompare(b.full_name, 'it', { sensitivity: 'base' })
-    );
+    // Ordina alfabeticamente per cognome (usando formatNameSurnameFirst per estrarre il cognome)
+    return filtered.sort((a, b) => {
+      const aFormatted = formatNameSurnameFirst(a.full_name);
+      const bFormatted = formatNameSurnameFirst(b.full_name);
+      return aFormatted.localeCompare(bFormatted, 'it', { sensitivity: 'base' });
+    });
   };
 
   const getParticipantTripHistory = (participantName: string) => {
