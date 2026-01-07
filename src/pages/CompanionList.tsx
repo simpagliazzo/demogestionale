@@ -27,6 +27,11 @@ interface TripGuide {
   guide?: Guide;
 }
 
+interface TripCompanion {
+  id: string;
+  guide?: Guide;
+}
+
 interface Participant {
   id: string;
   full_name: string;
@@ -58,6 +63,7 @@ export default function CompanionList() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
   const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
+  const [tripCompanions, setTripCompanions] = useState<TripCompanion[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -124,6 +130,24 @@ export default function CompanionList() {
       setTripGuides((tripGuidesData || []).map((tg: any) => ({
         id: tg.id,
         guide: tg.guides
+      })));
+
+      // Carica accompagnatori del viaggio
+      const { data: tripCompanionsData } = await supabase
+        .from("trip_companions")
+        .select(`
+          id,
+          guides:guide_id (
+            id,
+            full_name,
+            phone
+          )
+        `)
+        .eq("trip_id", id);
+
+      setTripCompanions((tripCompanionsData || []).map((tc: any) => ({
+        id: tc.id,
+        guide: tc.guides
       })));
     } catch (error) {
       console.error("Errore:", error);
@@ -290,8 +314,16 @@ export default function CompanionList() {
           {format(new Date(trip.departure_date), "dd MMMM yyyy", { locale: it })} -{" "}
           {format(new Date(trip.return_date), "dd MMMM yyyy", { locale: it })}
         </p>
-        {trip.companion_name && (
-          <p className="text-sm font-medium mt-2">Accompagnatore: {trip.companion_name}</p>
+        {tripCompanions.length > 0 && (
+          <p className="text-sm font-medium mt-2">
+            Accompagnatori: {tripCompanions.map((tc, index) => (
+              <span key={tc.id}>
+                {index > 0 && ", "}
+                {tc.guide?.full_name}
+                {tc.guide?.phone && ` (Tel: ${tc.guide.phone})`}
+              </span>
+            ))}
+          </p>
         )}
         {tripGuides.length > 0 && (
           <p className="text-sm font-medium mt-1">
