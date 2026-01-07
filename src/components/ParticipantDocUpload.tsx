@@ -8,6 +8,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 interface ParticipantDocUploadProps {
   participantId: string;
   participantName: string;
+  dateOfBirth?: string | null;
 }
 
 interface DocFile {
@@ -15,21 +16,40 @@ interface DocFile {
   created_at: string;
 }
 
-export function ParticipantDocUpload({ participantId, participantName }: ParticipantDocUploadProps) {
+// Genera un ID univoco basato sul nome della persona (normalizzato)
+const getPersonKey = (name: string, dateOfBirth?: string | null): string => {
+  const normalizedName = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // rimuove accenti
+    .replace(/[^a-z0-9]/g, "_") // sostituisce caratteri speciali
+    .replace(/_+/g, "_") // rimuove underscore multipli
+    .trim();
+  
+  // Aggiungi data di nascita se disponibile per maggiore univocità
+  const birthSuffix = dateOfBirth ? `_${dateOfBirth.replace(/-/g, "")}` : "";
+  
+  return `${normalizedName}${birthSuffix}`;
+};
+
+export function ParticipantDocUpload({ participantId, participantName, dateOfBirth }: ParticipantDocUploadProps) {
   const [files, setFiles] = useState<DocFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const { isAdmin, isAgent } = useUserRole();
+  
+  // Usa la chiave persona invece dell'ID partecipante
+  const personKey = getPersonKey(participantName, dateOfBirth);
 
   useEffect(() => {
     loadFiles();
-  }, [participantId]);
+  }, [personKey]);
 
   const loadFiles = async () => {
     try {
       const { data, error } = await supabase.storage
         .from("participant-docs")
-        .list(participantId, { sortBy: { column: "created_at", order: "desc" } });
+        .list(personKey, { sortBy: { column: "created_at", order: "desc" } });
 
       if (error) throw error;
       setFiles(data || []);
@@ -59,7 +79,7 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
     setUploading(true);
     try {
       const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${participantId}/${fileName}`;
+      const filePath = `${personKey}/${fileName}`;
 
       const { error } = await supabase.storage
         .from("participant-docs")
@@ -82,7 +102,7 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
     try {
       const { data, error } = await supabase.storage
         .from("participant-docs")
-        .download(`${participantId}/${fileName}`);
+        .download(`${personKey}/${fileName}`);
 
       if (error) throw error;
 
@@ -104,7 +124,7 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
     try {
       const { error } = await supabase.storage
         .from("participant-docs")
-        .remove([`${participantId}/${fileName}`]);
+        .remove([`${personKey}/${fileName}`]);
 
       if (error) throw error;
 

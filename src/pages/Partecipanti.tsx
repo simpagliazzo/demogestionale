@@ -299,7 +299,7 @@ export default function Partecipanti() {
                         )}
 
                         <div className="pt-2">
-                          <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                          <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
                         </div>
                       </div>
 

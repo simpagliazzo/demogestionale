@@ -1126,7 +1126,7 @@ export default function TripDetails() {
                                                 {participant.phone && (
                                                   <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                                                 )}
-                                                <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                                                <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
                                               </div>
                                             </div>
                           );
@@ -1224,7 +1224,7 @@ export default function TripDetails() {
                                                         {participant.phone && (
                                                           <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                                                         )}
-                                                        <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                                                        <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
                                                       </div>
                                                     </div>
                                   );
@@ -1311,7 +1311,7 @@ export default function TripDetails() {
                         {participant.phone && (
                           <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                         )}
-                        <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                        <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
                       </div>
                     </div>
                   );
