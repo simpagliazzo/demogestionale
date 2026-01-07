@@ -169,7 +169,32 @@ export default function GestioneUtenti() {
     
     setDeleting(userToDelete.id);
     try {
-      // Elimina prima il ruolo se esiste
+      // Rimuovi i riferimenti nelle tabelle correlate prima di eliminare il profilo
+      // Imposta created_by a NULL nei partecipanti
+      await supabase
+        .from("participants")
+        .update({ created_by: null })
+        .eq("created_by", userToDelete.id);
+      
+      // Imposta created_by a NULL nei pagamenti
+      await supabase
+        .from("payments")
+        .update({ created_by: null })
+        .eq("created_by", userToDelete.id);
+      
+      // Imposta added_by a NULL nella blacklist
+      await supabase
+        .from("blacklist")
+        .update({ added_by: null })
+        .eq("added_by", userToDelete.id);
+      
+      // Elimina i log di attività dell'utente (o imposta user_id a NULL)
+      await supabase
+        .from("activity_logs")
+        .update({ user_id: null })
+        .eq("user_id", userToDelete.id);
+
+      // Elimina il ruolo se esiste
       if (userToDelete.role_id) {
         const { error: roleError } = await supabase
           .from("user_roles")
@@ -178,7 +203,7 @@ export default function GestioneUtenti() {
         if (roleError) throw roleError;
       }
       
-      // Elimina il profilo (la cascade eliminerà anche i dati correlati)
+      // Elimina il profilo
       const { error: profileError } = await supabase
         .from("profiles")
         .delete()
