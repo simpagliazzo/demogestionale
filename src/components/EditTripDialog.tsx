@@ -437,14 +437,17 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Accompagnatore</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona accompagnatore" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nessuno</SelectItem>
+                        <SelectItem value="none">Nessuno</SelectItem>
                         {accompagnatori.map((g) => (
                           <SelectItem key={g.id} value={g.full_name}>
                             {g.full_name}
@@ -463,14 +466,17 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Guida</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                      value={field.value || "none"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleziona guida" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Nessuno</SelectItem>
+                        <SelectItem value="none">Nessuno</SelectItem>
                         {guideList.map((g) => (
                           <SelectItem key={g.id} value={g.full_name}>
                             {g.full_name}
