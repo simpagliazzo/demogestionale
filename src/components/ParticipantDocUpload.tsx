@@ -154,7 +154,9 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
 
       {loading ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      ) : files.length > 0 && (
+      ) : files.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nessun documento caricato</p>
+      ) : (
         <div className="flex flex-wrap gap-1">
           {files.map((file) => (
             <div
@@ -167,7 +169,10 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
                 variant="ghost"
                 size="icon"
                 className="h-5 w-5 p-0"
-                onClick={() => handleDownload(file.name)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(file.name);
+                }}
               >
                 <Download className="h-3 w-3" />
               </Button>
@@ -176,7 +181,10 @@ export function ParticipantDocUpload({ participantId, participantName }: Partici
                   variant="ghost"
                   size="icon"
                   className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(file.name)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(file.name);
+                  }}
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
