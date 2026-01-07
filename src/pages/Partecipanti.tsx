@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/use-user-role";
 import EditParticipantStandaloneDialog from "@/components/EditParticipantStandaloneDialog";
 import AddToBlacklistDialog from "@/components/AddToBlacklistDialog";
+import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 
 interface ParticipantWithTrip {
   id: string;
@@ -296,6 +297,10 @@ export default function Partecipanti() {
                             </div>
                           </details>
                         )}
+
+                        <div className="pt-2">
+                          <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                        </div>
                       </div>
 
                       <div className="flex flex-col gap-2 shrink-0">
