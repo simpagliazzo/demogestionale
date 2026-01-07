@@ -15,6 +15,7 @@ import { useActivityLog } from "@/hooks/use-activity-log";
 import { FileText, MessageCircle, Receipt } from "lucide-react";
 import PaymentReceiptDialog from "@/components/PaymentReceiptDialog";
 import TripConfirmationDialog from "@/components/TripConfirmationDialog";
+import GenerateUploadLinkButton from "@/components/GenerateUploadLinkButton";
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
   date_of_birth: z.string().optional(),
@@ -683,16 +684,23 @@ export default function EditParticipantDialog({
               </div>
             </div>
             {/* Pulsante Conferma Prenotazione */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmationDialogOpen(true)}
-              className="w-full border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Conferma Prenotazione
-              <MessageCircle className="h-4 w-4 ml-2" />
-            </Button>
+            <div className="flex gap-2">
+              <GenerateUploadLinkButton
+                participantId={participant?.id || ""}
+                participantName={participant?.full_name || ""}
+                participantPhone={participant?.phone}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmationDialogOpen(true)}
+                className="flex-1 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Conferma Prenotazione
+                <MessageCircle className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
           </div>
         </div>
 
