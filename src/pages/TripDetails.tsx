@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import AddParticipantDialog from "@/components/AddParticipantDialog";
 import EditParticipantDialog from "@/components/EditParticipantDialog";
 import { DeleteTripDialog } from "@/components/DeleteTripDialog";
+import EditTripDialog from "@/components/EditTripDialog";
 import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
 import { TripFileUpload } from "@/components/TripFileUpload";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
@@ -125,6 +126,7 @@ export default function TripDetails() {
   const [hotelData, setHotelData] = useState({ name: "", address: "", phone: "" });
   const [participantPayments, setParticipantPayments] = useState<ParticipantPayment[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -590,6 +592,18 @@ export default function TripDetails() {
           </div>
         </div>
         
+        {(isAdmin || isAgent) && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setEditTripDialogOpen(true)}
+            className="gap-2"
+          >
+            <Pencil className="h-4 w-4" />
+            Modifica
+          </Button>
+        )}
+        
         {canDeleteTrips && (
           <Button 
             variant="destructive" 
@@ -602,6 +616,13 @@ export default function TripDetails() {
           </Button>
         )}
       </div>
+
+      <EditTripDialog
+        open={editTripDialogOpen}
+        onOpenChange={setEditTripDialogOpen}
+        onSuccess={loadTripDetails}
+        trip={trip}
+      />
 
       <DeleteTripDialog
         open={deleteDialogOpen}
