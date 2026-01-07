@@ -118,15 +118,22 @@ export default function Partecipanti() {
   };
 
   const getFilteredParticipants = () => {
-    if (!searchQuery) return participants;
+    let filtered = participants;
     
-    const query = searchQuery.toLowerCase();
-    return participants.filter(p => 
-      p.full_name.toLowerCase().includes(query) ||
-      p.email?.toLowerCase().includes(query) ||
-      p.phone?.includes(query) ||
-      p.trip?.title.toLowerCase().includes(query) ||
-      p.trip?.destination.toLowerCase().includes(query)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = participants.filter(p => 
+        p.full_name.toLowerCase().includes(query) ||
+        p.email?.toLowerCase().includes(query) ||
+        p.phone?.includes(query) ||
+        p.trip?.title.toLowerCase().includes(query) ||
+        p.trip?.destination.toLowerCase().includes(query)
+      );
+    }
+    
+    // Ordina alfabeticamente per nome
+    return filtered.sort((a, b) => 
+      a.full_name.localeCompare(b.full_name, 'it', { sensitivity: 'base' })
     );
   };
 
