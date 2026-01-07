@@ -294,25 +294,22 @@ export default function CompanionList() {
             </div>
             <div>
               <p><strong>Accompagnatore:</strong> {trip?.companion_name || "Non assegnato"}</p>
+              {tripGuides.length > 0 && (
+                <div className="mt-1">
+                  <strong>Guide:</strong>
+                  {tripGuides.map((tg, index) => (
+                    <span key={tg.id}>
+                      {index > 0 && ", "}
+                      {tg.guide?.full_name}
+                      {tg.guide?.phone && ` (Tel: ${tg.guide.phone})`}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p><strong>Prezzo:</strong> €{trip?.price.toLocaleString("it-IT")}</p>
               <p><strong>Acconto previsto:</strong> €{expectedDeposit.toFixed(2)}</p>
             </div>
           </div>
-          
-          {/* Guide del viaggio */}
-          {tripGuides.length > 0 && (
-            <div className="mt-4 pt-3 border-t">
-              <p className="font-semibold mb-2">Guide:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {tripGuides.map((tg) => (
-                  <div key={tg.id} className="text-sm">
-                    <span className="font-medium">{tg.guide?.full_name}</span>
-                    {tg.guide?.phone && <span className="text-muted-foreground"> - Tel: {tg.guide.phone}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Hotel del viaggio */}
           {hotels.length > 0 && (

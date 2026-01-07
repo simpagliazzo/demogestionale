@@ -868,13 +868,14 @@ export default function TripDetails() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Accompagnatore
+              Accompagnatore e Guide
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {(isAdmin || isAgent) ? (
-              <div className="space-y-2">
-                <Label htmlFor="companion">Nome Accompagnatore</Label>
+          <CardContent className="space-y-4">
+            {/* Accompagnatore */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Accompagnatore</p>
+              {(isAdmin || isAgent) ? (
                 <div className="flex gap-2">
                   <Input
                     id="companion"
@@ -886,11 +887,72 @@ export default function TripDetails() {
                     <Save className="h-4 w-4" />
                   </Button>
                 </div>
+              ) : (
+                <p className="font-medium">
+                  {companion || "Non ancora assegnato"}
+                </p>
+              )}
+            </div>
+
+            {/* Guide */}
+            {trip?.trip_type !== 'day_trip' && (
+              <div className="pt-3 border-t">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Guide ({tripGuides.length})</p>
+                {(isAdmin || isAgent) ? (
+                  <div className="space-y-2">
+                    {tripGuides.map((tg) => (
+                      <div key={tg.id} className="p-2 border rounded-lg bg-muted/50 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-sm">{tg.guide?.full_name}</p>
+                          {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => removeGuideFromTrip(tg.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    
+                    {availableGuides.filter(g => !tripGuides.some(tg => tg.guide_id === g.id)).length > 0 && (
+                      <Select onValueChange={(value) => addGuideToTrip(value)}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="+ Aggiungi guida..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableGuides
+                            .filter(g => !tripGuides.some(tg => tg.guide_id === g.id))
+                            .map((guide) => (
+                              <SelectItem key={guide.id} value={guide.id}>
+                                {guide.full_name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    
+                    {tripGuides.length === 0 && availableGuides.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nessuna guida disponibile. Creane una nella sezione "Accompagnatori e Guide".</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {tripGuides.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nessuna guida assegnata</p>
+                    ) : (
+                      tripGuides.map((tg) => (
+                        <div key={tg.id}>
+                          <p className="font-medium text-sm">{tg.guide?.full_name}</p>
+                          {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {companion || "Non ancora assegnato"}
-              </p>
             )}
           </CardContent>
         </Card>
@@ -968,76 +1030,6 @@ export default function TripDetails() {
           </Card>
         )}
 
-        {trip?.trip_type !== 'day_trip' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Guide ({tripGuides.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(isAdmin || isAgent) ? (
-                <div className="space-y-4">
-                  {/* Lista guide assegnate */}
-                  {tripGuides.map((tg) => (
-                    <div key={tg.id} className="p-3 border rounded-lg bg-muted/50 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{tg.guide?.full_name}</p>
-                        {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => removeGuideFromTrip(tg.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                  
-                  {/* Select per aggiungere guida */}
-                  {availableGuides.filter(g => !tripGuides.some(tg => tg.guide_id === g.id)).length > 0 && (
-                    <div className="pt-3 border-t">
-                      <Select onValueChange={(value) => addGuideToTrip(value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Aggiungi guida..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableGuides
-                            .filter(g => !tripGuides.some(tg => tg.guide_id === g.id))
-                            .map((guide) => (
-                              <SelectItem key={guide.id} value={guide.id}>
-                                {guide.full_name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  {tripGuides.length === 0 && availableGuides.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nessuna guida disponibile. Creane una nella sezione "Accompagnatori e Guide".</p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {tripGuides.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nessuna guida assegnata</p>
-                  ) : (
-                    tripGuides.map((tg) => (
-                      <div key={tg.id}>
-                        <p className="font-medium">{tg.guide?.full_name}</p>
-                        {tg.guide?.phone && <p className="text-sm text-muted-foreground">Tel: {tg.guide.phone}</p>}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {isAdmin && trip?.trip_type !== 'day_trip' && (
           <Card>
