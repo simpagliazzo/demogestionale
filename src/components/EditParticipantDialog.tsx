@@ -12,7 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useActivityLog } from "@/hooks/use-activity-log";
-
+import { FileText, MessageCircle, Receipt } from "lucide-react";
+import PaymentReceiptDialog from "@/components/PaymentReceiptDialog";
+import TripConfirmationDialog from "@/components/TripConfirmationDialog";
 const participantSchema = z.object({
   full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
   date_of_birth: z.string().optional(),
@@ -60,6 +62,10 @@ interface EditParticipantDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  tripTitle?: string;
+  tripDestination?: string;
+  tripDepartureDate?: string;
+  tripReturnDate?: string;
 }
 
 export default function EditParticipantDialog({
@@ -72,6 +78,10 @@ export default function EditParticipantDialog({
   open,
   onOpenChange,
   onSuccess,
+  tripTitle = "",
+  tripDestination = "",
+  tripDepartureDate = "",
+  tripReturnDate = "",
 }: EditParticipantDialogProps) {
   const { user } = useAuth();
   const { logCreate, logUpdate, logDelete } = useActivityLog();
@@ -83,6 +93,9 @@ export default function EditParticipantDialog({
   const [newPaymentNotes, setNewPaymentNotes] = useState("");
   const [discountType, setDiscountType] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<Payment | null>(null);
+  const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
 
   const {
     register,
@@ -577,14 +590,27 @@ export default function EditParticipantDialog({
                           <p className="text-xs text-muted-foreground mt-1">{payment.notes}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">€{payment.amount.toFixed(2)}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold mr-1">€{payment.amount.toFixed(2)}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPaymentForReceipt(payment);
+                            setReceiptDialogOpen(true);
+                          }}
+                          className="h-7 w-7 p-0"
+                          title="Invia ricevuta"
+                        >
+                          <Receipt className="h-4 w-4 text-green-600" />
+                        </Button>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeletePayment(payment.id)}
-                          className="h-6 w-6 p-0"
+                          className="h-6 w-6 p-0 text-destructive"
                         >
                           ×
                         </Button>
@@ -656,8 +682,52 @@ export default function EditParticipantDialog({
                 </Button>
               </div>
             </div>
+            {/* Pulsante Conferma Prenotazione */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmationDialogOpen(true)}
+              className="w-full border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Conferma Prenotazione
+              <MessageCircle className="h-4 w-4 ml-2" />
+            </Button>
           </div>
         </div>
+
+        {/* Dialog Ricevuta Pagamento */}
+        <PaymentReceiptDialog
+          open={receiptDialogOpen}
+          onOpenChange={setReceiptDialogOpen}
+          payment={selectedPaymentForReceipt}
+          participantName={participant?.full_name || ""}
+          participantPhone={participant?.phone || null}
+          tripTitle={tripTitle}
+          tripDestination={tripDestination}
+          tripDepartureDate={tripDepartureDate}
+          tripReturnDate={tripReturnDate}
+          totalPrice={totalPrice}
+          totalPaid={totalPaid}
+          balance={balance}
+        />
+
+        {/* Dialog Conferma Prenotazione */}
+        <TripConfirmationDialog
+          open={confirmationDialogOpen}
+          onOpenChange={setConfirmationDialogOpen}
+          participantName={participant?.full_name || ""}
+          participantPhone={participant?.phone || null}
+          tripTitle={tripTitle}
+          tripDestination={tripDestination}
+          tripDepartureDate={tripDepartureDate}
+          tripReturnDate={tripReturnDate}
+          totalPrice={totalPrice}
+          payments={payments}
+          roomType={isSingleRoom ? "singola" : null}
+          groupNumber={participant?.group_number}
+          notes={participant?.notes}
+        />
       </DialogContent>
     </Dialog>
   );

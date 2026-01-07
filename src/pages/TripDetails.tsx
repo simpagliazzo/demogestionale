@@ -1340,6 +1340,10 @@ export default function TripDetails() {
         open={editParticipantOpen}
         onOpenChange={setEditParticipantOpen}
         onSuccess={loadTripDetails}
+        tripTitle={trip?.title || ""}
+        tripDestination={trip?.destination || ""}
+        tripDepartureDate={trip?.departure_date || ""}
+        tripReturnDate={trip?.return_date || ""}
       />
     </div>
   );
