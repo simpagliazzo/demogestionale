@@ -17,6 +17,8 @@ import AddParticipantDialog from "@/components/AddParticipantDialog";
 import EditParticipantDialog from "@/components/EditParticipantDialog";
 import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
+import { TripFileUpload } from "@/components/TripFileUpload";
+import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 
 interface Trip {
   id: string;
@@ -616,6 +618,7 @@ export default function TripDetails() {
         </Card>
       )}
 
+      <TripFileUpload tripId={id!} />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card>
@@ -1120,11 +1123,12 @@ export default function TripDetails() {
                                     Saldo: €{remaining.toFixed(2)}
                                   </p>
                                 )}
-                                {participant.phone && (
-                                  <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
-                                )}
-                              </div>
-                            </div>
+                                                {participant.phone && (
+                                                  <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
+                                                )}
+                                                <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                                              </div>
+                                            </div>
                           );
                         })}
                       </div>
@@ -1217,11 +1221,12 @@ export default function TripDetails() {
                                             Saldo: €{remaining.toFixed(2)}
                                           </p>
                                         )}
-                                        {participant.phone && (
-                                          <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
-                                        )}
-                                      </div>
-                                    </div>
+                                                        {participant.phone && (
+                                                          <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
+                                                        )}
+                                                        <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
+                                                      </div>
+                                                    </div>
                                   );
                                 })}
                               </div>
@@ -1306,6 +1311,7 @@ export default function TripDetails() {
                         {participant.phone && (
                           <p className="text-sm text-muted-foreground mt-1">{participant.phone}</p>
                         )}
+                        <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} />
                       </div>
                     </div>
                   );
