@@ -29,6 +29,7 @@ interface RolePermissionsDialogProps {
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: "Super Amministratore",
   admin: "Amministratore",
   agente: "Agente",
   accompagnatore: "Accompagnatore",
@@ -59,7 +60,7 @@ export function RolePermissionsDialog({
   };
 
   const togglePermission = (permission: PermissionType) => {
-    if (role === "admin") {
+    if (role === "admin" || role === "super_admin") {
       toast.error("I permessi dell'amministratore non possono essere modificati");
       return;
     }
@@ -72,7 +73,7 @@ export function RolePermissionsDialog({
   };
 
   const handleSave = async () => {
-    if (role === "admin") {
+    if (role === "admin" || role === "super_admin") {
       toast.error("I permessi dell'amministratore non possono essere modificati");
       return;
     }
@@ -95,7 +96,7 @@ export function RolePermissionsDialog({
         <DialogHeader>
           <DialogTitle>Permessi: {roleName}</DialogTitle>
           <DialogDescription>
-            {role === "admin" 
+            {(role === "admin" || role === "super_admin")
               ? "L'amministratore ha tutti i permessi e non può essere modificato."
               : "Seleziona i permessi da assegnare a questo ruolo."}
           </DialogDescription>
@@ -113,11 +114,11 @@ export function RolePermissionsDialog({
                   id={permission}
                   checked={permissions.includes(permission)}
                   onCheckedChange={() => togglePermission(permission)}
-                  disabled={role === "admin"}
+                  disabled={role === "admin" || role === "super_admin"}
                 />
                 <Label 
                   htmlFor={permission}
-                  className={`cursor-pointer ${role === "admin" ? "text-muted-foreground" : ""}`}
+                  className={`cursor-pointer ${(role === "admin" || role === "super_admin") ? "text-muted-foreground" : ""}`}
                 >
                   {PERMISSION_LABELS[permission]}
                 </Label>
@@ -132,7 +133,7 @@ export function RolePermissionsDialog({
           </Button>
           <Button 
             onClick={handleSave} 
-            disabled={saving || role === "admin"}
+            disabled={saving || role === "admin" || role === "super_admin"}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Salva Permessi

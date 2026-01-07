@@ -108,7 +108,12 @@ export const usePermissions = () => {
 };
 
 // Funzione per caricare i permessi di un ruolo specifico
-export const getRolePermissions = async (role: "admin" | "agente" | "accompagnatore" | "cliente"): Promise<PermissionType[]> => {
+export const getRolePermissions = async (role: "super_admin" | "admin" | "agente" | "accompagnatore" | "cliente"): Promise<PermissionType[]> => {
+  // Super admin e admin hanno tutti i permessi
+  if (role === "super_admin" || role === "admin") {
+    return ALL_PERMISSIONS;
+  }
+
   const { data, error } = await supabase
     .from("role_permissions")
     .select("permission")
@@ -124,7 +129,7 @@ export const getRolePermissions = async (role: "admin" | "agente" | "accompagnat
 
 // Funzione per aggiornare i permessi di un ruolo
 export const updateRolePermissions = async (
-  role: "admin" | "agente" | "accompagnatore" | "cliente", 
+  role: "super_admin" | "admin" | "agente" | "accompagnatore" | "cliente", 
   permissions: PermissionType[]
 ): Promise<boolean> => {
   try {
