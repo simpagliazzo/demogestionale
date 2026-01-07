@@ -1,13 +1,14 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, MessageCircle, X, MapPin, Calendar, Bus, Check } from "lucide-react";
+import { Printer, MessageCircle, X, MapPin, Calendar, Bus, Check, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { toast } from "sonner";
 import { useReactToPrint } from "react-to-print";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Payment {
   amount: number;
@@ -17,6 +18,7 @@ interface Payment {
 interface TripConfirmationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  participantId?: string;
   participantName: string;
   participantPhone: string | null;
   tripTitle: string;
@@ -41,6 +43,7 @@ const ROOM_LABELS: Record<string, string> = {
 export default function TripConfirmationDialog({
   open,
   onOpenChange,
+  participantId,
   participantName,
   participantPhone,
   tripTitle,
@@ -54,6 +57,7 @@ export default function TripConfirmationDialog({
   notes,
 }: TripConfirmationDialogProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
 
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const balance = totalPrice - totalPaid;
@@ -73,7 +77,46 @@ export default function TripConfirmationDialog({
     documentTitle: `Conferma_${participantName.replace(/\s+/g, "_")}_${tripTitle.replace(/\s+/g, "_")}`,
   });
 
-  const handleWhatsApp = () => {
+  // Genera token per upload documenti
+  const generateUploadToken = async (): Promise<string | null> => {
+    if (!participantId) return null;
+
+    try {
+      // Controlla se esiste già un token valido
+      const { data: existingToken } = await supabase
+        .from('upload_tokens')
+        .select('token')
+        .eq('participant_id', participantId)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existingToken) {
+        return existingToken.token;
+      }
+
+      // Genera nuovo token
+      const array = new Uint8Array(24);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+      const { error } = await supabase
+        .from('upload_tokens')
+        .insert({
+          participant_id: participantId,
+          token,
+        });
+
+      if (error) throw error;
+      return token;
+    } catch (err) {
+      console.error('Error generating upload token:', err);
+      return null;
+    }
+  };
+
+  const handleWhatsApp = async () => {
     let phone = participantPhone?.replace(/[^\d]/g, "") || "";
     
     if (!phone) {
@@ -86,6 +129,19 @@ export default function TripConfirmationDialog({
     } else if (phone.length <= 10) {
       phone = "39" + phone;
     }
+
+    setSendingWhatsApp(true);
+
+    // Genera link upload documento
+    let uploadLink = "";
+    if (participantId) {
+      const token = await generateUploadToken();
+      if (token) {
+        uploadLink = `${window.location.origin}/upload-documenti/${token}`;
+      }
+    }
+
+    setSendingWhatsApp(false);
 
     const departureDate = format(new Date(tripDepartureDate), "d MMMM yyyy", { locale: it });
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
@@ -111,9 +167,17 @@ export default function TripConfirmationDialog({
       `Totale versato: €${totalPaid.toFixed(2)}`,
       balance > 0 ? `Saldo da versare: €${balance.toFixed(2)}` : `✅ Quota completamente saldata`,
       ``,
+      // Aggiungi link upload documento se generato
+      uploadLink ? `📄 *DOCUMENTO DI IDENTITÀ*` : null,
+      uploadLink ? `Per completare la prenotazione, carica una copia del documento:` : null,
+      uploadLink ? uploadLink : null,
+      uploadLink ? `` : null,
       `Per qualsiasi informazione non esiti a contattarci.`,
       ``,
       `Grazie per aver scelto i nostri viaggi!`,
+      ``,
+      `_Gladiatours Viaggi_`,
+      `_Tel. 0775 353808_`,
     ].filter(Boolean).join("\n");
 
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(messageParts)}`;
@@ -253,8 +317,12 @@ export default function TripConfirmationDialog({
             <Printer className="h-4 w-4 mr-2" />
             Stampa
           </Button>
-          <Button onClick={handleWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700">
-            <MessageCircle className="h-4 w-4 mr-2" />
+          <Button onClick={handleWhatsApp} disabled={sendingWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700">
+            {sendingWhatsApp ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <MessageCircle className="h-4 w-4 mr-2" />
+            )}
             WhatsApp
           </Button>
         </div>

@@ -724,6 +724,7 @@ export default function EditParticipantDialog({
         <TripConfirmationDialog
           open={confirmationDialogOpen}
           onOpenChange={setConfirmationDialogOpen}
+          participantId={participant?.id}
           participantName={participant?.full_name || ""}
           participantPhone={participant?.phone || null}
           tripTitle={tripTitle}
