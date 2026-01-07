@@ -137,10 +137,17 @@ export default function TripConfirmationDialog({
         {/* Contenuto scrollabile */}
         <div className="flex-1 overflow-y-auto pr-2">
           <div ref={printRef} className="space-y-4 print:p-8">
-            {/* Header - visibile solo in stampa */}
+            {/* Header con intestazione agenzia - visibile solo in stampa */}
             <div className="hidden print:block text-center border-b pb-4 mb-4">
-              <h1 className="text-2xl font-bold">CONFERMA DI PRENOTAZIONE</h1>
-              <p className="text-sm text-muted-foreground mt-1">Viaggio di Gruppo</p>
+              <h1 className="text-2xl font-bold">Gladiatours Viaggi</h1>
+              <p className="text-sm">di Palmieri Massimo</p>
+              <p className="text-xs text-muted-foreground mt-1">Via Piana n°82, 03020 Torrice (FR)</p>
+              <p className="text-xs text-muted-foreground">Tel. 0775 353808 | Cell. +39 320 753 2262</p>
+              <p className="text-xs text-muted-foreground">info@gladiatours.it</p>
+              <div className="mt-3 pt-3 border-t">
+                <h2 className="text-xl font-bold">CONFERMA DI PRENOTAZIONE</h2>
+                <p className="text-xs text-muted-foreground mt-1">Viaggio di Gruppo</p>
+              </div>
             </div>
 
             {/* Banner conferma */}
