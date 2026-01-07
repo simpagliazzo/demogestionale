@@ -45,6 +45,19 @@ interface Trip {
   trip_type: string;
 }
 
+interface Guide {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  role: string;
+}
+
+interface TripGuide {
+  id: string;
+  guide_id: string;
+  guide?: Guide;
+}
+
 interface Participant {
   id: string;
   full_name: string;
@@ -124,10 +137,12 @@ export default function TripDetails() {
   const [groupByGroupNumber, setGroupByGroupNumber] = useState<boolean>(false);
   const [totalDeposits, setTotalDeposits] = useState<number>(0);
   const [singleSupplement, setSingleSupplement] = useState<number>(0);
-  const [hotelData, setHotelData] = useState({ name: "", address: "", phone: "" });
   const [participantPayments, setParticipantPayments] = useState<ParticipantPayment[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
+  const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
+  const [availableGuides, setAvailableGuides] = useState<Guide[]>([]);
+  const [newHotelData, setNewHotelData] = useState({ name: "", address: "", phone: "" });
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -153,6 +168,8 @@ export default function TripDetails() {
   useEffect(() => {
     loadTripDetails();
     loadCarriers();
+    loadAvailableGuides();
+    loadTripGuides();
   }, [id]);
 
   useEffect(() => {
@@ -172,6 +189,49 @@ export default function TripDetails() {
       setCarriers(data || []);
     } catch (error) {
       console.error("Errore caricamento vettori:", error);
+    }
+  };
+
+  const loadAvailableGuides = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("guides")
+        .select("id, full_name, phone, role")
+        .eq("role", "guida")
+        .order("full_name");
+
+      if (error) throw error;
+      setAvailableGuides(data || []);
+    } catch (error) {
+      console.error("Errore caricamento guide:", error);
+    }
+  };
+
+  const loadTripGuides = async () => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabase
+        .from("trip_guides")
+        .select(`
+          id,
+          guide_id,
+          guides:guide_id (
+            id,
+            full_name,
+            phone,
+            role
+          )
+        `)
+        .eq("trip_id", id);
+
+      if (error) throw error;
+      setTripGuides((data || []).map((tg: any) => ({
+        id: tg.id,
+        guide_id: tg.guide_id,
+        guide: tg.guides
+      })));
+    } catch (error) {
+      console.error("Errore caricamento guide viaggio:", error);
     }
   };
 
@@ -244,15 +304,8 @@ export default function TripDetails() {
       if (hotelsError) throw hotelsError;
       setHotels(hotelsData || []);
       
-      // Popola i dati hotel se esiste
-      if (hotelsData && hotelsData.length > 0) {
-        const hotel = hotelsData[0];
-        setHotelData({
-          name: hotel.name || "",
-          address: hotel.address || "",
-          phone: (hotel as any).phone || "",
-        });
-      }
+      // Reset new hotel form
+      setNewHotelData({ name: "", address: "", phone: "" });
 
       // Carica camere
       if (hotelsData && hotelsData.length > 0) {
@@ -386,45 +439,87 @@ export default function TripDetails() {
     }
   };
 
-  const saveHotel = async () => {
-    if (!trip || !hotelData.name) {
+  const addHotel = async () => {
+    if (!trip || !newHotelData.name) {
       toast.error("Inserisci almeno il nome dell'hotel");
       return;
     }
     
     try {
-      if (hotels.length > 0) {
-        // Aggiorna hotel esistente
-        const { error } = await supabase
-          .from("hotels")
-          .update({
-            name: hotelData.name,
-            address: hotelData.address || null,
-            phone: hotelData.phone || null,
-          })
-          .eq("id", hotels[0].id);
+      const { error } = await supabase
+        .from("hotels")
+        .insert({
+          trip_id: trip.id,
+          name: newHotelData.name,
+          address: newHotelData.address || null,
+          phone: newHotelData.phone || null,
+          check_in_date: trip.departure_date,
+          check_out_date: trip.return_date,
+        });
 
-        if (error) throw error;
-      } else {
-        // Crea nuovo hotel
-        const { error } = await supabase
-          .from("hotels")
-          .insert({
-            trip_id: trip.id,
-            name: hotelData.name,
-            address: hotelData.address || null,
-            phone: hotelData.phone || null,
-            check_in_date: trip.departure_date,
-            check_out_date: trip.return_date,
-          });
-
-        if (error) throw error;
-      }
-      toast.success("Dati hotel salvati con successo");
+      if (error) throw error;
+      toast.success("Hotel aggiunto con successo");
+      setNewHotelData({ name: "", address: "", phone: "" });
       loadTripDetails();
     } catch (error) {
-      console.error("Errore salvataggio hotel:", error);
-      toast.error("Errore nel salvataggio dei dati hotel");
+      console.error("Errore aggiunta hotel:", error);
+      toast.error("Errore nell'aggiunta dell'hotel");
+    }
+  };
+
+  const deleteHotel = async (hotelId: string) => {
+    try {
+      const { error } = await supabase
+        .from("hotels")
+        .delete()
+        .eq("id", hotelId);
+
+      if (error) throw error;
+      toast.success("Hotel eliminato");
+      loadTripDetails();
+    } catch (error) {
+      console.error("Errore eliminazione hotel:", error);
+      toast.error("Errore nell'eliminazione dell'hotel");
+    }
+  };
+
+  const addGuideToTrip = async (guideId: string) => {
+    if (!trip || !guideId) return;
+    
+    try {
+      const { error } = await supabase
+        .from("trip_guides")
+        .insert({
+          trip_id: trip.id,
+          guide_id: guideId,
+        });
+
+      if (error) throw error;
+      toast.success("Guida aggiunta al viaggio");
+      loadTripGuides();
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error("Questa guida è già assegnata al viaggio");
+      } else {
+        console.error("Errore aggiunta guida:", error);
+        toast.error("Errore nell'aggiunta della guida");
+      }
+    }
+  };
+
+  const removeGuideFromTrip = async (tripGuideId: string) => {
+    try {
+      const { error } = await supabase
+        .from("trip_guides")
+        .delete()
+        .eq("id", tripGuideId);
+
+      if (error) throw error;
+      toast.success("Guida rimossa dal viaggio");
+      loadTripGuides();
+    } catch (error) {
+      console.error("Errore rimozione guida:", error);
+      toast.error("Errore nella rimozione della guida");
     }
   };
 
@@ -805,49 +900,139 @@ export default function TripDetails() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Hotel className="h-5 w-5" />
-                Hotel
+                Hotel ({hotels.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {(isAdmin || isAgent) ? (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="hotel-name">Nome Hotel</Label>
+                <div className="space-y-4">
+                  {/* Lista hotel esistenti */}
+                  {hotels.map((hotel) => (
+                    <div key={hotel.id} className="p-3 border rounded-lg bg-muted/50 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{hotel.name}</p>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => deleteHotel(hotel.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      {hotel.address && <p className="text-xs text-muted-foreground">{hotel.address}</p>}
+                      {hotel.phone && <p className="text-xs text-muted-foreground">Tel: {hotel.phone}</p>}
+                    </div>
+                  ))}
+                  
+                  {/* Form per aggiungere nuovo hotel */}
+                  <div className="pt-3 border-t space-y-2">
+                    <p className="text-sm font-medium">Aggiungi nuovo hotel</p>
                     <Input
-                      id="hotel-name"
-                      value={hotelData.name}
-                      onChange={(e) => setHotelData({...hotelData, name: e.target.value})}
+                      value={newHotelData.name}
+                      onChange={(e) => setNewHotelData({...newHotelData, name: e.target.value})}
                       placeholder="Nome dell'hotel"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="hotel-address">Indirizzo</Label>
                     <Input
-                      id="hotel-address"
-                      value={hotelData.address}
-                      onChange={(e) => setHotelData({...hotelData, address: e.target.value})}
-                      placeholder="Indirizzo completo"
+                      value={newHotelData.address}
+                      onChange={(e) => setNewHotelData({...newHotelData, address: e.target.value})}
+                      placeholder="Indirizzo"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="hotel-phone">Telefono</Label>
                     <Input
-                      id="hotel-phone"
-                      value={hotelData.phone}
-                      onChange={(e) => setHotelData({...hotelData, phone: e.target.value})}
-                      placeholder="Numero di telefono"
+                      value={newHotelData.phone}
+                      onChange={(e) => setNewHotelData({...newHotelData, phone: e.target.value})}
+                      placeholder="Telefono"
                     />
+                    <Button onClick={addHotel} className="w-full gap-2">
+                      <Plus className="h-4 w-4" />
+                      Aggiungi Hotel
+                    </Button>
                   </div>
-                  <Button onClick={saveHotel} className="w-full gap-2">
-                    <Save className="h-4 w-4" />
-                    Salva Hotel
-                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {hotels.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nessun hotel configurato</p>
+                  ) : (
+                    hotels.map((hotel) => (
+                      <div key={hotel.id} className="p-2 border-b last:border-b-0">
+                        <p className="font-medium">{hotel.name}</p>
+                        {hotel.address && <p className="text-sm text-muted-foreground">{hotel.address}</p>}
+                        {hotel.phone && <p className="text-sm text-muted-foreground">Tel: {hotel.phone}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {trip?.trip_type !== 'day_trip' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Guide ({tripGuides.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(isAdmin || isAgent) ? (
+                <div className="space-y-4">
+                  {/* Lista guide assegnate */}
+                  {tripGuides.map((tg) => (
+                    <div key={tg.id} className="p-3 border rounded-lg bg-muted/50 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{tg.guide?.full_name}</p>
+                        {tg.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tg.guide.phone}</p>}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={() => removeGuideFromTrip(tg.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {/* Select per aggiungere guida */}
+                  {availableGuides.filter(g => !tripGuides.some(tg => tg.guide_id === g.id)).length > 0 && (
+                    <div className="pt-3 border-t">
+                      <Select onValueChange={(value) => addGuideToTrip(value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Aggiungi guida..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableGuides
+                            .filter(g => !tripGuides.some(tg => tg.guide_id === g.id))
+                            .map((guide) => (
+                              <SelectItem key={guide.id} value={guide.id}>
+                                {guide.full_name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {tripGuides.length === 0 && availableGuides.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nessuna guida disponibile. Creane una nella sezione "Accompagnatori e Guide".</p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="font-medium">{hotelData.name || "Non configurato"}</p>
-                  {hotelData.address && <p className="text-sm text-muted-foreground">{hotelData.address}</p>}
-                  {hotelData.phone && <p className="text-sm text-muted-foreground">Tel: {hotelData.phone}</p>}
+                  {tripGuides.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nessuna guida assegnata</p>
+                  ) : (
+                    tripGuides.map((tg) => (
+                      <div key={tg.id}>
+                        <p className="font-medium">{tg.guide?.full_name}</p>
+                        {tg.guide?.phone && <p className="text-sm text-muted-foreground">Tel: {tg.guide.phone}</p>}
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </CardContent>
