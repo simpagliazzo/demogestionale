@@ -140,12 +140,17 @@ export function ParticipantDocUpload({ participantId, participantName, dateOfBir
     try {
       const { data, error } = await supabase.storage
         .from("participant-docs")
-        .download(`${personKey}/${fileName}`);
+        .createSignedUrl(`${personKey}/${fileName}`, 3600);
 
       if (error) throw error;
 
-      const url = URL.createObjectURL(data);
-      window.open(url, '_blank');
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error("Errore preview:", error);
       toast.error("Errore nell'apertura del documento");
