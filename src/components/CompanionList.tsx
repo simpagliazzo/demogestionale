@@ -36,6 +36,24 @@ interface Trip {
   single_room_supplement: number | null;
 }
 
+interface Hotel {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+}
+
+interface Guide {
+  id: string;
+  full_name: string;
+  phone: string | null;
+}
+
+interface TripGuide {
+  id: string;
+  guide?: Guide;
+}
+
 export default function CompanionList() {
   const { id } = useParams();
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -43,6 +61,8 @@ export default function CompanionList() {
   const [payments, setPayments] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [groupByGroupNumber, setGroupByGroupNumber] = useState(false);
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
 
   useEffect(() => {
     loadData();
@@ -62,8 +82,32 @@ export default function CompanionList() {
         .eq("trip_id", id)
         .order("full_name");
 
+      // Carica hotel
+      const { data: hotelsData } = await supabase
+        .from("hotels")
+        .select("id, name, address, phone")
+        .eq("trip_id", id);
+
+      // Carica guide del viaggio
+      const { data: tripGuidesData } = await supabase
+        .from("trip_guides")
+        .select(`
+          id,
+          guides:guide_id (
+            id,
+            full_name,
+            phone
+          )
+        `)
+        .eq("trip_id", id);
+
       setTrip(tripData);
       setParticipants(participantsData || []);
+      setHotels(hotelsData || []);
+      setTripGuides((tripGuidesData || []).map((tg: any) => ({
+        id: tg.id,
+        guide: tg.guides
+      })));
 
       if (participantsData) {
         const participantIds = participantsData.map(p => p.id);
@@ -254,6 +298,37 @@ export default function CompanionList() {
               <p><strong>Acconto previsto:</strong> €{expectedDeposit.toFixed(2)}</p>
             </div>
           </div>
+          
+          {/* Guide del viaggio */}
+          {tripGuides.length > 0 && (
+            <div className="mt-4 pt-3 border-t">
+              <p className="font-semibold mb-2">Guide:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {tripGuides.map((tg) => (
+                  <div key={tg.id} className="text-sm">
+                    <span className="font-medium">{tg.guide?.full_name}</span>
+                    {tg.guide?.phone && <span className="text-muted-foreground"> - Tel: {tg.guide.phone}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hotel del viaggio */}
+          {hotels.length > 0 && (
+            <div className="mt-4 pt-3 border-t">
+              <p className="font-semibold mb-2">Hotel:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {hotels.map((hotel) => (
+                  <div key={hotel.id} className="text-sm">
+                    <span className="font-medium">{hotel.name}</span>
+                    {hotel.address && <span className="text-muted-foreground"> - {hotel.address}</span>}
+                    {hotel.phone && <span className="text-muted-foreground"> - Tel: {hotel.phone}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {groupByGroupNumber ? (
