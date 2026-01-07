@@ -15,6 +15,12 @@ import { toast } from "sonner";
 import { useActivityLog } from "@/hooks/use-activity-log";
 import { Pencil } from "lucide-react";
 
+interface Guide {
+  id: string;
+  full_name: string;
+  role: string;
+}
+
 const tripSchema = z.object({
   title: z.string().min(1, "Il titolo è obbligatorio").max(200, "Massimo 200 caratteri"),
   description: z.string().optional(),
@@ -28,6 +34,8 @@ const tripSchema = z.object({
   max_participants: z.string().optional(),
   status: z.enum(["planned", "confirmed", "ongoing", "completed", "cancelled"]),
   trip_type: z.enum(["standard", "day_trip"]),
+  companion_name: z.string().optional(),
+  guide_name: z.string().optional(),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -49,6 +57,8 @@ interface Trip {
   max_participants: number | null;
   status: string;
   trip_type: string;
+  companion_name: string | null;
+  guide_name: string | null;
 }
 
 interface EditTripDialogProps {
@@ -60,8 +70,8 @@ interface EditTripDialogProps {
 
 export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: EditTripDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [guides, setGuides] = useState<Guide[]>([]);
   const { logUpdate } = useActivityLog();
-  const { logActivity } = useActivityLog();
 
   const form = useForm<TripFormValues>({
     resolver: zodResolver(tripSchema),
@@ -78,8 +88,27 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
       max_participants: "",
       status: "planned",
       trip_type: "standard",
+      companion_name: "",
+      guide_name: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      loadGuides();
+    }
+  }, [open]);
+
+  const loadGuides = async () => {
+    const { data } = await supabase
+      .from("guides")
+      .select("id, full_name, role")
+      .order("full_name");
+    setGuides(data || []);
+  };
+
+  const accompagnatori = guides.filter(g => g.role === "accompagnatore");
+  const guideList = guides.filter(g => g.role === "guida");
 
   useEffect(() => {
     if (trip && open) {
@@ -96,6 +125,8 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
         max_participants: trip.max_participants?.toString() || "",
         status: trip.status as TripFormValues["status"],
         trip_type: (trip.trip_type || "standard") as TripFormValues["trip_type"],
+        companion_name: trip.companion_name || "",
+        guide_name: trip.guide_name || "",
       });
     }
   }, [trip, open, form]);
@@ -121,6 +152,8 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
           max_participants: values.max_participants ? parseInt(values.max_participants) : null,
           status: values.status,
           trip_type: values.trip_type,
+          companion_name: values.companion_name || null,
+          guide_name: values.guide_name || null,
         })
         .eq("id", trip.id);
 
@@ -389,6 +422,60 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
                         <SelectItem value="ongoing">In Corso</SelectItem>
                         <SelectItem value="completed">Completato</SelectItem>
                         <SelectItem value="cancelled">Annullato</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="companion_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Accompagnatore</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona accompagnatore" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Nessuno</SelectItem>
+                        {accompagnatori.map((g) => (
+                          <SelectItem key={g.id} value={g.full_name}>
+                            {g.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="guide_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Guida</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona guida" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Nessuno</SelectItem>
+                        {guideList.map((g) => (
+                          <SelectItem key={g.id} value={g.full_name}>
+                            {g.full_name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

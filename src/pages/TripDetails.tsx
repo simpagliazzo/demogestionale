@@ -41,6 +41,7 @@ interface Trip {
   allotment_quadruple: number;
   carrier_id: string | null;
   companion_name: string | null;
+  guide_name: string | null;
   trip_type: string;
 }
 

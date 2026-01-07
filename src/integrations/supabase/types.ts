@@ -257,6 +257,47 @@ export type Database = {
         }
         Relationships: []
       }
+      guides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hotels: {
         Row: {
           address: string | null
@@ -661,6 +702,7 @@ export type Database = {
           deposit_type: Database["public"]["Enums"]["deposit_type"]
           description: string | null
           destination: string
+          guide_name: string | null
           id: string
           max_participants: number | null
           price: number
@@ -686,6 +728,7 @@ export type Database = {
           deposit_type?: Database["public"]["Enums"]["deposit_type"]
           description?: string | null
           destination: string
+          guide_name?: string | null
           id?: string
           max_participants?: number | null
           price: number
@@ -711,6 +754,7 @@ export type Database = {
           deposit_type?: Database["public"]["Enums"]["deposit_type"]
           description?: string | null
           destination?: string
+          guide_name?: string | null
           id?: string
           max_participants?: number | null
           price?: number
