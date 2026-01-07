@@ -686,6 +686,42 @@ export type Database = {
           },
         ]
       }
+      trip_companions: {
+        Row: {
+          created_at: string
+          guide_id: string
+          id: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          guide_id: string
+          id?: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          guide_id?: string
+          id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_companions_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "guides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_companions_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_guides: {
         Row: {
           created_at: string

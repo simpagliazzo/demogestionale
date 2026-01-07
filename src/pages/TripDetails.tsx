@@ -58,6 +58,12 @@ interface TripGuide {
   guide?: Guide;
 }
 
+interface TripCompanion {
+  id: string;
+  guide_id: string;
+  guide?: Guide;
+}
+
 interface Participant {
   id: string;
   full_name: string;
@@ -141,7 +147,9 @@ export default function TripDetails() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
   const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
+  const [tripCompanions, setTripCompanions] = useState<TripCompanion[]>([]);
   const [availableGuides, setAvailableGuides] = useState<Guide[]>([]);
+  const [availableCompanions, setAvailableCompanions] = useState<Guide[]>([]);
   const [newHotelData, setNewHotelData] = useState({ name: "", address: "", phone: "" });
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
@@ -169,7 +177,9 @@ export default function TripDetails() {
     loadTripDetails();
     loadCarriers();
     loadAvailableGuides();
+    loadAvailableCompanions();
     loadTripGuides();
+    loadTripCompanions();
   }, [id]);
 
   useEffect(() => {
@@ -207,6 +217,21 @@ export default function TripDetails() {
     }
   };
 
+  const loadAvailableCompanions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("guides")
+        .select("id, full_name, phone, role")
+        .eq("role", "accompagnatore")
+        .order("full_name");
+
+      if (error) throw error;
+      setAvailableCompanions(data || []);
+    } catch (error) {
+      console.error("Errore caricamento accompagnatori:", error);
+    }
+  };
+
   const loadTripGuides = async () => {
     if (!id) return;
     try {
@@ -232,6 +257,34 @@ export default function TripDetails() {
       })));
     } catch (error) {
       console.error("Errore caricamento guide viaggio:", error);
+    }
+  };
+
+  const loadTripCompanions = async () => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabase
+        .from("trip_companions")
+        .select(`
+          id,
+          guide_id,
+          guides:guide_id (
+            id,
+            full_name,
+            phone,
+            role
+          )
+        `)
+        .eq("trip_id", id);
+
+      if (error) throw error;
+      setTripCompanions((data || []).map((tc: any) => ({
+        id: tc.id,
+        guide_id: tc.guide_id,
+        guide: tc.guides
+      })));
+    } catch (error) {
+      console.error("Errore caricamento accompagnatori viaggio:", error);
     }
   };
 
@@ -520,6 +573,46 @@ export default function TripDetails() {
     } catch (error) {
       console.error("Errore rimozione guida:", error);
       toast.error("Errore nella rimozione della guida");
+    }
+  };
+
+  const addCompanionToTrip = async (guideId: string) => {
+    if (!trip || !guideId) return;
+    
+    try {
+      const { error } = await supabase
+        .from("trip_companions")
+        .insert({
+          trip_id: trip.id,
+          guide_id: guideId,
+        });
+
+      if (error) throw error;
+      toast.success("Accompagnatore aggiunto al viaggio");
+      loadTripCompanions();
+    } catch (error: any) {
+      if (error.code === '23505') {
+        toast.error("Questo accompagnatore è già assegnato al viaggio");
+      } else {
+        console.error("Errore aggiunta accompagnatore:", error);
+        toast.error("Errore nell'aggiunta dell'accompagnatore");
+      }
+    }
+  };
+
+  const removeCompanionFromTrip = async (tripCompanionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("trip_companions")
+        .delete()
+        .eq("id", tripCompanionId);
+
+      if (error) throw error;
+      toast.success("Accompagnatore rimosso dal viaggio");
+      loadTripCompanions();
+    } catch (error) {
+      console.error("Errore rimozione accompagnatore:", error);
+      toast.error("Errore nella rimozione dell'accompagnatore");
     }
   };
 
@@ -872,25 +965,62 @@ export default function TripDetails() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Accompagnatore */}
+            {/* Accompagnatori */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Accompagnatore</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Accompagnatori ({tripCompanions.length})</p>
               {(isAdmin || isAgent) ? (
-                <div className="flex gap-2">
-                  <Input
-                    id="companion"
-                    value={companion}
-                    onChange={(e) => setCompanion(e.target.value)}
-                    placeholder="Inserisci nome accompagnatore"
-                  />
-                  <Button onClick={saveCompanion} size="icon" variant="outline">
-                    <Save className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2">
+                  {tripCompanions.map((tc) => (
+                    <div key={tc.id} className="p-2 border rounded-lg bg-muted/50 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{tc.guide?.full_name}</p>
+                        {tc.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tc.guide.phone}</p>}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        onClick={() => removeCompanionFromTrip(tc.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {availableCompanions.filter(c => !tripCompanions.some(tc => tc.guide_id === c.id)).length > 0 && (
+                    <Select onValueChange={(value) => addCompanionToTrip(value)}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="+ Aggiungi accompagnatore..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCompanions
+                          .filter(c => !tripCompanions.some(tc => tc.guide_id === c.id))
+                          .map((companion) => (
+                            <SelectItem key={companion.id} value={companion.id}>
+                              {companion.full_name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {tripCompanions.length === 0 && availableCompanions.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nessun accompagnatore disponibile. Creane uno nella sezione "Accompagnatori e Guide".</p>
+                  )}
                 </div>
               ) : (
-                <p className="font-medium">
-                  {companion || "Non ancora assegnato"}
-                </p>
+                <div className="space-y-1">
+                  {tripCompanions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nessun accompagnatore assegnato</p>
+                  ) : (
+                    tripCompanions.map((tc) => (
+                      <div key={tc.id}>
+                        <p className="font-medium text-sm">{tc.guide?.full_name}</p>
+                        {tc.guide?.phone && <p className="text-xs text-muted-foreground">Tel: {tc.guide.phone}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
 
