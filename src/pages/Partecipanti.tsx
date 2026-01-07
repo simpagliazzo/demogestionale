@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Calendar, Eye, Edit, Ban } from "lucide-react";
+import { Search, MapPin, Calendar, Eye, Edit, Ban, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { useUserRole } from "@/hooks/use-user-role";
 import EditParticipantStandaloneDialog from "@/components/EditParticipantStandaloneDialog";
 import AddToBlacklistDialog from "@/components/AddToBlacklistDialog";
+import AddParticipantStandaloneDialog from "@/components/AddParticipantStandaloneDialog";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 
 interface ParticipantWithTrip {
@@ -58,6 +59,7 @@ export default function Partecipanti() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editParticipant, setEditParticipant] = useState<ParticipantWithTrip | null>(null);
   const [blacklistParticipant, setBlacklistParticipant] = useState<ParticipantWithTrip | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   useEffect(() => {
     loadParticipants();
@@ -159,11 +161,17 @@ export default function Partecipanti() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-4xl font-bold mb-2">Partecipanti</h1>
-        <p className="text-muted-foreground">
-          Tutti i partecipanti ai viaggi con ricerca e storico
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-4xl font-bold mb-2">Partecipanti</h1>
+          <p className="text-muted-foreground">
+            Tutti i partecipanti ai viaggi con ricerca e storico
+          </p>
+        </div>
+        <Button onClick={() => setShowAddDialog(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Aggiungi Partecipante
+        </Button>
       </div>
 
       <Card>
@@ -360,6 +368,12 @@ export default function Partecipanti() {
           loadParticipants();
           loadBlacklist();
         }}
+      />
+
+      <AddParticipantStandaloneDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onSuccess={loadParticipants}
       />
     </div>
   );
