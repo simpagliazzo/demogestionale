@@ -1,4 +1,4 @@
-import { LayoutDashboard, MapPin, Users, DollarSign, Bus, UserCircle, LogOut, Plane, Archive, FileText, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, MapPin, Users, DollarSign, Bus, UserCircle, LogOut, Plane, Archive, FileText, AlertTriangle, UserCheck } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/lib/auth-context";
@@ -37,6 +37,10 @@ export function AppSidebar() {
     title: "Pagamenti",
     url: "/pagamenti",
     icon: DollarSign
+  }, {
+    title: "Accompagnatori e Guide",
+    url: "/accompagnatori-guide",
+    icon: UserCheck
   }, {
     title: "Posti Bus",
     url: "/bus",
