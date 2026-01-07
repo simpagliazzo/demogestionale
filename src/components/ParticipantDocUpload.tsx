@@ -4,12 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Upload, FileText, Trash2, Download, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/use-user-role";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface ParticipantDocUploadProps {
   participantId: string;
@@ -42,8 +36,6 @@ export function ParticipantDocUpload({ participantId, participantName, dateOfBir
   const [files, setFiles] = useState<DocFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState<string>("");
   const { isAdmin, isAgent } = useUserRole();
   
   // Usa la chiave persona invece dell'ID partecipante
@@ -153,20 +145,11 @@ export function ParticipantDocUpload({ participantId, participantName, dateOfBir
       if (error) throw error;
 
       const url = URL.createObjectURL(data);
-      setPreviewUrl(url);
-      setPreviewFileName(formatFileName(fileName));
+      window.open(url, '_blank');
     } catch (error) {
       console.error("Errore preview:", error);
       toast.error("Errore nell'apertura del documento");
     }
-  };
-
-  const closePreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setPreviewUrl(null);
-    setPreviewFileName("");
   };
 
   const formatFileName = (name: string) => {
@@ -174,7 +157,6 @@ export function ParticipantDocUpload({ participantId, participantName, dateOfBir
   };
 
   return (
-    <>
     <div className="space-y-2">
       {(isAdmin || isAgent) && (
         <div className="flex items-center gap-2">
@@ -262,23 +244,5 @@ export function ParticipantDocUpload({ participantId, participantName, dateOfBir
         </div>
       )}
     </div>
-
-    <Dialog open={!!previewUrl} onOpenChange={(open) => !open && closePreview()}>
-      <DialogContent className="max-w-4xl h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>{previewFileName}</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 h-full min-h-0">
-          {previewUrl && (
-            <iframe
-              src={previewUrl}
-              className="w-full h-full rounded border"
-              title={previewFileName}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-    </>
   );
 }
