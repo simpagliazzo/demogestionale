@@ -64,17 +64,22 @@ export const usePermissions = () => {
           return;
         }
 
-        // Poi ottieni i permessi per quel ruolo
-        const { data: permissionsData, error: permissionsError } = await supabase
-          .from("role_permissions")
-          .select("permission")
-          .eq("role", roleData.role);
-
-        if (permissionsError) {
-          console.error("Errore caricamento permessi:", permissionsError);
-          setPermissions([]);
+        // Super admin e admin hanno tutti i permessi automaticamente
+        if (roleData.role === "super_admin" || roleData.role === "admin") {
+          setPermissions(ALL_PERMISSIONS);
         } else {
-          setPermissions(permissionsData?.map(p => p.permission as PermissionType) || []);
+          // Per altri ruoli, ottieni i permessi dalla tabella
+          const { data: permissionsData, error: permissionsError } = await supabase
+            .from("role_permissions")
+            .select("permission")
+            .eq("role", roleData.role);
+
+          if (permissionsError) {
+            console.error("Errore caricamento permessi:", permissionsError);
+            setPermissions([]);
+          } else {
+            setPermissions(permissionsData?.map(p => p.permission as PermissionType) || []);
+          }
         }
       } catch (err) {
         console.error("Errore:", err);
