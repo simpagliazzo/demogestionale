@@ -347,8 +347,11 @@ export default function BusPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Configura Bus
+              Configura Piantina Bus
             </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Prima di assegnare i posti, configura la piantina del bus. Il vettore può essere assegnato successivamente.
+            </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex gap-4">
