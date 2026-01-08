@@ -19,6 +19,7 @@ interface TripConfirmationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   participantId?: string;
+  tripId?: string;
   participantName: string;
   participantPhone: string | null;
   tripTitle: string;
@@ -44,6 +45,7 @@ export default function TripConfirmationDialog({
   open,
   onOpenChange,
   participantId,
+  tripId,
   participantName,
   participantPhone,
   tripTitle,
@@ -116,6 +118,48 @@ export default function TripConfirmationDialog({
     }
   };
 
+  // Genera token per scelta posto bus
+  const generateBusSeatToken = async (): Promise<string | null> => {
+    if (!participantId || !tripId) return null;
+
+    try {
+      // Controlla se esiste già un token valido
+      const { data: existingToken } = await supabase
+        .from('bus_seat_tokens')
+        .select('token')
+        .eq('participant_id', participantId)
+        .eq('trip_id', tripId)
+        .gt('expires_at', new Date().toISOString())
+        .is('used_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingToken) {
+        return existingToken.token;
+      }
+
+      // Genera nuovo token
+      const array = new Uint8Array(24);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+      const { error } = await supabase
+        .from('bus_seat_tokens')
+        .insert({
+          participant_id: participantId,
+          trip_id: tripId,
+          token,
+        });
+
+      if (error) throw error;
+      return token;
+    } catch (err) {
+      console.error('Error generating bus seat token:', err);
+      return null;
+    }
+  };
+
   const handleWhatsApp = async () => {
     let phone = participantPhone?.replace(/[^\d]/g, "") || "";
     
@@ -138,6 +182,15 @@ export default function TripConfirmationDialog({
       const token = await generateUploadToken();
       if (token) {
         uploadLink = `${window.location.origin}/upload-documenti/${token}`;
+      }
+    }
+
+    // Genera link scelta posto bus
+    let busSeatLink = "";
+    if (participantId && tripId) {
+      const token = await generateBusSeatToken();
+      if (token) {
+        busSeatLink = `${window.location.origin}/scegli-posto/${token}`;
       }
     }
 
@@ -167,6 +220,11 @@ export default function TripConfirmationDialog({
       `Totale versato: €${totalPaid.toFixed(2)}`,
       balance > 0 ? `Saldo da versare: €${balance.toFixed(2)}` : `✅ Quota completamente saldata`,
       ``,
+      // Aggiungi link scelta posto bus se generato
+      busSeatLink ? `🪑 *SCEGLI IL TUO POSTO SUL BUS*` : null,
+      busSeatLink ? `Clicca qui per scegliere il tuo posto:` : null,
+      busSeatLink ? busSeatLink : null,
+      busSeatLink ? `` : null,
       // Aggiungi link upload documento se generato
       uploadLink ? `📄 *DOCUMENTO DI IDENTITÀ*` : null,
       uploadLink ? `Per completare la prenotazione, carica una copia del documento:` : null,

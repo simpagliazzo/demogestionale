@@ -22,6 +22,7 @@ import Preventivi from "./pages/Preventivi";
 import QuotePublic from "./pages/QuotePublic";
 import Blacklist from "./pages/Blacklist";
 import UploadDocumenti from "./pages/UploadDocumenti";
+import ScegliPosto from "./pages/ScegliPosto";
 import AccompagnatoriGuide from "./pages/AccompagnatoriGuide";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
             <Route path="/preventivo/:id" element={<QuotePublic />} />
             <Route path="/upload-documenti/:token" element={<UploadDocumenti />} />
+            <Route path="/scegli-posto/:token" element={<ScegliPosto />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

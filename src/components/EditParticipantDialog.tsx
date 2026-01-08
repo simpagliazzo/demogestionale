@@ -55,6 +55,7 @@ interface EditParticipantDialogProps {
     discount_type?: string | null;
     discount_amount?: number | null;
   } | null;
+  tripId?: string;
   tripPrice: number;
   depositType: "fixed" | "percentage";
   depositAmount: number;
@@ -71,6 +72,7 @@ interface EditParticipantDialogProps {
 
 export default function EditParticipantDialog({
   participant,
+  tripId,
   tripPrice,
   depositType,
   depositAmount,
@@ -725,6 +727,7 @@ export default function EditParticipantDialog({
           open={confirmationDialogOpen}
           onOpenChange={setConfirmationDialogOpen}
           participantId={participant?.id}
+          tripId={tripId}
           participantName={participant?.full_name || ""}
           participantPhone={participant?.phone || null}
           tripTitle={tripTitle}
