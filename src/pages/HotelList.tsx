@@ -19,6 +19,7 @@ interface Participant {
   date_of_birth: string | null;
   place_of_birth: string | null;
   notes: string | null;
+  notes_hotel: string | null;
   created_at: string;
   group_number: number | null;
 }
@@ -263,6 +264,7 @@ export default function HotelList() {
             <th className="border p-2 text-left text-sm">Nominativo</th>
             <th className="border p-2 text-left text-sm w-28">Data Nascita</th>
             <th className="border p-2 text-left text-sm">Luogo Nascita</th>
+            <th className="border p-2 text-left text-sm">Note</th>
           </tr>
         </thead>
         <tbody>
@@ -291,6 +293,7 @@ export default function HotelList() {
                   {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
                 </td>
                 <td className="border p-2 text-sm">{p.place_of_birth || "-"}</td>
+                <td className="border p-2 text-sm text-muted-foreground">{p.notes_hotel || "-"}</td>
               </tr>
             ));
           })}
@@ -305,6 +308,7 @@ export default function HotelList() {
                 {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
               </td>
               <td className="border p-2 text-sm">{p.place_of_birth || "-"}</td>
+              <td className="border p-2 text-sm text-muted-foreground">{p.notes_hotel || "-"}</td>
             </tr>
           ))}
         </tbody>
