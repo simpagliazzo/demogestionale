@@ -40,6 +40,7 @@ interface Participant {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  notes_companion: string | null;
   created_at: string;
   group_number: number | null;
   discount_type: string | null;
@@ -203,10 +204,9 @@ export default function CompanionList() {
     return labels[roomType] || '-';
   };
 
-  // Estrae le note rimuovendo la parte della camera
+  // Restituisce le note per l'accompagnatore
   const getDisplayNotes = (participant: Participant) => {
-    if (!participant.notes) return '';
-    return participant.notes.replace(/Camera:\s*(singola|doppia|matrimoniale|tripla|quadrupla)\s*/gi, '').trim();
+    return participant.notes_companion || '';
   };
 
   // Capacità per tipologia di camera
