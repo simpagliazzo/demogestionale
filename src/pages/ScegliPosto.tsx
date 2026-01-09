@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatNameSurnameFirst } from "@/lib/format-utils";
 
 interface TokenData {
   id: string;
@@ -294,7 +295,7 @@ export default function ScegliPosto() {
             </div>
             <CardTitle className="text-2xl">Scegli il tuo posto</CardTitle>
             <p className="text-muted-foreground mt-2">
-              Ciao <span className="font-semibold">{tokenData?.participant.full_name}</span>!
+              Ciao <span className="font-semibold">{tokenData?.participant.full_name ? formatNameSurnameFirst(tokenData.participant.full_name) : ''}</span>!
             </p>
           </CardHeader>
           <CardContent>

@@ -17,6 +17,7 @@ import { ExistingParticipant } from "@/hooks/use-participant-search";
 import { useActivityLog } from "@/hooks/use-activity-log";
 import { AlertTriangle } from "lucide-react";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { formatNameSurnameFirst } from "@/lib/format-utils";
 const participantSchema = z.object({
   cognome: z.string().min(1, "Il cognome è obbligatorio"),
   nome: z.string().min(1, "Il nome è obbligatorio"),
@@ -440,7 +441,7 @@ export default function AddParticipantDialog({
                   if (participant.phone) {
                     setValue(`participants.${index}.phone`, participant.phone);
                   }
-                  toast.success(`Dati di ${participant.full_name} compilati automaticamente`);
+                  toast.success(`Dati di ${formatNameSurnameFirst(participant.full_name)} compilati automaticamente`);
                 };
 
                 return (
