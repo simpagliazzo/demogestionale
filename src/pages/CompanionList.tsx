@@ -319,7 +319,7 @@ export default function CompanionList() {
             Accompagnatori: {tripCompanions.map((tc, index) => (
               <span key={tc.id}>
                 {index > 0 && ", "}
-                {tc.guide?.full_name}
+                {tc.guide?.full_name ? formatNameSurnameFirst(tc.guide.full_name) : ''}
                 {tc.guide?.phone && ` (Tel: ${tc.guide.phone})`}
               </span>
             ))}
@@ -330,7 +330,7 @@ export default function CompanionList() {
             Guide: {tripGuides.map((tg, index) => (
               <span key={tg.id}>
                 {index > 0 && ", "}
-                {tg.guide?.full_name}
+                {tg.guide?.full_name ? formatNameSurnameFirst(tg.guide.full_name) : ''}
                 {tg.guide?.phone && ` (Tel: ${tg.guide.phone})`}
               </span>
             ))}

@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { useActivityLog } from "@/hooks/use-activity-log";
 
 const participantSchema = z.object({
-  full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
+  cognome: z.string().min(1, "Il cognome è obbligatorio"),
+  nome: z.string().min(1, "Il nome è obbligatorio"),
   date_of_birth: z.string().optional(),
   place_of_birth: z.string().optional(),
   email: z.string().email("Email non valida").optional().or(z.literal("")),
@@ -82,10 +83,23 @@ export default function EditParticipantStandaloneDialog({
     return null;
   };
 
+  // Splitta full_name in cognome e nome (assume ultimo elemento = cognome)
+  const splitFullName = (fullName: string) => {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const cognome = parts[parts.length - 1];
+      const nome = parts.slice(0, -1).join(' ');
+      return { cognome, nome };
+    }
+    return { cognome: fullName, nome: "" };
+  };
+
   useEffect(() => {
     if (participant) {
+      const { cognome, nome } = splitFullName(participant.full_name);
       reset({
-        full_name: participant.full_name,
+        cognome,
+        nome,
         date_of_birth: convertDateToDisplay(participant.date_of_birth),
         place_of_birth: participant.place_of_birth || "",
         email: participant.email || "",
@@ -99,11 +113,12 @@ export default function EditParticipantStandaloneDialog({
     if (!participant) return;
     
     setIsSubmitting(true);
+    const fullName = `${values.nome} ${values.cognome}`.trim();
     try {
       const { error } = await supabase
         .from("participants")
         .update({
-          full_name: values.full_name,
+          full_name: fullName,
           date_of_birth: convertDateToISO(values.date_of_birth),
           place_of_birth: values.place_of_birth || null,
           email: values.email || null,
@@ -114,9 +129,9 @@ export default function EditParticipantStandaloneDialog({
 
       if (error) throw error;
 
-      await logUpdate("participant", participant.id, values.full_name, {
+      await logUpdate("participant", participant.id, fullName, {
         changes: {
-          full_name: values.full_name,
+          full_name: fullName,
           email: values.email,
           phone: values.phone,
         },
@@ -172,17 +187,32 @@ export default function EditParticipantStandaloneDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="full_name">
-              Nome e Cognome <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              {...register("full_name")}
-              placeholder="Mario Rossi"
-            />
-            {errors.full_name && (
-              <p className="text-sm text-destructive">{errors.full_name.message}</p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cognome">
+                Cognome <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                {...register("cognome")}
+                placeholder="Rossi"
+              />
+              {errors.cognome && (
+                <p className="text-sm text-destructive">{errors.cognome.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nome">
+                Nome <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                {...register("nome")}
+                placeholder="Mario"
+              />
+              {errors.nome && (
+                <p className="text-sm text-destructive">{errors.nome.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

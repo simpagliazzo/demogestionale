@@ -230,7 +230,7 @@ export default function Partecipanti() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-3">
-                          <h3 className="font-semibold text-lg">{participant.full_name}</h3>
+                          <h3 className="font-semibold text-lg">{formatNameSurnameFirst(participant.full_name)}</h3>
                           {isInBlacklist(participant.full_name) && (
                             <Badge variant="destructive" className="text-xs font-bold uppercase">
                               Blacklist
