@@ -444,12 +444,12 @@ export default function CompanionList() {
                       <th className="border border-border p-1.5 text-left font-semibold">Nome</th>
                       <th className="border border-border p-1.5 text-left font-semibold">Data Nascita</th>
                       <th className="border border-border p-1.5 text-left font-semibold">Luogo Nascita</th>
-                      <th className="border border-border p-1.5 text-left font-semibold">Email</th>
                       <th className="border border-border p-1.5 text-left font-semibold">Telefono</th>
                       <th className="border border-border p-1.5 text-center font-semibold">Gr.</th>
                       <th className="border border-border p-1.5 text-right font-semibold">Prezzo</th>
                       <th className="border border-border p-1.5 text-right font-semibold">Versato</th>
                       <th className="border border-border p-1.5 text-right font-semibold">Da Versare</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Note</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -479,9 +479,6 @@ export default function CompanionList() {
                             <td className="border border-border p-1.5">
                               {participant.place_of_birth || "-"}
                             </td>
-                            <td className="border border-border p-1.5 text-xs">
-                              {participant.email || "-"}
-                            </td>
                             <td className="border border-border p-1.5">
                               {participant.phone || "-"}
                             </td>
@@ -499,6 +496,9 @@ export default function CompanionList() {
                             </td>
                             <td className={`border border-border p-1.5 text-right font-semibold whitespace-nowrap ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                               €{remaining.toFixed(2)}
+                            </td>
+                            <td className="border border-border p-1.5 text-xs text-muted-foreground">
+                              {participant.notes_companion || "-"}
                             </td>
                           </tr>
                         );
