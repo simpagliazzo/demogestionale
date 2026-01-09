@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Check, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatNameSurnameFirst } from '@/lib/format-utils';
 
 interface TokenData {
   id: string;
@@ -243,7 +244,7 @@ export default function UploadDocumenti() {
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Partecipante:</span>
             </div>
-            <p className="text-lg font-semibold">{tokenData?.participant.full_name}</p>
+            <p className="text-lg font-semibold">{tokenData?.participant.full_name ? formatNameSurnameFirst(tokenData.participant.full_name) : ''}</p>
             
             <div className="pt-2 border-t">
               <p className="text-sm text-muted-foreground">Viaggio:</p>

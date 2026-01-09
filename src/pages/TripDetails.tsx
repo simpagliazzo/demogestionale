@@ -1252,7 +1252,7 @@ export default function TripDetails() {
                                             {participant.phone && (
                                               <p className="text-muted-foreground">{participant.phone}</p>
                                             )}
-                                            <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
+                                            <ParticipantDocUpload participantId={participant.id} participantName={formatNameSurnameFirst(participant.full_name)} dateOfBirth={participant.date_of_birth} />
                                           </div>
                                         </div>
                                       );
@@ -1321,7 +1321,7 @@ export default function TripDetails() {
                             {participant.phone && (
                               <p className="text-muted-foreground mt-0.5">{participant.phone}</p>
                             )}
-                            <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
+                            <ParticipantDocUpload participantId={participant.id} participantName={formatNameSurnameFirst(participant.full_name)} dateOfBirth={participant.date_of_birth} />
                           </div>
                         </div>
                       );

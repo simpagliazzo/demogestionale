@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useParticipantSearch, ExistingParticipant } from "@/hooks/use-participant-search";
 import { User, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatNameSurnameFirst } from "@/lib/format-utils";
 
 interface ParticipantAutocompleteProps {
   value: string;
@@ -94,7 +95,7 @@ export default function ParticipantAutocomplete({
                   <div className="flex items-start gap-2">
                     <User className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">{participant.full_name}</div>
+                      <div className="font-medium text-sm truncate">{formatNameSurnameFirst(participant.full_name)}</div>
                       <div className="text-xs text-muted-foreground space-x-2">
                         {participant.date_of_birth && (
                           <span>Nato: {formatDate(participant.date_of_birth)}</span>
