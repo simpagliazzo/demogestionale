@@ -81,45 +81,51 @@ export default function HotelList() {
     return capacities[roomType] || 1;
   };
 
-  const getParticipantsByRoom = () => {
-    const byRoom: Record<string, Participant[][]> = {
-      singola: [],
-      doppia: [],
-      matrimoniale: [],
-      tripla: [],
-      quadrupla: [],
-    };
-
-    // Prima raggruppa per (group_number, roomType)
-    const byGroupAndType: Record<string, Participant[]> = {};
+  // Raggruppa partecipanti per numero gruppo
+  const getParticipantsByGroup = () => {
+    const groups: Record<number, { participants: Participant[]; roomType: string }> = {};
+    const noGroup: Participant[] = [];
     
     participants.forEach((p) => {
-      const roomType = getRoomType(p);
-      const groupNum = p.group_number?.toString() || `solo-${p.id}`;
-      const key = `${groupNum}__${roomType}`;
-      
-      if (!byGroupAndType[key]) {
-        byGroupAndType[key] = [];
-      }
-      byGroupAndType[key].push(p);
-    });
-
-    // Dividi ogni gruppo per capacità camera e assegna alla tipologia corretta
-    Object.entries(byGroupAndType).forEach(([key, groupParticipants]) => {
-      const [, roomType] = key.split('__');
-      const capacity = getRoomCapacity(roomType);
-      const sortedParticipants = groupParticipants.sort((a, b) => a.full_name.localeCompare(b.full_name));
-      
-      // Dividi in chunk per capacità camera
-      for (let i = 0; i < sortedParticipants.length; i += capacity) {
-        const chunk = sortedParticipants.slice(i, i + capacity);
-        if (byRoom[roomType]) {
-          byRoom[roomType].push(chunk);
+      if (p.group_number) {
+        if (!groups[p.group_number]) {
+          groups[p.group_number] = { participants: [], roomType: getRoomType(p) };
         }
+        groups[p.group_number].participants.push(p);
+      } else {
+        noGroup.push(p);
       }
     });
 
-    return byRoom;
+    // Ordina partecipanti all'interno di ogni gruppo per cognome
+    Object.values(groups).forEach(group => {
+      group.participants.sort((a, b) => {
+        const aSurname = a.full_name.split(' ').pop() || '';
+        const bSurname = b.full_name.split(' ').pop() || '';
+        return aSurname.localeCompare(bSurname, 'it');
+      });
+    });
+
+    // Ordina partecipanti senza gruppo per cognome
+    noGroup.sort((a, b) => {
+      const aSurname = a.full_name.split(' ').pop() || '';
+      const bSurname = b.full_name.split(' ').pop() || '';
+      return aSurname.localeCompare(bSurname, 'it');
+    });
+
+    return { groups, noGroup };
+  };
+
+  const getRoomLabel = (roomType: string) => {
+    const labels: Record<string, string> = {
+      singola: 'Singola',
+      doppia: 'Doppia',
+      matrimoniale: 'Matrimoniale',
+      tripla: 'Tripla',
+      quadrupla: 'Quadrupla',
+      altro: '-',
+    };
+    return labels[roomType] || '-';
   };
 
   if (loading) {
@@ -134,14 +140,19 @@ export default function HotelList() {
     return <div className="p-8 text-center">Viaggio non trovato</div>;
   }
 
-  const roomGroups = getParticipantsByRoom();
-  const roomTypes = [
-    { key: "singola", label: "Camere Singole" },
-    { key: "doppia", label: "Camere Doppie" },
-    { key: "matrimoniale", label: "Camere Matrimoniali" },
-    { key: "tripla", label: "Camere Triple" },
-    { key: "quadrupla", label: "Camere Quadruple" },
-  ] as const;
+  const { groups, noGroup } = getParticipantsByGroup();
+  const sortedGroupNumbers = Object.keys(groups).map(Number).sort((a, b) => a - b);
+
+  // Conta camere per tipologia
+  const roomCounts: Record<string, number> = {};
+  sortedGroupNumbers.forEach(groupNum => {
+    const roomType = groups[groupNum].roomType;
+    roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
+  });
+  noGroup.forEach(p => {
+    const roomType = getRoomType(p);
+    roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
+  });
 
   return (
     <div className="p-8 max-w-4xl mx-auto print:p-4">
@@ -162,6 +173,17 @@ export default function HotelList() {
         <h2 className="text-xl font-semibold mt-4">LISTA HOTEL</h2>
       </div>
 
+      {/* Riepilogo camere */}
+      <div className="mb-4 p-3 bg-muted/50 rounded-lg border text-sm">
+        <strong>Riepilogo camere:</strong>{' '}
+        {Object.entries(roomCounts).map(([type, count], idx) => (
+          <span key={type}>
+            {idx > 0 && ' | '}
+            {getRoomLabel(type)}: <strong>{count}</strong>
+          </span>
+        ))}
+      </div>
+
       <button
         onClick={() => window.print()}
         className="no-print mb-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
@@ -169,47 +191,64 @@ export default function HotelList() {
         Stampa Lista
       </button>
 
-      {roomTypes.map(({ key, label }) => {
-        const rooms = roomGroups[key];
-        if (rooms.length === 0) return null;
-
-        return (
-          <div key={key} className="mb-6">
-            <h3 className="text-lg font-semibold border-b pb-2 mb-3">{label} ({rooms.length})</h3>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="border p-2 text-left text-sm">Camera</th>
-                  <th className="border p-2 text-left text-sm">Nominativo</th>
-                  <th className="border p-2 text-left text-sm">Data Nascita</th>
-                  <th className="border p-2 text-left text-sm">Luogo Nascita</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.map((group, roomIdx) => (
-                  group.map((p, idx) => (
-                    <tr key={p.id} className={roomIdx % 2 === 0 ? "bg-white" : "bg-muted/30"}>
-                      {idx === 0 && (
-                        <td className="border p-2 text-sm font-medium" rowSpan={group.length}>
-                          {roomIdx + 1}
-                        </td>
-                      )}
-                      <td className="border p-2 text-sm">{formatNameSurnameFirst(p.full_name)}</td>
-                      <td className="border p-2 text-sm">
-                        {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
-                      </td>
-                      <td className="border p-2 text-sm">{p.place_of_birth || "-"}</td>
-                    </tr>
-                  ))
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
+      <table className="w-full border-collapse mb-6">
+        <thead>
+          <tr className="bg-muted">
+            <th className="border p-2 text-center text-sm w-16">Gruppo</th>
+            <th className="border p-2 text-left text-sm w-24">Camera</th>
+            <th className="border p-2 text-left text-sm">Nominativo</th>
+            <th className="border p-2 text-left text-sm w-28">Data Nascita</th>
+            <th className="border p-2 text-left text-sm">Luogo Nascita</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedGroupNumbers.map((groupNum) => {
+            const group = groups[groupNum];
+            return group.participants.map((p, idx) => (
+              <tr key={p.id} className={groupNum % 2 === 0 ? "bg-white" : "bg-muted/30"}>
+                {idx === 0 && (
+                  <>
+                    <td 
+                      className="border p-2 text-sm font-bold text-center bg-primary/10" 
+                      rowSpan={group.participants.length}
+                    >
+                      #{groupNum}
+                    </td>
+                    <td 
+                      className="border p-2 text-sm font-medium capitalize" 
+                      rowSpan={group.participants.length}
+                    >
+                      {getRoomLabel(group.roomType)}
+                    </td>
+                  </>
+                )}
+                <td className="border p-2 text-sm font-medium">{formatNameSurnameFirst(p.full_name)}</td>
+                <td className="border p-2 text-sm">
+                  {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
+                </td>
+                <td className="border p-2 text-sm">{p.place_of_birth || "-"}</td>
+              </tr>
+            ));
+          })}
+          
+          {/* Partecipanti senza gruppo */}
+          {noGroup.map((p, idx) => (
+            <tr key={p.id} className="bg-orange-50">
+              <td className="border p-2 text-sm text-center text-muted-foreground">-</td>
+              <td className="border p-2 text-sm font-medium capitalize">{getRoomLabel(getRoomType(p))}</td>
+              <td className="border p-2 text-sm font-medium">{formatNameSurnameFirst(p.full_name)}</td>
+              <td className="border p-2 text-sm">
+                {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
+              </td>
+              <td className="border p-2 text-sm">{p.place_of_birth || "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <div className="mt-8 pt-4 border-t text-sm text-muted-foreground">
         <p>Totale partecipanti: {participants.length}</p>
+        <p>Totale gruppi: {sortedGroupNumbers.length}{noGroup.length > 0 ? ` + ${noGroup.length} senza gruppo` : ''}</p>
         <p>Data generazione: {format(new Date(), "dd/MM/yyyy HH:mm", { locale: it })}</p>
       </div>
     </div>
