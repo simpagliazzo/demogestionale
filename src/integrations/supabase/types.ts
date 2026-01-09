@@ -396,6 +396,8 @@ export type Database = {
           group_number: number | null
           id: string
           notes: string | null
+          notes_companion: string | null
+          notes_hotel: string | null
           phone: string | null
           place_of_birth: string | null
           trip_id: string | null
@@ -412,6 +414,8 @@ export type Database = {
           group_number?: number | null
           id?: string
           notes?: string | null
+          notes_companion?: string | null
+          notes_hotel?: string | null
           phone?: string | null
           place_of_birth?: string | null
           trip_id?: string | null
@@ -428,6 +432,8 @@ export type Database = {
           group_number?: number | null
           id?: string
           notes?: string | null
+          notes_companion?: string | null
+          notes_hotel?: string | null
           phone?: string | null
           place_of_birth?: string | null
           trip_id?: string | null
