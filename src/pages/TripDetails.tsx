@@ -73,6 +73,8 @@ interface Participant {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  notes_hotel: string | null;
+  notes_companion: string | null;
   created_at: string;
   group_number: number | null;
   discount_type: string | null;

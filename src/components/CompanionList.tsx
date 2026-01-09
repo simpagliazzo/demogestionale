@@ -13,6 +13,7 @@ interface Participant {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  notes_companion: string | null;
   created_at: string;
   group_number: number | null;
   discount_type: string | null;
@@ -78,7 +79,7 @@ export default function CompanionList() {
 
       const { data: participantsData } = await supabase
         .from("participants")
-        .select("id, full_name, date_of_birth, place_of_birth, email, phone, notes, created_at, group_number, discount_type, discount_amount")
+        .select("id, full_name, date_of_birth, place_of_birth, email, phone, notes, notes_companion, created_at, group_number, discount_type, discount_amount")
         .eq("trip_id", id)
         .order("full_name");
 
@@ -346,12 +347,12 @@ export default function CompanionList() {
                       <th className="border border-border p-1.5 text-left font-semibold">Nome</th>
                       <th className="border border-border p-1.5 text-left font-semibold">Data Nascita</th>
                       <th className="border border-border p-1.5 text-left font-semibold">Luogo Nascita</th>
-                      <th className="border border-border p-1.5 text-left font-semibold">Email</th>
                       <th className="border border-border p-1.5 text-left font-semibold">Telefono</th>
                       <th className="border border-border p-1.5 text-center font-semibold">Camera</th>
                       <th className="border border-border p-1.5 text-right font-semibold">Prezzo</th>
                       <th className="border border-border p-1.5 text-right font-semibold">Versato</th>
                       <th className="border border-border p-1.5 text-right font-semibold">Da Versare</th>
+                      <th className="border border-border p-1.5 text-left font-semibold">Note</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -380,9 +381,6 @@ export default function CompanionList() {
                           <td className="border border-border p-1.5">
                             {participant.place_of_birth || "-"}
                           </td>
-                          <td className="border border-border p-1.5 text-xs">
-                            {participant.email || "-"}
-                          </td>
                           <td className="border border-border p-1.5">
                             {participant.phone || "-"}
                           </td>
@@ -401,12 +399,15 @@ export default function CompanionList() {
                           <td className={`border border-border p-1.5 text-right font-semibold whitespace-nowrap ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                             €{remaining.toFixed(2)}
                           </td>
+                          <td className="border border-border p-1.5 text-xs text-muted-foreground">
+                            {participant.notes_companion || "-"}
+                          </td>
                         </tr>
                       );
                     })}
                     {/* Riga totale gruppo */}
                     <tr className="bg-muted/70 font-semibold">
-                      <td colSpan={6} className="border border-border p-1.5 text-right">
+                      <td colSpan={5} className="border border-border p-1.5 text-right">
                         Totale Gruppo:
                       </td>
                       <td className="border border-border p-1.5 text-right whitespace-nowrap">
@@ -418,6 +419,7 @@ export default function CompanionList() {
                       <td className="border border-border p-1.5 text-right whitespace-nowrap text-orange-600">
                         €{(groupParticipants.reduce((sum, p) => sum + getParticipantPrice(p), 0) - groupParticipants.reduce((sum, p) => sum + (payments[p.id] || 0), 0)).toFixed(2)}
                       </td>
+                      <td className="border border-border p-1.5"></td>
                     </tr>
                   </tbody>
                 </table>

@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useActivityLog } from "@/hooks/use-activity-log";
-import { FileText, MessageCircle, Receipt } from "lucide-react";
+import { FileText, MessageCircle, Receipt, Copy } from "lucide-react";
 import PaymentReceiptDialog from "@/components/PaymentReceiptDialog";
 import TripConfirmationDialog from "@/components/TripConfirmationDialog";
 import GenerateUploadLinkButton from "@/components/GenerateUploadLinkButton";
@@ -24,6 +24,8 @@ const participantSchema = z.object({
   email: z.string().email("Email non valida").optional().or(z.literal("")),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  notes_hotel: z.string().optional(),
+  notes_companion: z.string().optional(),
   group_number: z.string().optional(),
 });
 
@@ -52,6 +54,8 @@ interface EditParticipantDialogProps {
     email: string | null;
     phone: string | null;
     notes: string | null;
+    notes_hotel: string | null;
+    notes_companion: string | null;
     group_number?: number | null;
     discount_type?: string | null;
     discount_amount?: number | null;
@@ -106,6 +110,8 @@ export default function EditParticipantDialog({
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm<z.infer<typeof participantSchema>>({
     resolver: zodResolver(participantSchema),
   });
@@ -163,6 +169,8 @@ export default function EditParticipantDialog({
         email: participant.email || "",
         phone: participant.phone || "",
         notes: participant.notes || "",
+        notes_hotel: participant.notes_hotel || "",
+        notes_companion: participant.notes_companion || "",
         group_number: participant.group_number?.toString() || "",
       });
       setDiscountType(participant.discount_type || null);
@@ -313,6 +321,8 @@ export default function EditParticipantDialog({
           email: values.email || null,
           phone: values.phone || null,
           notes: values.notes || null,
+          notes_hotel: values.notes_hotel || null,
+          notes_companion: values.notes_companion || null,
           group_number: groupNum,
           discount_type: discountType,
           discount_amount: discountAmount || 0,
@@ -482,11 +492,65 @@ export default function EditParticipantDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Note</Label>
+            <Label htmlFor="notes">Note Generali (tipologia camera, ecc.)</Label>
             <Textarea
               {...register("notes")}
-              placeholder="Note aggiuntive"
-              rows={3}
+              placeholder="Note generali (es. Camera: doppia)"
+              rows={2}
+            />
+          </div>
+
+          {/* Note Hotel */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notes_hotel">Note per Hotel</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const hotelNotes = watch("notes_hotel");
+                  const companionNotes = watch("notes_companion");
+                  setValue("notes_companion", companionNotes ? `${companionNotes}\n${hotelNotes}` : hotelNotes || "");
+                  toast.success("Note copiate in Accompagnatore");
+                }}
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                Copia in Accompagnatore
+              </Button>
+            </div>
+            <Textarea
+              {...register("notes_hotel")}
+              placeholder="Note da stampare nella lista hotel"
+              rows={2}
+            />
+          </div>
+
+          {/* Note Accompagnatore */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notes_companion">Note per Accompagnatore</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const companionNotes = watch("notes_companion");
+                  const hotelNotes = watch("notes_hotel");
+                  setValue("notes_hotel", hotelNotes ? `${hotelNotes}\n${companionNotes}` : companionNotes || "");
+                  toast.success("Note copiate in Hotel");
+                }}
+              >
+                <Copy className="h-3 w-3 mr-1" />
+                Copia in Hotel
+              </Button>
+            </div>
+            <Textarea
+              {...register("notes_companion")}
+              placeholder="Note da stampare nella lista accompagnatore"
+              rows={2}
             />
           </div>
 
