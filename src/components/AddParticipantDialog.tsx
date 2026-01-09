@@ -18,7 +18,8 @@ import { useActivityLog } from "@/hooks/use-activity-log";
 import { AlertTriangle } from "lucide-react";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 const participantSchema = z.object({
-  full_name: z.string().min(2, "Il nome completo deve contenere almeno 2 caratteri"),
+  cognome: z.string().min(1, "Il cognome è obbligatorio"),
+  nome: z.string().min(1, "Il nome è obbligatorio"),
   date_of_birth: z.string().optional(),
   place_of_birth: z.string().optional(),
   email: z.string().email("Email non valida").optional().or(z.literal("")),
@@ -27,9 +28,10 @@ const participantSchema = z.object({
 });
 
 const formSchema = z.object({
-  participants: z.array(participantSchema).min(1, "Aggiungi almeno un partecipante").max(4, "Massimo 4 partecipanti"),
+  participants: z.array(participantSchema).min(1, "Aggiungi almeno un partecipante"),
   room_type: z.enum(["singola", "doppia", "matrimoniale", "tripla", "quadrupla", "nessuna"]),
   group_number: z.string().optional(),
+  customNumParticipants: z.number().optional(),
 });
 
 interface AddParticipantDialogProps {
@@ -68,11 +70,14 @@ export default function AddParticipantDialog({
   } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      participants: [{ full_name: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "" }],
+      participants: [{ cognome: "", nome: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "" }],
       room_type: isDayTrip ? "nessuna" : "doppia",
       group_number: "",
+      customNumParticipants: undefined,
     },
   });
+
+  const [customNumInput, setCustomNumInput] = useState<string>("");
 
   const { fields } = useFieldArray({
     control,
@@ -134,7 +139,7 @@ export default function AddParticipantDialog({
     setIsSubmitting(true);
     try {
       // Verifica se qualche partecipante è in blacklist (case-insensitive con ilike)
-      const participantNames = values.participants.map(p => p.full_name.trim().toLowerCase());
+      const participantNames = values.participants.map(p => `${p.cognome} ${p.nome}`.trim().toLowerCase());
       
       // Recupera tutta la blacklist per fare un confronto case-insensitive
       const { data: allBlacklist, error: blacklistError } = await supabase
@@ -151,14 +156,14 @@ export default function AddParticipantDialog({
         
         if (matchedBlacklist.length > 0) {
           const matchedNames = values.participants
-            .filter(p => matchedBlacklist.some(b => b.full_name.toLowerCase() === p.full_name.trim().toLowerCase()))
-            .map(p => p.full_name);
+            .filter(p => matchedBlacklist.some(b => b.full_name.toLowerCase() === `${p.cognome} ${p.nome}`.trim().toLowerCase()))
+            .map(p => `${p.cognome} ${p.nome}`);
           
           const reasons: { [key: string]: string | null } = {};
           matchedBlacklist.forEach(b => {
-            const originalName = values.participants.find(p => p.full_name.trim().toLowerCase() === b.full_name.toLowerCase())?.full_name;
+            const originalName = values.participants.find(p => `${p.cognome} ${p.nome}`.trim().toLowerCase() === b.full_name.toLowerCase());
             if (originalName) {
-              reasons[originalName] = b.reason;
+              reasons[`${originalName.cognome} ${originalName.nome}`] = b.reason;
             }
           });
           
@@ -179,7 +184,7 @@ export default function AddParticipantDialog({
       // Inserisci tutti i partecipanti con lo stesso group_number
       const participantsToInsert = values.participants.map(p => ({
         trip_id: tripId,
-        full_name: p.full_name,
+        full_name: `${p.cognome} ${p.nome}`.trim(),
         date_of_birth: convertDateToISO(p.date_of_birth),
         place_of_birth: p.place_of_birth || null,
         email: p.email || null,
@@ -221,7 +226,8 @@ export default function AddParticipantDialog({
   const handleNumParticipantsSelect = (num: number) => {
     setNumParticipants(num);
     const newParticipants = Array(num).fill(null).map(() => ({
-      full_name: "", 
+      cognome: "",
+      nome: "", 
       date_of_birth: "", 
       place_of_birth: "", 
       email: "", 
@@ -233,6 +239,13 @@ export default function AddParticipantDialog({
       room_type: isDayTrip ? "nessuna" : "doppia",
       group_number: "",
     });
+  };
+
+  const handleCustomNumConfirm = () => {
+    const num = parseInt(customNumInput);
+    if (num > 0 && num <= 100) {
+      handleNumParticipantsSelect(num);
+    }
   };
 
   return (
@@ -257,19 +270,62 @@ export default function AddParticipantDialog({
         {numParticipants === null ? (
           <div className="space-y-4 py-8">
             <Label className="text-center block text-lg">Quanti partecipanti vuoi aggiungere?</Label>
-            <div className="grid grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((num) => (
-                <Button
-                  key={num}
-                  type="button"
-                  variant="outline"
-                  className="h-24 text-2xl font-bold"
-                  onClick={() => handleNumParticipantsSelect(num)}
-                >
-                  {num}
-                </Button>
-              ))}
-            </div>
+            {isDayTrip ? (
+              // Per viaggi giornalieri: input numerico libero
+              <div className="space-y-4">
+                <div className="grid grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((num) => (
+                    <Button
+                      key={num}
+                      type="button"
+                      variant="outline"
+                      className="h-20 text-2xl font-bold"
+                      onClick={() => handleNumParticipantsSelect(num)}
+                    >
+                      {num}
+                    </Button>
+                  ))}
+                </div>
+                <div className="border-t pt-4">
+                  <Label className="text-center block text-sm text-muted-foreground mb-2">
+                    Oppure inserisci un numero personalizzato
+                  </Label>
+                  <div className="flex gap-2 justify-center items-center">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="100"
+                      placeholder="Es: 20"
+                      value={customNumInput}
+                      onChange={(e) => setCustomNumInput(e.target.value)}
+                      className="w-24 text-center"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleCustomNumConfirm}
+                      disabled={!customNumInput || parseInt(customNumInput) < 1}
+                    >
+                      Conferma
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Per viaggi con hotel: max 4 partecipanti (come prima)
+              <div className="grid grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((num) => (
+                  <Button
+                    key={num}
+                    type="button"
+                    variant="outline"
+                    className="h-24 text-2xl font-bold"
+                    onClick={() => handleNumParticipantsSelect(num)}
+                  >
+                    {num}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -355,9 +411,18 @@ export default function AddParticipantDialog({
 
               {fields.map((field, index) => {
                 const handleParticipantSelect = (participant: ExistingParticipant) => {
-                  setValue(`participants.${index}.full_name`, participant.full_name);
+                  // Splitta il full_name in cognome e nome (assume ultimo = cognome)
+                  const nameParts = participant.full_name.trim().split(/\s+/);
+                  if (nameParts.length >= 2) {
+                    const cognome = nameParts[nameParts.length - 1];
+                    const nome = nameParts.slice(0, -1).join(' ');
+                    setValue(`participants.${index}.cognome`, cognome);
+                    setValue(`participants.${index}.nome`, nome);
+                  } else {
+                    setValue(`participants.${index}.cognome`, participant.full_name);
+                    setValue(`participants.${index}.nome`, "");
+                  }
                   if (participant.date_of_birth) {
-                    // Convert YYYY-MM-DD to DD/MM/YYYY if needed
                     const dateStr = participant.date_of_birth;
                     if (dateStr.includes("-")) {
                       const parts = dateStr.split("-");
@@ -382,28 +447,40 @@ export default function AddParticipantDialog({
                 <div key={field.id} className="p-4 border rounded-lg space-y-4">
                   <h4 className="font-medium">Partecipante {index + 1}</h4>
 
-                <div className="space-y-2">
-                  <Label htmlFor={`participants.${index}.full_name`}>
-                    COGNOME Nome <span className="text-destructive">*</span>
-                  </Label>
-                  <Controller
-                    name={`participants.${index}.full_name`}
-                    control={control}
-                    render={({ field: inputField }) => (
-                      <ParticipantAutocomplete
-                        value={inputField.value}
-                        onChange={inputField.onChange}
-                        onSelect={handleParticipantSelect}
-                        placeholder="Inizia a digitare per cercare..."
-                      />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`participants.${index}.cognome`}>
+                      Cognome <span className="text-destructive">*</span>
+                    </Label>
+                    <Controller
+                      name={`participants.${index}.cognome`}
+                      control={control}
+                      render={({ field: inputField }) => (
+                        <ParticipantAutocomplete
+                          value={inputField.value}
+                          onChange={inputField.onChange}
+                          onSelect={handleParticipantSelect}
+                          placeholder="Cognome..."
+                        />
+                      )}
+                    />
+                    {errors.participants?.[index]?.cognome && (
+                      <p className="text-sm text-destructive">{errors.participants[index]?.cognome?.message}</p>
                     )}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Digita per cercare clienti esistenti o inserisci un nuovo nome
-                  </p>
-                  {errors.participants?.[index]?.full_name && (
-                    <p className="text-sm text-destructive">{errors.participants[index]?.full_name?.message}</p>
-                  )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`participants.${index}.nome`}>
+                      Nome <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      {...register(`participants.${index}.nome`)}
+                      placeholder="Nome..."
+                    />
+                    {errors.participants?.[index]?.nome && (
+                      <p className="text-sm text-destructive">{errors.participants[index]?.nome?.message}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
