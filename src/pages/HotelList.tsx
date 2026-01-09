@@ -81,28 +81,35 @@ export default function HotelList() {
     return capacities[roomType] || 1;
   };
 
-  // Raggruppa partecipanti per numero gruppo
+  // Raggruppa partecipanti per numero gruppo e poi per tipologia camera
   const getParticipantsByGroup = () => {
-    const groups: Record<number, { participants: Participant[]; roomType: string }> = {};
+    // groups[groupNumber][roomType] = Participant[]
+    const groups: Record<number, Record<string, Participant[]>> = {};
     const noGroup: Participant[] = [];
     
     participants.forEach((p) => {
       if (p.group_number) {
         if (!groups[p.group_number]) {
-          groups[p.group_number] = { participants: [], roomType: getRoomType(p) };
+          groups[p.group_number] = {};
         }
-        groups[p.group_number].participants.push(p);
+        const roomType = getRoomType(p);
+        if (!groups[p.group_number][roomType]) {
+          groups[p.group_number][roomType] = [];
+        }
+        groups[p.group_number][roomType].push(p);
       } else {
         noGroup.push(p);
       }
     });
 
-    // Ordina partecipanti all'interno di ogni gruppo per cognome
-    Object.values(groups).forEach(group => {
-      group.participants.sort((a, b) => {
-        const aSurname = a.full_name.split(' ').pop() || '';
-        const bSurname = b.full_name.split(' ').pop() || '';
-        return aSurname.localeCompare(bSurname, 'it');
+    // Ordina partecipanti all'interno di ogni camera per cognome
+    Object.values(groups).forEach(roomTypes => {
+      Object.values(roomTypes).forEach(roomParticipants => {
+        roomParticipants.sort((a, b) => {
+          const aSurname = a.full_name.split(' ').pop() || '';
+          const bSurname = b.full_name.split(' ').pop() || '';
+          return aSurname.localeCompare(bSurname, 'it');
+        });
       });
     });
 
@@ -146,12 +153,41 @@ export default function HotelList() {
   // Conta camere per tipologia
   const roomCounts: Record<string, number> = {};
   sortedGroupNumbers.forEach(groupNum => {
-    const roomType = groups[groupNum].roomType;
-    roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
+    const roomTypes = groups[groupNum];
+    Object.entries(roomTypes).forEach(([roomType, roomParticipants]) => {
+      // Conta quante camere di questo tipo nel gruppo (basato sulla capacità)
+      const capacity = getRoomCapacity(roomType);
+      const numRooms = Math.ceil(roomParticipants.length / capacity);
+      roomCounts[roomType] = (roomCounts[roomType] || 0) + numRooms;
+    });
   });
   noGroup.forEach(p => {
     const roomType = getRoomType(p);
     roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
+  });
+
+  // Prepara righe per la tabella: ogni camera è una riga con i suoi partecipanti
+  const tableRows: { groupNum: number | null; roomType: string; participants: Participant[]; isFirst: boolean; totalRowsInGroup: number }[] = [];
+  
+  sortedGroupNumbers.forEach(groupNum => {
+    const roomTypes = groups[groupNum];
+    const roomTypeEntries = Object.entries(roomTypes);
+    let totalParticipantsInGroup = 0;
+    roomTypeEntries.forEach(([_, parts]) => {
+      totalParticipantsInGroup += parts.length;
+    });
+    
+    let isFirst = true;
+    roomTypeEntries.forEach(([roomType, roomParticipants]) => {
+      tableRows.push({
+        groupNum,
+        roomType,
+        participants: roomParticipants,
+        isFirst,
+        totalRowsInGroup: totalParticipantsInGroup,
+      });
+      isFirst = false;
+    });
   });
 
   return (
@@ -202,25 +238,25 @@ export default function HotelList() {
           </tr>
         </thead>
         <tbody>
-          {sortedGroupNumbers.map((groupNum) => {
-            const group = groups[groupNum];
-            return group.participants.map((p, idx) => (
+          {tableRows.map((row, rowIndex) => {
+            const groupNum = row.groupNum!;
+            return row.participants.map((p, pIdx) => (
               <tr key={p.id} className={groupNum % 2 === 0 ? "bg-white" : "bg-muted/30"}>
-                {idx === 0 && (
-                  <>
-                    <td 
-                      className="border p-2 text-sm font-bold text-center bg-primary/10" 
-                      rowSpan={group.participants.length}
-                    >
-                      #{groupNum}
-                    </td>
-                    <td 
-                      className="border p-2 text-sm font-medium capitalize" 
-                      rowSpan={group.participants.length}
-                    >
-                      {getRoomLabel(group.roomType)}
-                    </td>
-                  </>
+                {row.isFirst && pIdx === 0 && (
+                  <td 
+                    className="border p-2 text-sm font-bold text-center bg-primary/10" 
+                    rowSpan={row.totalRowsInGroup}
+                  >
+                    #{groupNum}
+                  </td>
+                )}
+                {pIdx === 0 && (
+                  <td 
+                    className="border p-2 text-sm font-medium capitalize" 
+                    rowSpan={row.participants.length}
+                  >
+                    {getRoomLabel(row.roomType)}
+                  </td>
                 )}
                 <td className="border p-2 text-sm font-medium">{formatNameSurnameFirst(p.full_name)}</td>
                 <td className="border p-2 text-sm">
@@ -232,7 +268,7 @@ export default function HotelList() {
           })}
           
           {/* Partecipanti senza gruppo */}
-          {noGroup.map((p, idx) => (
+          {noGroup.map((p) => (
             <tr key={p.id} className="bg-orange-50">
               <td className="border p-2 text-sm text-center text-muted-foreground">-</td>
               <td className="border p-2 text-sm font-medium capitalize">{getRoomLabel(getRoomType(p))}</td>
