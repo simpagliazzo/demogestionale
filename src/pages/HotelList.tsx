@@ -166,27 +166,55 @@ export default function HotelList() {
     roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
   });
 
-  // Prepara righe per la tabella: ogni camera è una riga con i suoi partecipanti
-  const tableRows: { groupNum: number | null; roomType: string; participants: Participant[]; isFirst: boolean; totalRowsInGroup: number }[] = [];
+  // Divide i partecipanti in camere singole in base alla capacità
+  const splitIntoRooms = (participants: Participant[], roomType: string): Participant[][] => {
+    const capacity = getRoomCapacity(roomType);
+    const rooms: Participant[][] = [];
+    for (let i = 0; i < participants.length; i += capacity) {
+      rooms.push(participants.slice(i, i + capacity));
+    }
+    return rooms;
+  };
+
+  // Prepara righe per la tabella: ogni camera separata con i suoi partecipanti
+  interface TableRow {
+    groupNum: number | null;
+    roomType: string;
+    participants: Participant[];
+    isFirstInGroup: boolean;
+    isFirstInRoomType: boolean;
+    totalRowsInGroup: number;
+    roomsOfThisType: number;
+  }
+  
+  const tableRows: TableRow[] = [];
   
   sortedGroupNumbers.forEach(groupNum => {
     const roomTypes = groups[groupNum];
-    const roomTypeEntries = Object.entries(roomTypes);
+    
+    // Calcola il totale di partecipanti nel gruppo
     let totalParticipantsInGroup = 0;
-    roomTypeEntries.forEach(([_, parts]) => {
+    Object.values(roomTypes).forEach(parts => {
       totalParticipantsInGroup += parts.length;
     });
     
-    let isFirst = true;
-    roomTypeEntries.forEach(([roomType, roomParticipants]) => {
-      tableRows.push({
-        groupNum,
-        roomType,
-        participants: roomParticipants,
-        isFirst,
-        totalRowsInGroup: totalParticipantsInGroup,
+    let isFirstInGroup = true;
+    Object.entries(roomTypes).forEach(([roomType, roomParticipants]) => {
+      // Dividi i partecipanti in camere separate
+      const rooms = splitIntoRooms(roomParticipants, roomType);
+      
+      rooms.forEach((roomOccupants, roomIdx) => {
+        tableRows.push({
+          groupNum,
+          roomType,
+          participants: roomOccupants,
+          isFirstInGroup,
+          isFirstInRoomType: roomIdx === 0,
+          totalRowsInGroup: totalParticipantsInGroup,
+          roomsOfThisType: rooms.length,
+        });
+        isFirstInGroup = false;
       });
-      isFirst = false;
     });
   });
 
@@ -238,11 +266,11 @@ export default function HotelList() {
           </tr>
         </thead>
         <tbody>
-          {tableRows.map((row, rowIndex) => {
+          {tableRows.map((row) => {
             const groupNum = row.groupNum!;
             return row.participants.map((p, pIdx) => (
               <tr key={p.id} className={groupNum % 2 === 0 ? "bg-white" : "bg-muted/30"}>
-                {row.isFirst && pIdx === 0 && (
+                {row.isFirstInGroup && pIdx === 0 && (
                   <td 
                     className="border p-2 text-sm font-bold text-center bg-primary/10" 
                     rowSpan={row.totalRowsInGroup}
