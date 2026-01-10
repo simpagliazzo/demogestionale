@@ -9,6 +9,7 @@ import { it } from "date-fns/locale";
 import { toast } from "sonner";
 import { useReactToPrint } from "react-to-print";
 import { supabase } from "@/integrations/supabase/client";
+import { useWhatsAppTemplates, formatPhoneForWhatsApp, openWhatsApp } from "@/hooks/use-whatsapp-templates";
 
 interface Payment {
   amount: number;
@@ -60,6 +61,7 @@ export default function TripConfirmationDialog({
 }: TripConfirmationDialogProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  const { formatMessage, agencySettings } = useWhatsAppTemplates();
 
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const balance = totalPrice - totalPaid;
@@ -161,17 +163,11 @@ export default function TripConfirmationDialog({
   };
 
   const handleWhatsApp = async () => {
-    let phone = participantPhone?.replace(/[^\d]/g, "") || "";
+    const phone = formatPhoneForWhatsApp(participantPhone);
     
     if (!phone) {
       toast.error("Numero di telefono mancante per questo partecipante");
       return;
-    }
-    
-    if (phone.startsWith("0")) {
-      phone = "39" + phone.substring(1);
-    } else if (phone.length <= 10) {
-      phone = "39" + phone;
     }
 
     setSendingWhatsApp(true);
@@ -198,48 +194,61 @@ export default function TripConfirmationDialog({
 
     const departureDate = format(new Date(tripDepartureDate), "d MMMM yyyy", { locale: it });
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
+    const roomLabel = currentRoomType ? ROOM_LABELS[currentRoomType] || currentRoomType : "";
 
-    const roomLabel = currentRoomType ? ROOM_LABELS[currentRoomType] || currentRoomType : null;
+    // Usa template dal database
+    const message = formatMessage("booking_confirmation", {
+      NOME_PARTECIPANTE: participantName,
+      TITOLO_VIAGGIO: tripTitle,
+      DESTINAZIONE: tripDestination,
+      DATA_PARTENZA: departureDate,
+      DATA_RITORNO: returnDate,
+      TIPO_CAMERA: roomLabel,
+      NUMERO_GRUPPO: groupNumber?.toString() || "",
+      QUOTA_TOTALE: totalPrice.toFixed(2),
+      TOTALE_PAGATO: totalPaid.toFixed(2),
+      SALDO_RESIDUO: balance > 0 ? balance.toFixed(2) : "SALDATO",
+      LINK_POSTO_BUS: busSeatLink,
+      LINK_UPLOAD_DOCUMENTO: uploadLink,
+    });
 
-    const messageParts = [
-      `✅ *CONFERMA PRENOTAZIONE*`,
-      ``,
-      `Gentile *${participantName}*,`,
-      ``,
-      `Siamo lieti di confermare la Sua partecipazione al viaggio:`,
-      ``,
-      `🚌 *${tripTitle}*`,
-      `📍 *Destinazione:* ${tripDestination}`,
-      `📅 *Partenza:* ${departureDate}`,
-      `📅 *Ritorno:* ${returnDate}`,
-      roomLabel ? `🏨 *Sistemazione:* ${roomLabel}` : null,
-      groupNumber ? `👥 *Gruppo prenotazione:* #${groupNumber}` : null,
-      ``,
-      `💵 *RIEPILOGO ECONOMICO*`,
-      `Quota di partecipazione: €${totalPrice.toFixed(2)}`,
-      `Totale versato: €${totalPaid.toFixed(2)}`,
-      balance > 0 ? `Saldo da versare: €${balance.toFixed(2)}` : `✅ Quota completamente saldata`,
-      ``,
-      // Aggiungi link scelta posto bus se generato
-      busSeatLink ? `🪑 *SCEGLI IL TUO POSTO SUL BUS*` : null,
-      busSeatLink ? `Clicca qui per scegliere il tuo posto:` : null,
-      busSeatLink ? busSeatLink : null,
-      busSeatLink ? `` : null,
-      // Aggiungi link upload documento se generato
-      uploadLink ? `📄 *DOCUMENTO DI IDENTITÀ*` : null,
-      uploadLink ? `Per completare la prenotazione, carica una copia del documento:` : null,
-      uploadLink ? uploadLink : null,
-      uploadLink ? `` : null,
-      `Per qualsiasi informazione non esiti a contattarci.`,
-      ``,
-      `Grazie per aver scelto i nostri viaggi!`,
-      ``,
-      `_Gladiatours Viaggi_`,
-      `_Tel. 0775 353808_`,
-    ].filter(Boolean).join("\n");
+    if (message) {
+      openWhatsApp(phone, message);
+    } else {
+      // Fallback se template non trovato
+      const messageParts = [
+        `✅ *CONFERMA PRENOTAZIONE*`,
+        ``,
+        `Gentile *${participantName}*,`,
+        ``,
+        `Siamo lieti di confermare la Sua partecipazione al viaggio:`,
+        ``,
+        `🚌 *${tripTitle}*`,
+        `📍 *Destinazione:* ${tripDestination}`,
+        `📅 *Partenza:* ${departureDate}`,
+        `📅 *Ritorno:* ${returnDate}`,
+        roomLabel ? `🏨 *Sistemazione:* ${roomLabel}` : null,
+        groupNumber ? `👥 *Gruppo prenotazione:* #${groupNumber}` : null,
+        ``,
+        `💵 *RIEPILOGO ECONOMICO*`,
+        `Quota di partecipazione: €${totalPrice.toFixed(2)}`,
+        `Totale versato: €${totalPaid.toFixed(2)}`,
+        balance > 0 ? `Saldo da versare: €${balance.toFixed(2)}` : `✅ Quota completamente saldata`,
+        ``,
+        busSeatLink ? `🪑 *SCEGLI IL TUO POSTO SUL BUS*` : null,
+        busSeatLink ? busSeatLink : null,
+        busSeatLink ? `` : null,
+        uploadLink ? `📄 *DOCUMENTO DI IDENTITÀ*` : null,
+        uploadLink ? uploadLink : null,
+        uploadLink ? `` : null,
+        `Grazie per aver scelto i nostri viaggi!`,
+        ``,
+        `_${agencySettings?.business_name || "Agenzia Viaggi"}_`,
+        agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null,
+      ].filter(Boolean).join("\n");
 
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(messageParts)}`;
-    window.open(whatsappUrl, "_blank");
+      openWhatsApp(phone, messageParts);
+    }
   };
 
   const departureDate = format(new Date(tripDepartureDate), "EEEE d MMMM yyyy", { locale: it });
