@@ -29,6 +29,10 @@ interface Participant {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  trip?: {
+    id: string;
+    title: string;
+  } | null;
 }
 
 interface EditParticipantStandaloneDialogProps {
@@ -148,32 +152,58 @@ export default function EditParticipantStandaloneDialog({
     }
   };
 
-  const handleDelete = async () => {
+  // Rimuovi dal viaggio (se associato) o elimina definitivamente (se non associato)
+  const handleRemoveOrDelete = async () => {
     if (!participant) return;
     
-    if (!confirm("Sei sicuro di voler eliminare questo partecipante?")) return;
+    const hasTrip = !!participant.trip;
+    
+    const confirmMessage = hasTrip 
+      ? "Sei sicuro di voler rimuovere questo partecipante dal viaggio? Rimarrà nel database e potrà essere riassegnato."
+      : "Questo partecipante non è associato a nessun viaggio. Vuoi eliminarlo definitivamente dal database?";
+    
+    if (!confirm(confirmMessage)) return;
     
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("participants")
-        .delete()
-        .eq("id", participant.id);
+      if (hasTrip) {
+        // Rimuovi dal viaggio (imposta trip_id = null)
+        const { error } = await supabase
+          .from("participants")
+          .update({ trip_id: null, group_number: null })
+          .eq("id", participant.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      await logDelete("participant", participant.id, participant.full_name, {
-        full_name: participant.full_name,
-        email: participant.email,
-        phone: participant.phone,
-      });
+        await logUpdate("participant", participant.id, participant.full_name, {
+          action: "removed_from_trip",
+          trip_id: participant.trip?.id,
+        });
 
-      toast.success("Partecipante eliminato con successo");
+        toast.success("Partecipante rimosso dal viaggio");
+      } else {
+        // Elimina definitivamente (solo se non associato a un viaggio)
+        const { error } = await supabase
+          .from("participants")
+          .delete()
+          .eq("id", participant.id);
+
+        if (error) throw error;
+
+        await logDelete("participant", participant.id, participant.full_name, {
+          full_name: participant.full_name,
+          email: participant.email,
+          phone: participant.phone,
+        });
+
+        toast.success("Partecipante eliminato definitivamente");
+      }
+      
       onOpenChange(false);
       onSuccess();
     } catch (error) {
       console.error("Errore:", error);
-      toast.error("Errore durante l'eliminazione del partecipante");
+      toast.error(hasTrip ? "Errore durante la rimozione" : "Errore durante l'eliminazione");
     } finally {
       setIsSubmitting(false);
     }
@@ -268,11 +298,12 @@ export default function EditParticipantStandaloneDialog({
           <div className="flex justify-between gap-3 pt-4">
             <Button
               type="button"
-              variant="destructive"
-              onClick={handleDelete}
+              variant={participant?.trip ? "outline" : "destructive"}
+              className={participant?.trip ? "text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground" : ""}
+              onClick={handleRemoveOrDelete}
               disabled={isSubmitting}
             >
-              Elimina
+              {participant?.trip ? "Rimuovi dal Viaggio" : "Elimina Definitivamente"}
             </Button>
             <div className="flex gap-3">
               <Button
