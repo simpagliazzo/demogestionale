@@ -352,39 +352,35 @@ export default function EditParticipantDialog({
     }
   };
 
-  const handleDelete = async () => {
+  const handleRemoveFromTrip = async () => {
     if (!participant) return;
     
-    if (!confirm("Sei sicuro di voler eliminare questo partecipante?")) return;
+    if (!confirm("Sei sicuro di voler rimuovere questo partecipante dal viaggio? Il partecipante rimarrà nel database e potrà essere riassegnato ad altri viaggi.")) return;
     
     setIsSubmitting(true);
     try {
       const { error } = await supabase
         .from("participants")
-        .delete()
+        .update({ 
+          trip_id: null,
+          group_number: null 
+        })
         .eq("id", participant.id);
 
       if (error) throw error;
 
-      // Log participant deletion with full data for restore
-      await logDelete("participant", participant.id, participant.full_name, {
-        full_name: participant.full_name,
-        email: participant.email,
-        phone: participant.phone,
-        date_of_birth: participant.date_of_birth,
-        place_of_birth: participant.place_of_birth,
-        notes: participant.notes,
-        group_number: participant.group_number,
-        discount_type: participant.discount_type,
-        discount_amount: participant.discount_amount,
+      // Log participant removal from trip
+      await logUpdate("participant", participant.id, participant.full_name, {
+        action: "removed_from_trip",
+        trip_id: tripId,
       });
 
-      toast.success("Partecipante eliminato con successo");
+      toast.success("Partecipante rimosso dal viaggio");
       onOpenChange(false);
       onSuccess();
     } catch (error) {
       console.error("Errore:", error);
-      toast.error("Errore durante l'eliminazione del partecipante");
+      toast.error("Errore durante la rimozione del partecipante");
     } finally {
       setIsSubmitting(false);
     }
@@ -557,11 +553,12 @@ export default function EditParticipantDialog({
             <div className="flex justify-between gap-3 pt-4">
               <Button
                 type="button"
-                variant="destructive"
-                onClick={handleDelete}
+                variant="outline"
+                className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={handleRemoveFromTrip}
                 disabled={isSubmitting}
               >
-                Elimina
+                Rimuovi dal Viaggio
               </Button>
               <div className="flex gap-3">
                 <Button
