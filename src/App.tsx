@@ -24,6 +24,7 @@ import Blacklist from "./pages/Blacklist";
 import UploadDocumenti from "./pages/UploadDocumenti";
 import ScegliPosto from "./pages/ScegliPosto";
 import AccompagnatoriGuide from "./pages/AccompagnatoriGuide";
+import Impostazioni from "./pages/Impostazioni";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/preventivi" element={<Preventivi />} />
               <Route path="/blacklist" element={<Blacklist />} />
               <Route path="/accompagnatori-guide" element={<AccompagnatoriGuide />} />
+              <Route path="/impostazioni" element={<Impostazioni />} />
             </Route>
             <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
             <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />
