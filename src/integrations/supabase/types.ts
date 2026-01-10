@@ -61,6 +61,63 @@ export type Database = {
           },
         ]
       }
+      agency_settings: {
+        Row: {
+          address: string | null
+          business_name: string
+          city: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          fiscal_code: string | null
+          id: string
+          legal_name: string | null
+          logo_url: string | null
+          phone: string | null
+          postal_code: string | null
+          province: string | null
+          updated_at: string
+          vat_number: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_name?: string
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          fiscal_code?: string | null
+          id?: string
+          legal_name?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_name?: string
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          fiscal_code?: string | null
+          id?: string
+          legal_name?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       blacklist: {
         Row: {
           added_by: string | null
@@ -965,6 +1022,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          template_content: string
+          template_name: string
+          template_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          template_content: string
+          template_name: string
+          template_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          template_content?: string
+          template_name?: string
+          template_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
