@@ -18,6 +18,7 @@ import AddParticipantDialog from "@/components/AddParticipantDialog";
 import EditParticipantDialog from "@/components/EditParticipantDialog";
 import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import EditTripDialog from "@/components/EditTripDialog";
+import EditRoomDialog from "@/components/EditRoomDialog";
 import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
 import { TripFileUpload } from "@/components/TripFileUpload";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
@@ -149,6 +150,9 @@ export default function TripDetails() {
   const [participantPayments, setParticipantPayments] = useState<ParticipantPayment[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editTripDialogOpen, setEditTripDialogOpen] = useState(false);
+  const [editRoomDialogOpen, setEditRoomDialogOpen] = useState(false);
+  const [selectedRoomParticipants, setSelectedRoomParticipants] = useState<Participant[]>([]);
+  const [selectedRoomType, setSelectedRoomType] = useState<string>("");
   const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
   const [tripCompanions, setTripCompanions] = useState<TripCompanion[]>([]);
   const [availableGuides, setAvailableGuides] = useState<Guide[]>([]);
@@ -1261,9 +1265,27 @@ export default function TripDetails() {
                                     })}
                                   </div>
                                   <div className="mt-2 pt-2 border-t flex justify-between items-center text-xs">
-                                    <span className="text-muted-foreground">
-                                      Tot. ({group.length} pers.)
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground">
+                                        Tot. ({group.length} pers.)
+                                      </span>
+                                      {(isAdmin || isAgent) && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-6 text-[10px] px-2 gap-1"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedRoomParticipants(group);
+                                            setSelectedRoomType(roomType);
+                                            setEditRoomDialogOpen(true);
+                                          }}
+                                        >
+                                          <Pencil className="h-3 w-3" />
+                                          Modifica
+                                        </Button>
+                                      )}
+                                    </div>
                                     <div className="text-right">
                                       <span className="font-bold text-primary">€{groupTotal.toFixed(2)}</span>
                                       <span className="text-green-600 ml-2">+€{groupDeposit.toFixed(2)}</span>
@@ -1630,6 +1652,20 @@ export default function TripDetails() {
         tripDestination={trip?.destination || ""}
         tripDepartureDate={trip?.departure_date || ""}
         tripReturnDate={trip?.return_date || ""}
+      />
+
+      <EditRoomDialog
+        open={editRoomDialogOpen}
+        onOpenChange={setEditRoomDialogOpen}
+        participants={selectedRoomParticipants}
+        roomType={selectedRoomType}
+        tripId={trip?.id || ""}
+        tripTitle={trip?.title || ""}
+        tripDestination={trip?.destination || ""}
+        tripDepartureDate={trip?.departure_date || ""}
+        tripReturnDate={trip?.return_date || ""}
+        allParticipants={participants}
+        onSuccess={loadTripDetails}
       />
     </div>
   );
