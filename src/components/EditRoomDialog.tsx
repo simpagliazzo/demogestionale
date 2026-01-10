@@ -24,6 +24,7 @@ import { formatNameSurnameFirst } from "@/lib/format-utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useAuth } from "@/lib/auth-context";
+import { useWhatsAppTemplates, formatPhoneForWhatsApp, openWhatsApp } from "@/hooks/use-whatsapp-templates";
 
 interface Participant {
   id: string;
@@ -81,6 +82,7 @@ export default function EditRoomDialog({
   onSuccess,
 }: EditRoomDialogProps) {
   const { user } = useAuth();
+  const { formatMessage, agencySettings } = useWhatsAppTemplates();
   const [selectedRoomType, setSelectedRoomType] = useState(roomType);
   const [roomParticipants, setRoomParticipants] = useState<Participant[]>(participants);
   const [addingParticipant, setAddingParticipant] = useState(false);
@@ -262,11 +264,10 @@ export default function EditRoomDialog({
       return;
     }
 
-    let phone = participantWithPhone.phone?.replace(/[^\d]/g, "") || "";
-    if (phone.startsWith("0")) {
-      phone = "39" + phone.substring(1);
-    } else if (phone.length <= 10) {
-      phone = "39" + phone;
+    const phone = formatPhoneForWhatsApp(participantWithPhone.phone);
+    if (!phone) {
+      toast.error("Numero di telefono non valido");
+      return;
     }
 
     setSendingWhatsApp(true);
@@ -274,39 +275,50 @@ export default function EditRoomDialog({
     const departureDate = format(new Date(tripDepartureDate), "d MMMM yyyy", { locale: it });
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
     const roomLabel = ROOM_LABELS[selectedRoomType] || selectedRoomType;
-
     const participantNames = roomParticipants.map((p) => `• ${formatNameSurnameFirst(p.full_name)}`).join("\n");
 
-    const messageParts = [
-      `✅ *CONFERMA PRENOTAZIONE CAMERA*`,
-      ``,
-      `Gentili Ospiti,`,
-      ``,
-      `Siamo lieti di confermare la Vostra sistemazione per il viaggio:`,
-      ``,
-      `🚌 *${tripTitle}*`,
-      `📍 *Destinazione:* ${tripDestination}`,
-      `📅 *Partenza:* ${departureDate}`,
-      `📅 *Ritorno:* ${returnDate}`,
-      ``,
-      `🏨 *SISTEMAZIONE*`,
-      `*${roomLabel}*`,
-      ``,
-      `👥 *Occupanti:*`,
-      participantNames,
-      ``,
-      `Per qualsiasi informazione non esitate a contattarci.`,
-      ``,
-      `Grazie per aver scelto i nostri viaggi!`,
-      ``,
-      `_Gladiatours Viaggi_`,
-      `_Tel. 0775 353808_`,
-    ].join("\n");
+    // Usa template dal database
+    const message = formatMessage("room_confirmation", {
+      TITOLO_VIAGGIO: tripTitle,
+      DESTINAZIONE: tripDestination,
+      DATA_PARTENZA: departureDate,
+      DATA_RITORNO: returnDate,
+      TIPO_CAMERA: roomLabel,
+      LISTA_OCCUPANTI: participantNames,
+    });
 
     setSendingWhatsApp(false);
 
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(messageParts)}`;
-    window.open(whatsappUrl, "_blank");
+    if (message) {
+      openWhatsApp(phone, message);
+    } else {
+      // Fallback se template non trovato
+      const messageParts = [
+        `✅ *CONFERMA PRENOTAZIONE CAMERA*`,
+        ``,
+        `Gentili Ospiti,`,
+        ``,
+        `Siamo lieti di confermare la Vostra sistemazione per il viaggio:`,
+        ``,
+        `🚌 *${tripTitle}*`,
+        `📍 *Destinazione:* ${tripDestination}`,
+        `📅 *Partenza:* ${departureDate}`,
+        `📅 *Ritorno:* ${returnDate}`,
+        ``,
+        `🏨 *SISTEMAZIONE*`,
+        `*${roomLabel}*`,
+        ``,
+        `👥 *Occupanti:*`,
+        participantNames,
+        ``,
+        `Grazie per aver scelto i nostri viaggi!`,
+        ``,
+        `_${agencySettings?.business_name || "Agenzia Viaggi"}_`,
+        agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null,
+      ].filter(Boolean).join("\n");
+
+      openWhatsApp(phone, messageParts);
+    }
   };
 
   const currentRoomCapacity = ROOM_TYPES.find((r) => r.value === selectedRoomType)?.capacity || 4;

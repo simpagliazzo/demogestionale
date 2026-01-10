@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { toast } from "sonner";
 import { useReactToPrint } from "react-to-print";
+import { useWhatsAppTemplates, formatPhoneForWhatsApp, openWhatsApp } from "@/hooks/use-whatsapp-templates";
 
 interface Payment {
   id: string;
@@ -60,6 +61,7 @@ export default function PaymentReceiptDialog({
   balance,
 }: PaymentReceiptDialogProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const { formatMessage, agencySettings } = useWhatsAppTemplates();
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -67,18 +69,11 @@ export default function PaymentReceiptDialog({
   });
 
   const handleWhatsApp = () => {
-    let phone = participantPhone?.replace(/[^\d]/g, "") || "";
+    const phone = formatPhoneForWhatsApp(participantPhone);
     
     if (!phone) {
       toast.error("Numero di telefono mancante per questo partecipante");
       return;
-    }
-    
-    // Se inizia con 0, sostituisci con prefisso italiano 39
-    if (phone.startsWith("0")) {
-      phone = "39" + phone.substring(1);
-    } else if (phone.length <= 10) {
-      phone = "39" + phone;
     }
 
     if (!payment) return;
@@ -87,36 +82,57 @@ export default function PaymentReceiptDialog({
     const departureDate = format(new Date(tripDepartureDate), "d MMMM yyyy", { locale: it });
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
 
-    const messageParts = [
-      `📄 *RICEVUTA DI PAGAMENTO*`,
-      ``,
-      `Gentile *${participantName}*,`,
-      ``,
-      `Confermiamo la ricezione del seguente pagamento:`,
-      ``,
-      `💰 *Importo:* €${payment.amount.toFixed(2)}`,
-      `📋 *Tipo:* ${PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type}`,
-      `💳 *Modalità:* ${PAYMENT_METHOD_LABELS[payment.payment_method || ""] || payment.payment_method || "N/D"}`,
-      `📅 *Data:* ${paymentDate}`,
-      payment.notes ? `📝 *Note:* ${payment.notes}` : null,
-      ``,
-      `🚌 *VIAGGIO*`,
-      `${tripTitle}`,
-      `📍 ${tripDestination}`,
-      `📅 ${departureDate} - ${returnDate}`,
-      ``,
-      `💵 *RIEPILOGO PAGAMENTI*`,
-      `Totale viaggio: €${totalPrice.toFixed(2)}`,
-      `Totale pagato: €${totalPaid.toFixed(2)}`,
-      balance > 0 ? `Saldo residuo: €${balance.toFixed(2)}` : `✅ Saldato`,
-      ``,
-      `_Documento non valido ai fini fiscali_`,
-      ``,
-      `Grazie per aver scelto i nostri servizi!`,
-    ].filter(Boolean).join("\n");
+    // Usa template dal database
+    const message = formatMessage("payment_reminder", {
+      NOME_PARTECIPANTE: participantName,
+      TITOLO_VIAGGIO: tripTitle,
+      DESTINAZIONE: tripDestination,
+      DATA_PARTENZA: departureDate,
+      DATA_RITORNO: returnDate,
+      IMPORTO_PAGAMENTO: payment.amount.toFixed(2),
+      TIPO_PAGAMENTO: PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type,
+      METODO_PAGAMENTO: PAYMENT_METHOD_LABELS[payment.payment_method || ""] || payment.payment_method || "N/D",
+      DATA_PAGAMENTO: paymentDate,
+      NOTE_PAGAMENTO: payment.notes || "",
+      QUOTA_TOTALE: totalPrice.toFixed(2),
+      TOTALE_PAGATO: totalPaid.toFixed(2),
+      SALDO_RESIDUO: balance > 0 ? balance.toFixed(2) : "SALDATO",
+    });
 
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(messageParts)}`;
-    window.open(whatsappUrl, "_blank");
+    if (message) {
+      openWhatsApp(phone, message);
+    } else {
+      // Fallback se template non trovato
+      const messageParts = [
+        `📄 *RICEVUTA DI PAGAMENTO*`,
+        ``,
+        `Gentile *${participantName}*,`,
+        ``,
+        `Confermiamo la ricezione del seguente pagamento:`,
+        ``,
+        `💰 *Importo:* €${payment.amount.toFixed(2)}`,
+        `📋 *Tipo:* ${PAYMENT_TYPE_LABELS[payment.payment_type] || payment.payment_type}`,
+        `💳 *Modalità:* ${PAYMENT_METHOD_LABELS[payment.payment_method || ""] || payment.payment_method || "N/D"}`,
+        `📅 *Data:* ${paymentDate}`,
+        payment.notes ? `📝 *Note:* ${payment.notes}` : null,
+        ``,
+        `🚌 *VIAGGIO*`,
+        `${tripTitle}`,
+        `📍 ${tripDestination}`,
+        `📅 ${departureDate} - ${returnDate}`,
+        ``,
+        `💵 *RIEPILOGO PAGAMENTI*`,
+        `Totale viaggio: €${totalPrice.toFixed(2)}`,
+        `Totale pagato: €${totalPaid.toFixed(2)}`,
+        balance > 0 ? `Saldo residuo: €${balance.toFixed(2)}` : `✅ Saldato`,
+        ``,
+        `_Documento non valido ai fini fiscali_`,
+        ``,
+        `_${agencySettings?.business_name || "Agenzia Viaggi"}_`,
+      ].filter(Boolean).join("\n");
+
+      openWhatsApp(phone, messageParts);
+    }
   };
 
   if (!payment) return null;
