@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -15,13 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, X, Users, Hotel, MessageCircle, Loader2 } from "lucide-react";
+import { Plus, X, Users, Hotel, MessageCircle, Loader2, UserPlus } from "lucide-react";
 import { formatNameSurnameFirst } from "@/lib/format-utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { useAuth } from "@/lib/auth-context";
 
 interface Participant {
   id: string;
@@ -78,17 +80,44 @@ export default function EditRoomDialog({
   allParticipants,
   onSuccess,
 }: EditRoomDialogProps) {
+  const { user } = useAuth();
   const [selectedRoomType, setSelectedRoomType] = useState(roomType);
   const [roomParticipants, setRoomParticipants] = useState<Participant[]>(participants);
   const [addingParticipant, setAddingParticipant] = useState(false);
+  const [addMode, setAddMode] = useState<"existing" | "new">("existing");
   const [selectedParticipantToAdd, setSelectedParticipantToAdd] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  const [creatingNew, setCreatingNew] = useState(false);
+  
+  // Form per nuovo partecipante
+  const [newParticipant, setNewParticipant] = useState({
+    cognome: "",
+    nome: "",
+    date_of_birth: "",
+    place_of_birth: "",
+    phone: "",
+    email: "",
+  });
 
   useEffect(() => {
     setSelectedRoomType(roomType);
     setRoomParticipants(participants);
+    setAddingParticipant(false);
+    setAddMode("existing");
+    resetNewParticipantForm();
   }, [participants, roomType, open]);
+
+  const resetNewParticipantForm = () => {
+    setNewParticipant({
+      cognome: "",
+      nome: "",
+      date_of_birth: "",
+      place_of_birth: "",
+      phone: "",
+      email: "",
+    });
+  };
 
   // Partecipanti disponibili (non in questa camera)
   const availableParticipants = allParticipants.filter(
@@ -99,13 +128,67 @@ export default function EditRoomDialog({
     setRoomParticipants((prev) => prev.filter((p) => p.id !== participantId));
   };
 
-  const handleAddParticipant = () => {
+  const handleAddExistingParticipant = () => {
     if (!selectedParticipantToAdd) return;
     const participant = allParticipants.find((p) => p.id === selectedParticipantToAdd);
     if (participant) {
       setRoomParticipants((prev) => [...prev, participant]);
       setSelectedParticipantToAdd("");
       setAddingParticipant(false);
+    }
+  };
+
+  const handleCreateAndAddParticipant = async () => {
+    if (!newParticipant.cognome.trim() || !newParticipant.nome.trim()) {
+      toast.error("Cognome e Nome sono obbligatori");
+      return;
+    }
+
+    setCreatingNew(true);
+
+    try {
+      const fullName = `${newParticipant.nome.trim()} ${newParticipant.cognome.trim()}`;
+      const groupCreatedAt = participants[0]?.created_at || new Date().toISOString();
+
+      // Converti la data dal formato DD/MM/YYYY a YYYY-MM-DD
+      let dateOfBirth: string | null = null;
+      if (newParticipant.date_of_birth) {
+        const parts = newParticipant.date_of_birth.split("/");
+        if (parts.length === 3) {
+          dateOfBirth = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        }
+      }
+
+      const { data, error } = await supabase
+        .from("participants")
+        .insert({
+          trip_id: tripId,
+          full_name: fullName,
+          date_of_birth: dateOfBirth,
+          place_of_birth: newParticipant.place_of_birth.trim() || null,
+          phone: newParticipant.phone.trim() || null,
+          email: newParticipant.email.trim() || null,
+          notes: `Camera: ${selectedRoomType}`,
+          created_at: groupCreatedAt,
+          created_by: user?.id || null,
+          group_number: participants[0]?.group_number || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Aggiungi il nuovo partecipante alla lista della camera
+      setRoomParticipants((prev) => [...prev, data as Participant]);
+      resetNewParticipantForm();
+      setAddingParticipant(false);
+      setAddMode("existing");
+      toast.success(`${fullName} aggiunto alla camera`);
+    } catch (error) {
+      console.error("Errore creazione partecipante:", error);
+      toast.error("Errore nella creazione del partecipante");
+    } finally {
+      setCreatingNew(false);
     }
   };
 
@@ -230,7 +313,7 @@ export default function EditRoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Hotel className="h-5 w-5" />
@@ -238,7 +321,7 @@ export default function EditRoomDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 overflow-y-auto">
           {/* Tipo Camera */}
           <div className="space-y-2">
             <Label>Tipologia Camera</Label>
@@ -299,52 +382,164 @@ export default function EditRoomDialog({
           </div>
 
           {/* Aggiungi Partecipante */}
-          {availableParticipants.length > 0 && (
-            <div className="space-y-2">
-              {addingParticipant ? (
-                <div className="flex gap-2">
-                  <Select
-                    value={selectedParticipantToAdd}
-                    onValueChange={setSelectedParticipantToAdd}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleziona partecipante..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableParticipants.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {formatNameSurnameFirst(p.full_name)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={handleAddParticipant} disabled={!selectedParticipantToAdd}>
-                    Aggiungi
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setAddingParticipant(false);
-                      setSelectedParticipantToAdd("");
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-2"
-                  onClick={() => setAddingParticipant(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                  Aggiungi Occupante
-                </Button>
-              )}
-            </div>
-          )}
+          <div className="space-y-2">
+            {addingParticipant ? (
+              <div className="border rounded-lg p-3 space-y-3">
+                <Tabs value={addMode} onValueChange={(v) => setAddMode(v as "existing" | "new")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="existing" className="text-xs">
+                      <Users className="h-3 w-3 mr-1" />
+                      Esistente
+                    </TabsTrigger>
+                    <TabsTrigger value="new" className="text-xs">
+                      <UserPlus className="h-3 w-3 mr-1" />
+                      Nuovo
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="existing" className="mt-3">
+                    {availableParticipants.length > 0 ? (
+                      <div className="space-y-2">
+                        <Select
+                          value={selectedParticipantToAdd}
+                          onValueChange={setSelectedParticipantToAdd}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona partecipante..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableParticipants.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {formatNameSurnameFirst(p.full_name)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={handleAddExistingParticipant}
+                            disabled={!selectedParticipantToAdd}
+                          >
+                            Aggiungi
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setAddingParticipant(false);
+                              setSelectedParticipantToAdd("");
+                            }}
+                          >
+                            Annulla
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        Tutti i partecipanti del viaggio sono già assegnati
+                      </p>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="new" className="mt-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Cognome *</Label>
+                        <Input
+                          value={newParticipant.cognome}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, cognome: e.target.value })}
+                          placeholder="Rossi"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nome *</Label>
+                        <Input
+                          value={newParticipant.nome}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, nome: e.target.value })}
+                          placeholder="Mario"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Data di Nascita</Label>
+                        <Input
+                          value={newParticipant.date_of_birth}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, date_of_birth: e.target.value })}
+                          placeholder="GG/MM/AAAA"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Luogo di Nascita</Label>
+                        <Input
+                          value={newParticipant.place_of_birth}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, place_of_birth: e.target.value })}
+                          placeholder="Roma"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Telefono</Label>
+                        <Input
+                          value={newParticipant.phone}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, phone: e.target.value })}
+                          placeholder="333 1234567"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Email</Label>
+                        <Input
+                          value={newParticipant.email}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
+                          placeholder="email@esempio.it"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 gap-1"
+                        onClick={handleCreateAndAddParticipant}
+                        disabled={creatingNew || !newParticipant.cognome.trim() || !newParticipant.nome.trim()}
+                      >
+                        {creatingNew ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        Crea e Aggiungi
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAddingParticipant(false);
+                          resetNewParticipantForm();
+                        }}
+                      >
+                        Annulla
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => setAddingParticipant(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Aggiungi Occupante
+              </Button>
+            )}
+          </div>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
