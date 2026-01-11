@@ -256,6 +256,100 @@ export default function EditRoomDialog({
     }
   };
 
+  // Genera token per upload documenti
+  const generateUploadToken = async (participantId: string): Promise<string | null> => {
+    try {
+      const { data: existingToken } = await supabase
+        .from('upload_tokens')
+        .select('token')
+        .eq('participant_id', participantId)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingToken) return existingToken.token;
+
+      const array = new Uint8Array(24);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+      const { error } = await supabase
+        .from('upload_tokens')
+        .insert({ participant_id: participantId, token });
+
+      if (error) throw error;
+      return token;
+    } catch (err) {
+      console.error('Error generating upload token:', err);
+      return null;
+    }
+  };
+
+  // Genera token per scelta posto bus
+  const generateBusSeatToken = async (participantId: string): Promise<string | null> => {
+    try {
+      const { data: existingToken } = await supabase
+        .from('bus_seat_tokens')
+        .select('token')
+        .eq('participant_id', participantId)
+        .eq('trip_id', tripId)
+        .gt('expires_at', new Date().toISOString())
+        .is('used_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingToken) return existingToken.token;
+
+      const array = new Uint8Array(24);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+      const { error } = await supabase
+        .from('bus_seat_tokens')
+        .insert({ participant_id: participantId, trip_id: tripId, token });
+
+      if (error) throw error;
+      return token;
+    } catch (err) {
+      console.error('Error generating bus seat token:', err);
+      return null;
+    }
+  };
+
+  // Genera token per conferma prenotazione
+  const generateConfirmationToken = async (participantId: string): Promise<string | null> => {
+    try {
+      const { data: existingToken } = await supabase
+        .from('booking_confirmation_tokens')
+        .select('token')
+        .eq('participant_id', participantId)
+        .eq('trip_id', tripId)
+        .gt('expires_at', new Date().toISOString())
+        .is('confirmed_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingToken) return existingToken.token;
+
+      const array = new Uint8Array(24);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+      const { error } = await supabase
+        .from('booking_confirmation_tokens')
+        .insert({ participant_id: participantId, trip_id: tripId, token });
+
+      if (error) throw error;
+      return token;
+    } catch (err) {
+      console.error('Error generating confirmation token:', err);
+      return null;
+    }
+  };
+
   const handleWhatsAppRoom = async () => {
     // Trova un partecipante con telefono
     const participantWithPhone = roomParticipants.find((p) => p.phone);
@@ -272,29 +366,40 @@ export default function EditRoomDialog({
 
     setSendingWhatsApp(true);
 
+    // Impostazioni WhatsApp (default tutti attivi)
+    const includeBusSeat = agencySettings?.whatsapp_include_bus_seat ?? true;
+    const includeDocUpload = agencySettings?.whatsapp_include_document_upload ?? true;
+    const includeConfirmation = agencySettings?.whatsapp_include_confirmation_link ?? true;
+
     const departureDate = format(new Date(tripDepartureDate), "d MMMM yyyy", { locale: it });
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
     const roomLabel = ROOM_LABELS[selectedRoomType] || selectedRoomType;
     const participantNames = roomParticipants.map((p) => `• ${formatNameSurnameFirst(p.full_name)}`).join("\n");
 
-    // Usa template dal database con tutti i placeholder inclusi quelli agenzia
-    const message = formatMessage("room_confirmation", {
-      titolo_viaggio: tripTitle,
-      destinazione: tripDestination,
-      data_partenza: departureDate,
-      data_rientro: returnDate,
-      tipo_camera: roomLabel,
-      occupanti: participantNames,
-      nome_agenzia: agencySettings?.business_name || "",
-      telefono_agenzia: agencySettings?.phone || "",
-      email_agenzia: agencySettings?.email || "",
-      sito_agenzia: agencySettings?.website || "",
-    });
+    // Genera i link per il primo partecipante (quello con il telefono)
+    let uploadLink = "";
+    let busSeatLink = "";
+    let confirmationLink = "";
+
+    if (includeDocUpload) {
+      const token = await generateUploadToken(participantWithPhone.id);
+      if (token) uploadLink = `${window.location.origin}/upload-documenti/${token}`;
+    }
+
+    if (includeBusSeat) {
+      const token = await generateBusSeatToken(participantWithPhone.id);
+      if (token) busSeatLink = `${window.location.origin}/scegli-posto/${token}`;
+    }
+
+    if (includeConfirmation) {
+      const token = await generateConfirmationToken(participantWithPhone.id);
+      if (token) confirmationLink = `${window.location.origin}/conferma-prenotazione/${token}`;
+    }
 
     setSendingWhatsApp(false);
 
-    // Costruisci sempre il messaggio con i dati agenzia
-    const finalMessage = message || [
+    // Costruisci messaggio completo
+    const messageParts = [
       `✅ *CONFERMA PRENOTAZIONE CAMERA*`,
       ``,
       `Gentile Cliente,`,
@@ -307,11 +412,49 @@ export default function EditRoomDialog({
       ``,
       `📅 *Partenza:* ${departureDate}`,
       `📅 *Rientro:* ${returnDate}`,
+    ];
+
+    // Aggiungi link scelta posto bus se abilitato
+    if (busSeatLink) {
+      messageParts.push(
+        ``,
+        `🪑 *SCEGLI IL TUO POSTO SUL BUS*`,
+        `Clicca qui per scegliere il tuo posto:`,
+        busSeatLink
+      );
+    }
+
+    // Aggiungi link upload documenti se abilitato
+    if (uploadLink) {
+      messageParts.push(
+        ``,
+        `📄 *DOCUMENTO DI IDENTITÀ*`,
+        `Per completare la prenotazione, carica una copia del documento:`,
+        uploadLink
+      );
+    }
+
+    // Aggiungi link conferma se abilitato
+    if (confirmationLink) {
+      messageParts.push(
+        ``,
+        `✅ *CONFERMA LA TUA PRENOTAZIONE*`,
+        `Clicca qui per confermare:`,
+        confirmationLink
+      );
+    }
+
+    // Footer
+    messageParts.push(
+      ``,
+      `Per qualsiasi informazione non esiti a contattarci.`,
+      `Grazie per aver scelto i nostri viaggi!`,
       ``,
       agencySettings?.business_name ? `_${agencySettings.business_name}_` : null,
-      agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null,
-    ].filter(Boolean).join("\n");
+      agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null
+    );
 
+    const finalMessage = messageParts.filter(Boolean).join("\n");
     openWhatsApp(phone, finalMessage);
   };
 
