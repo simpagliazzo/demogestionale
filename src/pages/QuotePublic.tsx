@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plane, Hotel, Car } from "lucide-react";
+import { Plane, Hotel, Car, Phone, Mail, Globe } from "lucide-react";
 
 interface Flight {
   type: string;
@@ -64,6 +64,20 @@ interface Quote {
   created_at: string;
 }
 
+interface AgencySettings {
+  business_name: string;
+  legal_name: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
+  province: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  vat_number: string | null;
+  logo_url: string | null;
+}
+
 const BAGGAGE_LABELS: Record<string, string> = {
   zaino: "Solo zaino personale",
   bagaglio_mano: "Bagaglio a mano (max 10kg)",
@@ -77,40 +91,46 @@ const BAGGAGE_LABELS: Record<string, string> = {
 export default function QuotePublic() {
   const { id } = useParams<{ id: string }>();
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [agencySettings, setAgencySettings] = useState<AgencySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchQuote = async () => {
+    const fetchData = async () => {
       if (!id) {
         setError("Preventivo non trovato");
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("*")
-        .eq("id", id)
-        .single();
+      // Fetch quote and agency settings in parallel
+      const [quoteResult, agencyResult] = await Promise.all([
+        supabase.from("quotes").select("*").eq("id", id).single(),
+        supabase.from("agency_settings").select("*").limit(1).single(),
+      ]);
 
-      if (error || !data) {
+      if (quoteResult.error || !quoteResult.data) {
         setError("Preventivo non trovato o non accessibile");
         setLoading(false);
         return;
       }
 
       setQuote({
-        ...data,
-        flights: (data.flights as unknown as Flight[]) || [],
-        transfers: (data.transfers as unknown as Transfer[]) || [],
-        other_items: (data.other_items as unknown as OtherItem[]) || [],
-        hotels: (data.hotels as unknown as HotelOption[]) || [],
+        ...quoteResult.data,
+        flights: (quoteResult.data.flights as unknown as Flight[]) || [],
+        transfers: (quoteResult.data.transfers as unknown as Transfer[]) || [],
+        other_items: (quoteResult.data.other_items as unknown as OtherItem[]) || [],
+        hotels: (quoteResult.data.hotels as unknown as HotelOption[]) || [],
       });
+
+      if (!agencyResult.error && agencyResult.data) {
+        setAgencySettings(agencyResult.data);
+      }
+
       setLoading(false);
     };
 
-    fetchQuote();
+    fetchData();
   }, [id]);
 
   // Calculate totals for each hotel option
@@ -174,10 +194,51 @@ export default function QuotePublic() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Agency Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">Preventivo di Viaggio</h1>
-          <p className="text-muted-foreground">Data emissione: {issueDate}</p>
+          {agencySettings?.logo_url && (
+            <img 
+              src={agencySettings.logo_url} 
+              alt={agencySettings.business_name} 
+              className="h-16 w-auto max-w-[180px] mx-auto mb-4 object-contain"
+            />
+          )}
+          {agencySettings && (
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-foreground">{agencySettings.business_name}</h2>
+              {agencySettings.address && (
+                <p className="text-sm text-muted-foreground">
+                  {agencySettings.address}
+                  {agencySettings.city && `, ${agencySettings.city}`}
+                  {agencySettings.postal_code && ` (${agencySettings.postal_code})`}
+                </p>
+              )}
+              <div className="flex flex-wrap items-center justify-center gap-3 mt-2 text-sm text-muted-foreground">
+                {agencySettings.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {agencySettings.phone}
+                  </span>
+                )}
+                {agencySettings.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    {agencySettings.email}
+                  </span>
+                )}
+                {agencySettings.website && (
+                  <a href={agencySettings.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                    <Globe className="h-3 w-3" />
+                    {agencySettings.website.replace(/^https?:\/\//, '')}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="border-t pt-4">
+            <h1 className="text-3xl font-bold text-primary mb-2">Preventivo di Viaggio</h1>
+            <p className="text-muted-foreground">Data emissione: {issueDate}</p>
+          </div>
         </div>
 
         {/* Customer Info */}
@@ -383,6 +444,11 @@ export default function QuotePublic() {
               Il presente preventivo è valido fino al {issueDate} salvo disponibilità al momento della conferma. 
               L'inizio del viaggio è subordinato al versamento dell'acconto del 50% entro la data di emissione del preventivo.
             </p>
+            {agencySettings?.vat_number && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                P.IVA: {agencySettings.vat_number}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

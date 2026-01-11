@@ -93,6 +93,19 @@ interface Quote {
   created_at: string;
 }
 
+interface AgencySettings {
+  business_name: string;
+  legal_name: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  vat_number: string | null;
+  logo_url: string | null;
+}
+
 interface QuoteDetailDialogProps {
   quoteId: string;
   open: boolean;
@@ -122,47 +135,52 @@ export function QuoteDetailDialog({
 }: QuoteDetailDialogProps) {
   const { toast } = useToast();
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [agencySettings, setAgencySettings] = useState<AgencySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && quoteId) {
-      fetchQuote();
+      fetchData();
     }
   }, [open, quoteId]);
 
-  const fetchQuote = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("*")
-        .eq("id", quoteId)
-        .single();
+      // Fetch quote and agency settings in parallel
+      const [quoteResult, agencyResult] = await Promise.all([
+        supabase.from("quotes").select("*").eq("id", quoteId).single(),
+        supabase.from("agency_settings").select("*").limit(1).single(),
+      ]);
 
-      if (error) throw error;
+      if (quoteResult.error) throw quoteResult.error;
       
       // Parse JSONB fields with proper type handling
-      const flights = Array.isArray(data.flights) 
-        ? (data.flights as unknown as Flight[]) 
+      const flights = Array.isArray(quoteResult.data.flights) 
+        ? (quoteResult.data.flights as unknown as Flight[]) 
         : [];
-      const transfers = Array.isArray(data.transfers) 
-        ? (data.transfers as unknown as Transfer[]) 
+      const transfers = Array.isArray(quoteResult.data.transfers) 
+        ? (quoteResult.data.transfers as unknown as Transfer[]) 
         : [];
-      const other_items = Array.isArray(data.other_items) 
-        ? (data.other_items as unknown as OtherItem[]) 
+      const other_items = Array.isArray(quoteResult.data.other_items) 
+        ? (quoteResult.data.other_items as unknown as OtherItem[]) 
         : [];
-      const hotels = Array.isArray(data.hotels) 
-        ? (data.hotels as unknown as HotelOption[]) 
+      const hotels = Array.isArray(quoteResult.data.hotels) 
+        ? (quoteResult.data.hotels as unknown as HotelOption[]) 
         : [];
       
       setQuote({
-        ...data,
+        ...quoteResult.data,
         flights,
         transfers,
         other_items,
         hotels,
       } as Quote);
+
+      if (!agencyResult.error && agencyResult.data) {
+        setAgencySettings(agencyResult.data);
+      }
     } catch (error) {
       console.error("Errore caricamento preventivo:", error);
       toast({
@@ -409,12 +427,43 @@ export function QuoteDetailDialog({
 
         {/* Printable Content */}
         <div ref={printRef} className="space-y-4 print:p-8">
-          {/* Header for print */}
+          {/* Header for print with agency info */}
           <div className="hidden print:block text-center mb-6">
-            <h1 className="text-2xl font-bold">PREVENTIVO DI VIAGGIO</h1>
-            <p className="text-muted-foreground">
-              Data di emissione: {format(new Date(quote.created_at), "d MMMM yyyy", { locale: it })}
-            </p>
+            {agencySettings?.logo_url && (
+              <img 
+                src={agencySettings.logo_url} 
+                alt={agencySettings.business_name} 
+                className="h-12 w-auto max-w-[150px] mx-auto mb-2 object-contain"
+              />
+            )}
+            {agencySettings && (
+              <div className="mb-4">
+                <p className="text-lg font-bold">{agencySettings.business_name}</p>
+                {agencySettings.address && (
+                  <p className="text-xs text-muted-foreground">
+                    {agencySettings.address}
+                    {agencySettings.city && `, ${agencySettings.city}`}
+                    {agencySettings.postal_code && ` (${agencySettings.postal_code})`}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {[
+                    agencySettings.phone && `Tel: ${agencySettings.phone}`,
+                    agencySettings.email,
+                    agencySettings.website?.replace(/^https?:\/\//, ''),
+                  ].filter(Boolean).join(' • ')}
+                </p>
+                {agencySettings.vat_number && (
+                  <p className="text-xs text-muted-foreground">P.IVA: {agencySettings.vat_number}</p>
+                )}
+              </div>
+            )}
+            <div className="border-t pt-3">
+              <h1 className="text-2xl font-bold">PREVENTIVO DI VIAGGIO</h1>
+              <p className="text-muted-foreground">
+                Data di emissione: {format(new Date(quote.created_at), "d MMMM yyyy", { locale: it })}
+              </p>
+            </div>
           </div>
 
           {/* Customer Info */}
@@ -653,7 +702,7 @@ export function QuoteDetailDialog({
           onOpenChange={setEditDialogOpen}
           onSuccess={() => {
             setEditDialogOpen(false);
-            fetchQuote();
+            fetchData();
             onUpdate();
           }}
           editQuote={quote}
