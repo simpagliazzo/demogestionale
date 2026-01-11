@@ -277,14 +277,14 @@ export default function EditRoomDialog({
     const roomLabel = ROOM_LABELS[selectedRoomType] || selectedRoomType;
     const participantNames = roomParticipants.map((p) => `• ${formatNameSurnameFirst(p.full_name)}`).join("\n");
 
-    // Usa template dal database
+    // Usa template dal database (NOTA: i placeholder nel DB sono lowercase!)
     const message = formatMessage("room_confirmation", {
-      TITOLO_VIAGGIO: tripTitle,
-      DESTINAZIONE: tripDestination,
-      DATA_PARTENZA: departureDate,
-      DATA_RITORNO: returnDate,
-      TIPO_CAMERA: roomLabel,
-      LISTA_OCCUPANTI: participantNames,
+      titolo_viaggio: tripTitle,
+      destinazione: tripDestination,
+      data_partenza: departureDate,
+      data_rientro: returnDate,
+      tipo_camera: roomLabel,
+      occupanti: participantNames,
     });
 
     setSendingWhatsApp(false);

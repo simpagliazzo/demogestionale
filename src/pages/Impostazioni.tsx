@@ -31,6 +31,8 @@ interface AgencySettings {
   og_confirmation_title: string | null;
   og_confirmation_description: string | null;
   og_confirmation_image_url: string | null;
+  travel_conditions: string | null;
+  whatsapp_notification_phone: string | null;
 }
 
 interface WhatsAppTemplate {
@@ -54,6 +56,7 @@ const PLACEHOLDERS_INFO = {
     { placeholder: "{saldo}", description: "Saldo da pagare" },
     { placeholder: "{link_documenti}", description: "Link per caricare documenti" },
     { placeholder: "{link_posto_bus}", description: "Link per scegliere posto bus" },
+    { placeholder: "{link_conferma}", description: "Link per confermare prenotazione" },
     { placeholder: "{nome_agenzia}", description: "Nome dell'agenzia" },
     { placeholder: "{telefono_agenzia}", description: "Telefono dell'agenzia" },
   ],
@@ -234,6 +237,8 @@ export default function Impostazioni() {
           og_confirmation_title: agencySettings.og_confirmation_title,
           og_confirmation_description: agencySettings.og_confirmation_description,
           og_confirmation_image_url: agencySettings.og_confirmation_image_url,
+          travel_conditions: agencySettings.travel_conditions,
+          whatsapp_notification_phone: agencySettings.whatsapp_notification_phone,
         })
         .eq("id", agencySettings.id);
 
@@ -475,14 +480,42 @@ export default function Impostazioni() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Sito Web</Label>
+                      <Input
+                        id="website"
+                        value={agencySettings.website || ""}
+                        onChange={(e) => setAgencySettings({ ...agencySettings, website: e.target.value })}
+                        placeholder="https://www.agenzia.it"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp_notification_phone">Telefono Notifiche WhatsApp</Label>
+                      <Input
+                        id="whatsapp_notification_phone"
+                        value={agencySettings.whatsapp_notification_phone || ""}
+                        onChange={(e) => setAgencySettings({ ...agencySettings, whatsapp_notification_phone: e.target.value })}
+                        placeholder="+39 xxx xxxxxxx"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Riceverai qui le conferme dei clienti. Se vuoto, usa il telefono principale.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="website">Sito Web</Label>
-                    <Input
-                      id="website"
-                      value={agencySettings.website || ""}
-                      onChange={(e) => setAgencySettings({ ...agencySettings, website: e.target.value })}
-                      placeholder="https://www.agenzia.it"
+                    <Label htmlFor="travel_conditions">Condizioni di Viaggio</Label>
+                    <Textarea
+                      id="travel_conditions"
+                      value={agencySettings.travel_conditions || ""}
+                      onChange={(e) => setAgencySettings({ ...agencySettings, travel_conditions: e.target.value })}
+                      placeholder="Inserisci qui le condizioni generali di viaggio che verranno mostrate ai clienti..."
+                      rows={8}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Queste condizioni saranno visibili nella pagina di conferma prenotazione.
+                    </p>
                   </div>
 
                   <div className="flex justify-end">
