@@ -19,6 +19,7 @@ import EditParticipantDialog from "@/components/EditParticipantDialog";
 import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import EditTripDialog from "@/components/EditTripDialog";
 import EditRoomDialog from "@/components/EditRoomDialog";
+import { EditHotelDialog } from "@/components/EditHotelDialog";
 import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
 import { TripFileUpload } from "@/components/TripFileUpload";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
@@ -170,6 +171,8 @@ export default function TripDetails() {
   const [newHotelData, setNewHotelData] = useState({ name: "", address: "", phone: "", email: "" });
   const [hotelRegistry, setHotelRegistry] = useState<HotelRegistry[]>([]);
   const [showManualHotelEntry, setShowManualHotelEntry] = useState(false);
+  const [editHotelDialogOpen, setEditHotelDialogOpen] = useState(false);
+  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -526,6 +529,10 @@ export default function TripDetails() {
         });
 
       if (error) throw error;
+
+      // Salvataggio automatico in rubrica
+      await saveHotelToRegistryAuto(newHotelData);
+
       toast.success("Hotel aggiunto con successo");
       setNewHotelData({ name: "", address: "", phone: "", email: "" });
       setShowManualHotelEntry(false);
@@ -533,6 +540,34 @@ export default function TripDetails() {
     } catch (error) {
       console.error("Errore aggiunta hotel:", error);
       toast.error("Errore nell'aggiunta dell'hotel");
+    }
+  };
+
+  const saveHotelToRegistryAuto = async (hotelData: { name: string; address: string; phone: string; email: string }) => {
+    if (!hotelData.name) return;
+    
+    try {
+      // Controlla se esiste già in rubrica
+      const { data: existing } = await supabase
+        .from("hotel_registry")
+        .select("id")
+        .eq("name", hotelData.name)
+        .maybeSingle();
+
+      if (!existing) {
+        // Non esiste, lo aggiungiamo
+        await supabase
+          .from("hotel_registry")
+          .insert({
+            name: hotelData.name,
+            address: hotelData.address || null,
+            phone: hotelData.phone || null,
+            email: hotelData.email || null,
+          });
+        loadHotelRegistry();
+      }
+    } catch (error) {
+      console.error("Errore salvataggio automatico rubrica hotel:", error);
     }
   };
 
@@ -561,26 +596,9 @@ export default function TripDetails() {
     }
   };
 
-  const saveHotelToRegistry = async () => {
-    if (!newHotelData.name) return;
-    
-    try {
-      const { error } = await supabase
-        .from("hotel_registry")
-        .insert({
-          name: newHotelData.name,
-          address: newHotelData.address || null,
-          phone: newHotelData.phone || null,
-          email: newHotelData.email || null,
-        });
-
-      if (error) throw error;
-      toast.success("Hotel salvato in rubrica");
-      loadHotelRegistry();
-    } catch (error) {
-      console.error("Errore salvataggio rubrica hotel:", error);
-      toast.error("Errore nel salvataggio in rubrica");
-    }
+  const handleEditHotel = (hotel: Hotel) => {
+    setSelectedHotel(hotel);
+    setEditHotelDialogOpen(true);
   };
 
   const loadHotelRegistry = async () => {
@@ -1457,14 +1475,24 @@ export default function TripDetails() {
                           <div key={hotel.id} className="p-2 border rounded bg-muted/50">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-medium">{hotel.name}</p>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-5 w-5 text-destructive hover:text-destructive"
-                                onClick={() => deleteHotel(hotel.id)}
-                              >
-                                <Trash2 className="h-2.5 w-2.5" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5"
+                                  onClick={() => handleEditHotel(hotel)}
+                                >
+                                  <Pencil className="h-2.5 w-2.5" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5 text-destructive hover:text-destructive"
+                                  onClick={() => deleteHotel(hotel.id)}
+                                >
+                                  <Trash2 className="h-2.5 w-2.5" />
+                                </Button>
+                              </div>
                             </div>
                             {hotel.address && <p className="text-[10px] text-muted-foreground">{hotel.address}</p>}
                             {hotel.phone && <p className="text-[10px] text-muted-foreground">📞 {hotel.phone}</p>}
@@ -1538,16 +1566,8 @@ export default function TripDetails() {
                                   <Plus className="h-3 w-3" />
                                   Aggiungi
                                 </Button>
-                                <Button 
-                                  onClick={() => { addHotel(); saveHotelToRegistry(); }} 
-                                  variant="outline"
-                                  size="sm" 
-                                  className="gap-1 h-7 text-xs"
-                                  title="Aggiungi e salva in rubrica"
-                                >
-                                  <Save className="h-3 w-3" />
-                                </Button>
                               </div>
+                              <p className="text-[10px] text-muted-foreground italic">Gli hotel vengono salvati automaticamente in rubrica</p>
                             </div>
                           )}
                         </div>
@@ -1570,6 +1590,13 @@ export default function TripDetails() {
                     )}
                   </CardContent>
                 </Card>
+
+                <EditHotelDialog
+                  open={editHotelDialogOpen}
+                  onOpenChange={setEditHotelDialogOpen}
+                  hotel={selectedHotel}
+                  onSuccess={loadTripDetails}
+                />
 
                 {isAdmin && (
                   <Card>
