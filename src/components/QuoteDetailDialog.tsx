@@ -52,6 +52,17 @@ interface OtherItem {
   price: number;
 }
 
+interface HotelOption {
+  name: string;
+  address: string;
+  room_type: string;
+  check_in: string;
+  check_out: string;
+  price_per_night: number;
+  nights: number;
+  total: number;
+}
+
 interface Quote {
   id: string;
   customer_name: string;
@@ -62,6 +73,7 @@ interface Quote {
   return_date: string | null;
   num_passengers: number;
   flights: Flight[];
+  hotels: HotelOption[];
   hotel_name: string | null;
   hotel_address: string | null;
   hotel_room_type: string | null;
@@ -140,12 +152,16 @@ export function QuoteDetailDialog({
       const other_items = Array.isArray(data.other_items) 
         ? (data.other_items as unknown as OtherItem[]) 
         : [];
+      const hotels = Array.isArray(data.hotels) 
+        ? (data.hotels as unknown as HotelOption[]) 
+        : [];
       
       setQuote({
         ...data,
         flights,
         transfers,
         other_items,
+        hotels,
       } as Quote);
     } catch (error) {
       console.error("Errore caricamento preventivo:", error);
@@ -213,6 +229,24 @@ export function QuoteDetailDialog({
     documentTitle: `Preventivo_${quote?.customer_name}_${quote?.destination}`,
   });
 
+  // Calculate totals for each hotel option
+  const calculateHotelOptionTotal = (hotel: HotelOption) => {
+    if (!quote) return { subtotal: 0, markupAmount: 0, total: 0 };
+    
+    const flightsTotal = quote.flights.reduce((sum, f) => sum + (f.price || 0), 0) * quote.num_passengers;
+    const transfersTotal = quote.transfers.reduce((sum, t) => sum + (t.price || 0), 0);
+    const otherTotal = quote.other_items.reduce((sum, o) => sum + (o.price || 0), 0);
+    const hotelTotal = hotel.total || (hotel.price_per_night * hotel.nights);
+    
+    const subtotal = flightsTotal + hotelTotal + transfersTotal + otherTotal;
+    const markupAmount = quote.markup_percentage > 0 
+      ? subtotal * (quote.markup_percentage / 100) 
+      : quote.markup_amount;
+    const total = subtotal + markupAmount;
+    
+    return { subtotal, markupAmount, total, hotelTotal };
+  };
+
   const handleWhatsApp = async () => {
     if (!quote) return;
 
@@ -237,26 +271,27 @@ export function QuoteDetailDialog({
       phone = "39" + phone;
     }
 
-    const flightsText = quote.flights
-      .map((f) => {
-        const baggage = f.baggage_type ? `\n   Bagaglio: ${BAGGAGE_LABELS[f.baggage_type] || f.baggage_type}` : "";
-        return `> VOLO ${f.type}: ${f.airline} (${f.departure_time}-${f.arrival_time})${baggage}`;
-      })
-      .join("\n");
-
-    const hotelText = quote.hotel_name
-      ? `> HOTEL: ${quote.hotel_name}${quote.hotel_room_type ? `\n   Camera: ${quote.hotel_room_type}` : ""}${quote.hotel_check_in ? `\n   Check-in: ${format(new Date(quote.hotel_check_in), "d MMM yyyy", { locale: it })}` : ""}${quote.hotel_check_out ? `\n   Check-out: ${format(new Date(quote.hotel_check_out), "d MMM yyyy", { locale: it })}` : ""}`
-      : "";
-
-    const transfersText = quote.transfers.length > 0
-      ? quote.transfers.map((t) => `> TRANSFER: ${t.type}`).join("\n")
-      : "";
-
-    const otherText = quote.other_items.length > 0
-      ? quote.other_items.map((o) => `> ${o.description}`).join("\n")
-      : "";
-
     const issueDate = format(new Date(quote.created_at), "d MMMM yyyy", { locale: it });
+    
+    // Build hotel options text
+    const hotelsToShow = quote.hotels.length > 0 ? quote.hotels : (quote.hotel_name ? [{
+      name: quote.hotel_name,
+      address: quote.hotel_address || "",
+      room_type: quote.hotel_room_type || "",
+      check_in: quote.hotel_check_in || "",
+      check_out: quote.hotel_check_out || "",
+      price_per_night: quote.hotel_price_per_night,
+      nights: quote.hotel_nights,
+      total: quote.hotel_total,
+    }] : []);
+
+    let hotelOptionsText = "";
+    if (hotelsToShow.length > 1) {
+      hotelOptionsText = "\n\n*OPZIONI HOTEL:*\n" + hotelsToShow.map((h, i) => {
+        const totals = calculateHotelOptionTotal(h);
+        return `${i + 1}. ${h.name}: *€${totals.total.toFixed(2)}*`;
+      }).join("\n");
+    }
     
     const validityText = `Il presente preventivo e valido fino al ${issueDate} salvo disponibilita al momento della conferma. L'inizio del viaggio e subordinato al versamento dell'acconto del 50% entro la data di emissione del preventivo.`;
 
@@ -271,11 +306,12 @@ export function QuoteDetailDialog({
       `*Passeggeri:* ${quote.num_passengers}`,
       quote.departure_date ? `*Partenza:* ${format(new Date(quote.departure_date), "d MMMM yyyy", { locale: it })}` : null,
       quote.return_date ? `*Ritorno:* ${format(new Date(quote.return_date), "d MMMM yyyy", { locale: it })}` : null,
+      hotelOptionsText || null,
       ``,
       `📄 *Visualizza preventivo completo:*`,
       publicLink,
       ``,
-      `*TOTALE: EUR ${quote.total_price.toFixed(2)}*`,
+      hotelsToShow.length <= 1 ? `*TOTALE: EUR ${quote.total_price.toFixed(2)}*` : null,
       ``,
       validityText,
     ].filter(Boolean).join("\n");
@@ -313,6 +349,20 @@ export function QuoteDetailDialog({
   if (!quote) {
     return null;
   }
+
+  // Determine which hotels to display
+  const hotelsToDisplay = quote.hotels.length > 0 ? quote.hotels : (quote.hotel_name ? [{
+    name: quote.hotel_name,
+    address: quote.hotel_address || "",
+    room_type: quote.hotel_room_type || "",
+    check_in: quote.hotel_check_in || "",
+    check_out: quote.hotel_check_out || "",
+    price_per_night: quote.hotel_price_per_night,
+    nights: quote.hotel_nights,
+    total: quote.hotel_total,
+  }] : []);
+
+  const hasMultipleHotels = hotelsToDisplay.length > 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -451,28 +501,46 @@ export function QuoteDetailDialog({
             </Card>
           )}
 
-          {/* Hotel */}
-          {quote.hotel_name && (
+          {/* Hotels - Multiple Options */}
+          {hotelsToDisplay.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Hotel className="h-4 w-4" />
-                  Hotel
+                  {hasMultipleHotels ? "Opzioni Hotel" : "Hotel"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-sm space-y-1">
-                  <div className="font-medium">{quote.hotel_name}</div>
-                  {quote.hotel_address && <div className="text-muted-foreground">{quote.hotel_address}</div>}
-                  {quote.hotel_room_type && <div>Camera: {quote.hotel_room_type}</div>}
-                  <div>
-                    Check-in: {quote.hotel_check_in ? format(new Date(quote.hotel_check_in), "d MMM yyyy", { locale: it }) : "-"}
-                    {" | "}
-                    Check-out: {quote.hotel_check_out ? format(new Date(quote.hotel_check_out), "d MMM yyyy", { locale: it }) : "-"}
-                  </div>
-                  <div className="print:hidden">
-                    {quote.hotel_nights} notti = €{quote.hotel_total.toFixed(2)}
-                  </div>
+                <div className="space-y-4">
+                  {hotelsToDisplay.map((hotel, index) => {
+                    const hotelTotals = calculateHotelOptionTotal(hotel);
+                    return (
+                      <div key={index} className={`text-sm ${hasMultipleHotels ? "border rounded-lg p-3 bg-muted/30" : ""}`}>
+                        {hasMultipleHotels && (
+                          <div className="font-medium text-primary mb-2">
+                            Opzione {index + 1}
+                          </div>
+                        )}
+                        <div className="font-medium">{hotel.name}</div>
+                        {hotel.address && <div className="text-muted-foreground">{hotel.address}</div>}
+                        {hotel.room_type && <div>Camera: {hotel.room_type}</div>}
+                        <div>
+                          Check-in: {hotel.check_in ? format(new Date(hotel.check_in), "d MMM yyyy", { locale: it }) : "-"}
+                          {" | "}
+                          Check-out: {hotel.check_out ? format(new Date(hotel.check_out), "d MMM yyyy", { locale: it }) : "-"}
+                        </div>
+                        <div className="print:hidden">
+                          {hotel.nights} notti = €{(hotel.total || hotel.price_per_night * hotel.nights).toFixed(2)}
+                        </div>
+                        
+                        {hasMultipleHotels && (
+                          <div className="mt-2 pt-2 border-t font-bold text-primary">
+                            TOTALE CON QUESTO HOTEL: €{hotelTotals.total.toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -534,15 +602,17 @@ export function QuoteDetailDialog({
             </Card>
           )}
 
-          {/* Total - visible to customer */}
-          <Card className="bg-primary/5 border-primary">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center text-xl font-bold">
-                <span>TOTALE</span>
-                <span className="text-primary">€{quote.total_price.toFixed(2)}</span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Total - visible to customer (only if single hotel) */}
+          {!hasMultipleHotels && (
+            <Card className="bg-primary/5 border-primary">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center text-xl font-bold">
+                  <span>TOTALE</span>
+                  <span className="text-primary">€{quote.total_price.toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Validity disclaimer - visible in print */}
           <div className="hidden print:block mt-6 p-4 border rounded text-sm text-muted-foreground">
