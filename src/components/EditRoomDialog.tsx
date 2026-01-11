@@ -277,7 +277,7 @@ export default function EditRoomDialog({
     const roomLabel = ROOM_LABELS[selectedRoomType] || selectedRoomType;
     const participantNames = roomParticipants.map((p) => `• ${formatNameSurnameFirst(p.full_name)}`).join("\n");
 
-    // Usa template dal database (NOTA: i placeholder nel DB sono lowercase!)
+    // Usa template dal database con tutti i placeholder inclusi quelli agenzia
     const message = formatMessage("room_confirmation", {
       titolo_viaggio: tripTitle,
       destinazione: tripDestination,
@@ -285,40 +285,34 @@ export default function EditRoomDialog({
       data_rientro: returnDate,
       tipo_camera: roomLabel,
       occupanti: participantNames,
+      nome_agenzia: agencySettings?.business_name || "",
+      telefono_agenzia: agencySettings?.phone || "",
+      email_agenzia: agencySettings?.email || "",
+      sito_agenzia: agencySettings?.website || "",
     });
 
     setSendingWhatsApp(false);
 
-    if (message) {
-      openWhatsApp(phone, message);
-    } else {
-      // Fallback se template non trovato
-      const messageParts = [
-        `✅ *CONFERMA PRENOTAZIONE CAMERA*`,
-        ``,
-        `Gentili Ospiti,`,
-        ``,
-        `Siamo lieti di confermare la Vostra sistemazione per il viaggio:`,
-        ``,
-        `🚌 *${tripTitle}*`,
-        `📍 *Destinazione:* ${tripDestination}`,
-        `📅 *Partenza:* ${departureDate}`,
-        `📅 *Ritorno:* ${returnDate}`,
-        ``,
-        `🏨 *SISTEMAZIONE*`,
-        `*${roomLabel}*`,
-        ``,
-        `👥 *Occupanti:*`,
-        participantNames,
-        ``,
-        `Grazie per aver scelto i nostri viaggi!`,
-        ``,
-        `_${agencySettings?.business_name || "Agenzia Viaggi"}_`,
-        agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null,
-      ].filter(Boolean).join("\n");
+    // Costruisci sempre il messaggio con i dati agenzia
+    const finalMessage = message || [
+      `✅ *CONFERMA PRENOTAZIONE CAMERA*`,
+      ``,
+      `Gentile Cliente,`,
+      ``,
+      `Camera confermata per il viaggio "${tripTitle}"!`,
+      ``,
+      `🏨 *Tipo camera:* ${roomLabel}`,
+      `👥 *Occupanti:*`,
+      participantNames,
+      ``,
+      `📅 *Partenza:* ${departureDate}`,
+      `📅 *Rientro:* ${returnDate}`,
+      ``,
+      agencySettings?.business_name ? `_${agencySettings.business_name}_` : null,
+      agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null,
+    ].filter(Boolean).join("\n");
 
-      openWhatsApp(phone, messageParts);
-    }
+    openWhatsApp(phone, finalMessage);
   };
 
   const currentRoomCapacity = ROOM_TYPES.find((r) => r.value === selectedRoomType)?.capacity || 4;
