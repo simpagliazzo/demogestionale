@@ -25,6 +25,17 @@ interface OtherItem {
   price: number;
 }
 
+interface HotelOption {
+  name: string;
+  address: string;
+  room_type: string;
+  check_in: string;
+  check_out: string;
+  price_per_night: number;
+  nights: number;
+  total: number;
+}
+
 interface Quote {
   id: string;
   customer_name: string;
@@ -35,6 +46,7 @@ interface Quote {
   return_date: string | null;
   num_passengers: number;
   flights: Flight[];
+  hotels: HotelOption[];
   hotel_name: string | null;
   hotel_address: string | null;
   hotel_room_type: string | null;
@@ -42,9 +54,12 @@ interface Quote {
   hotel_check_out: string | null;
   hotel_nights: number;
   hotel_total: number;
+  hotel_price_per_night: number;
   transfers: Transfer[];
   other_items: OtherItem[];
   total_price: number;
+  markup_percentage: number;
+  markup_amount: number;
   notes: string | null;
   created_at: string;
 }
@@ -90,12 +105,31 @@ export default function QuotePublic() {
         flights: (data.flights as unknown as Flight[]) || [],
         transfers: (data.transfers as unknown as Transfer[]) || [],
         other_items: (data.other_items as unknown as OtherItem[]) || [],
+        hotels: (data.hotels as unknown as HotelOption[]) || [],
       });
       setLoading(false);
     };
 
     fetchQuote();
   }, [id]);
+
+  // Calculate totals for each hotel option
+  const calculateHotelOptionTotal = (hotel: HotelOption) => {
+    if (!quote) return { subtotal: 0, markupAmount: 0, total: 0 };
+    
+    const flightsTotal = quote.flights.reduce((sum, f) => sum + (f.price || 0), 0) * quote.num_passengers;
+    const transfersTotal = quote.transfers.reduce((sum, t) => sum + (t.price || 0), 0);
+    const otherTotal = quote.other_items.reduce((sum, o) => sum + (o.price || 0), 0);
+    const hotelTotal = hotel.total || (hotel.price_per_night * hotel.nights);
+    
+    const subtotal = flightsTotal + hotelTotal + transfersTotal + otherTotal;
+    const markupAmount = quote.markup_percentage > 0 
+      ? subtotal * (quote.markup_percentage / 100) 
+      : quote.markup_amount;
+    const total = subtotal + markupAmount;
+    
+    return { subtotal, markupAmount, total, hotelTotal };
+  };
 
   if (loading) {
     return (
@@ -122,6 +156,20 @@ export default function QuotePublic() {
   }
 
   const issueDate = format(new Date(quote.created_at), "d MMMM yyyy", { locale: it });
+
+  // Determine which hotels to display
+  const hotelsToDisplay = quote.hotels.length > 0 ? quote.hotels : (quote.hotel_name ? [{
+    name: quote.hotel_name,
+    address: quote.hotel_address || "",
+    room_type: quote.hotel_room_type || "",
+    check_in: quote.hotel_check_in || "",
+    check_out: quote.hotel_check_out || "",
+    price_per_night: quote.hotel_price_per_night,
+    nights: quote.hotel_nights,
+    total: quote.hotel_total,
+  }] : []);
+
+  const hasMultipleHotels = hotelsToDisplay.length > 1;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-8 px-4">
@@ -211,34 +259,55 @@ export default function QuotePublic() {
           </Card>
         )}
 
-        {/* Hotel */}
-        {quote.hotel_name && (
+        {/* Hotels - Multiple Options */}
+        {hotelsToDisplay.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Hotel className="h-4 w-4" />
-                Alloggio
+                {hasMultipleHotels ? "Opzioni Alloggio" : "Alloggio"}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1">
-                <p className="font-medium">{quote.hotel_name}</p>
-                {quote.hotel_room_type && (
-                  <p className="text-sm text-muted-foreground">Camera: {quote.hotel_room_type}</p>
-                )}
-                {quote.hotel_address && (
-                  <p className="text-sm text-muted-foreground">{quote.hotel_address}</p>
-                )}
-                <div className="text-sm text-muted-foreground mt-2">
-                  {quote.hotel_check_in && (
-                    <span>Check-in: {format(new Date(quote.hotel_check_in), "d MMM yyyy", { locale: it })}</span>
-                  )}
-                  {quote.hotel_check_in && quote.hotel_check_out && <span> • </span>}
-                  {quote.hotel_check_out && (
-                    <span>Check-out: {format(new Date(quote.hotel_check_out), "d MMM yyyy", { locale: it })}</span>
-                  )}
-                  {quote.hotel_nights > 0 && <span> ({quote.hotel_nights} notti)</span>}
-                </div>
+              <div className="space-y-4">
+                {hotelsToDisplay.map((hotel, index) => {
+                  const hotelTotals = calculateHotelOptionTotal(hotel);
+                  return (
+                    <div key={index} className={`${hasMultipleHotels ? "border rounded-lg p-4 bg-muted/30" : ""}`}>
+                      {hasMultipleHotels && (
+                        <div className="text-xs font-medium text-primary mb-2 uppercase tracking-wide">
+                          Opzione {index + 1}
+                        </div>
+                      )}
+                      <p className="font-medium text-lg">{hotel.name}</p>
+                      {hotel.room_type && (
+                        <p className="text-sm text-muted-foreground">Camera: {hotel.room_type}</p>
+                      )}
+                      {hotel.address && (
+                        <p className="text-sm text-muted-foreground">{hotel.address}</p>
+                      )}
+                      <div className="text-sm text-muted-foreground mt-2">
+                        {hotel.check_in && (
+                          <span>Check-in: {format(new Date(hotel.check_in), "d MMM yyyy", { locale: it })}</span>
+                        )}
+                        {hotel.check_in && hotel.check_out && <span> • </span>}
+                        {hotel.check_out && (
+                          <span>Check-out: {format(new Date(hotel.check_out), "d MMM yyyy", { locale: it })}</span>
+                        )}
+                        {hotel.nights > 0 && <span> ({hotel.nights} notti)</span>}
+                      </div>
+                      
+                      {hasMultipleHotels && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="flex justify-between items-center text-lg font-bold text-primary">
+                            <span>TOTALE</span>
+                            <span>€{hotelTotals.total.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -295,15 +364,17 @@ export default function QuotePublic() {
           </Card>
         )}
 
-        {/* Total */}
-        <Card className="bg-primary text-primary-foreground">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center text-2xl font-bold">
-              <span>TOTALE</span>
-              <span>€{quote.total_price.toFixed(2)}</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Total - only show single total if no multiple hotels */}
+        {!hasMultipleHotels && (
+          <Card className="bg-primary text-primary-foreground">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center text-2xl font-bold">
+                <span>TOTALE</span>
+                <span>€{quote.total_price.toFixed(2)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Validity Disclaimer */}
         <Card className="bg-muted/50">

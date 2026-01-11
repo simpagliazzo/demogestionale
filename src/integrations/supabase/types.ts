@@ -619,6 +619,7 @@ export type Database = {
           hotel_price_per_night: number | null
           hotel_room_type: string | null
           hotel_total: number | null
+          hotels: Json | null
           id: string
           markup_amount: number | null
           markup_percentage: number | null
@@ -649,6 +650,7 @@ export type Database = {
           hotel_price_per_night?: number | null
           hotel_room_type?: string | null
           hotel_total?: number | null
+          hotels?: Json | null
           id?: string
           markup_amount?: number | null
           markup_percentage?: number | null
@@ -679,6 +681,7 @@ export type Database = {
           hotel_price_per_night?: number | null
           hotel_room_type?: string | null
           hotel_total?: number | null
+          hotels?: Json | null
           id?: string
           markup_amount?: number | null
           markup_percentage?: number | null

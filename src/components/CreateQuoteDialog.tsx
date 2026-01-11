@@ -53,6 +53,17 @@ interface OtherItem {
   price: number;
 }
 
+interface HotelOption {
+  name: string;
+  address: string;
+  room_type: string;
+  check_in: string;
+  check_out: string;
+  price_per_night: number;
+  nights: number;
+  total: number;
+}
+
 interface QuoteData {
   id: string;
   customer_name: string;
@@ -63,6 +74,8 @@ interface QuoteData {
   return_date: string | null;
   num_passengers: number;
   flights: Flight[];
+  hotels: HotelOption[];
+  // Legacy single hotel fields (for backward compatibility)
   hotel_name: string | null;
   hotel_address: string | null;
   hotel_room_type: string | null;
@@ -109,13 +122,10 @@ export function CreateQuoteDialog({
     { type: "Andata", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 },
   ]);
 
-  // Hotel
-  const [hotelName, setHotelName] = useState("");
-  const [hotelAddress, setHotelAddress] = useState("");
-  const [hotelRoomType, setHotelRoomType] = useState("");
-  const [hotelCheckIn, setHotelCheckIn] = useState("");
-  const [hotelCheckOut, setHotelCheckOut] = useState("");
-  const [hotelPricePerNight, setHotelPricePerNight] = useState(0);
+  // Hotels (multiple options)
+  const [hotels, setHotels] = useState<HotelOption[]>([
+    { name: "", address: "", room_type: "", check_in: "", check_out: "", price_per_night: 0, nights: 0, total: 0 },
+  ]);
 
   // Transfers
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -142,12 +152,30 @@ export function CreateQuoteDialog({
       setReturnDate(editQuote.return_date || "");
       setNumPassengers(editQuote.num_passengers || 1);
       setFlights(editQuote.flights?.length > 0 ? editQuote.flights : [{ type: "Andata", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 }]);
-      setHotelName(editQuote.hotel_name || "");
-      setHotelAddress(editQuote.hotel_address || "");
-      setHotelRoomType(editQuote.hotel_room_type || "");
-      setHotelCheckIn(editQuote.hotel_check_in || "");
-      setHotelCheckOut(editQuote.hotel_check_out || "");
-      setHotelPricePerNight(editQuote.hotel_price_per_night || 0);
+      
+      // Handle hotels - check for new hotels array or migrate from legacy fields
+      if (editQuote.hotels && editQuote.hotels.length > 0) {
+        setHotels(editQuote.hotels);
+      } else if (editQuote.hotel_name) {
+        // Migrate from legacy single hotel
+        const checkIn = editQuote.hotel_check_in || "";
+        const checkOut = editQuote.hotel_check_out || "";
+        const nights = calculateHotelNightsForDates(checkIn, checkOut);
+        const pricePerNight = editQuote.hotel_price_per_night || 0;
+        setHotels([{
+          name: editQuote.hotel_name,
+          address: editQuote.hotel_address || "",
+          room_type: editQuote.hotel_room_type || "",
+          check_in: checkIn,
+          check_out: checkOut,
+          price_per_night: pricePerNight,
+          nights: nights,
+          total: pricePerNight * nights,
+        }]);
+      } else {
+        setHotels([{ name: "", address: "", room_type: "", check_in: "", check_out: "", price_per_night: 0, nights: 0, total: 0 }]);
+      }
+      
       setTransfers(editQuote.transfers || []);
       setOtherItems(editQuote.other_items || []);
       setMarkupPercentage(editQuote.markup_percentage || 0);
@@ -158,31 +186,68 @@ export function CreateQuoteDialog({
     }
   }, [editQuote, open]);
 
-  const calculateHotelNights = () => {
-    if (!hotelCheckIn || !hotelCheckOut) return 0;
-    const start = new Date(hotelCheckIn);
-    const end = new Date(hotelCheckOut);
+  const calculateHotelNightsForDates = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return 0;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
     const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
   };
 
-  const calculateTotals = () => {
+  // Calculate totals for flights, transfers, other items
+  const calculateBaseTotals = () => {
     const flightsTotal = flights.reduce((sum, f) => sum + (f.price || 0), 0) * numPassengers;
-    const hotelNights = calculateHotelNights();
-    const hotelTotal = hotelPricePerNight * hotelNights;
     const transfersTotal = transfers.reduce((sum, t) => sum + (t.price || 0), 0);
     const otherTotal = otherItems.reduce((sum, o) => sum + (o.price || 0), 0);
+    return { flightsTotal, transfersTotal, otherTotal };
+  };
+
+  // Calculate total for a specific hotel option (including markup)
+  const calculateHotelOptionTotal = (hotelIndex: number) => {
+    const { flightsTotal, transfersTotal, otherTotal } = calculateBaseTotals();
+    const hotel = hotels[hotelIndex];
+    const nights = calculateHotelNightsForDates(hotel.check_in, hotel.check_out);
+    const hotelTotal = hotel.price_per_night * nights;
     
     const subtotal = flightsTotal + hotelTotal + transfersTotal + otherTotal;
     const markupAmount = markupType === "percentage" 
       ? subtotal * (markupPercentage / 100) 
       : markupFixed;
     const total = subtotal + markupAmount;
-
-    return { flightsTotal, hotelTotal, hotelNights, transfersTotal, otherTotal, subtotal, markupAmount, total };
+    
+    return { hotelTotal, nights, subtotal, markupAmount, total };
   };
 
-  const totals = calculateTotals();
+  const baseTotals = calculateBaseTotals();
+
+  // Hotel management functions
+  const addHotel = () => {
+    setHotels([...hotels, { name: "", address: "", room_type: "", check_in: "", check_out: "", price_per_night: 0, nights: 0, total: 0 }]);
+  };
+
+  const removeHotel = (index: number) => {
+    if (hotels.length > 1) {
+      setHotels(hotels.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateHotel = (index: number, field: keyof HotelOption, value: string | number) => {
+    const updated = [...hotels];
+    updated[index] = { ...updated[index], [field]: value };
+    
+    // Recalculate nights and total when dates or price change
+    if (field === "check_in" || field === "check_out" || field === "price_per_night") {
+      const nights = calculateHotelNightsForDates(
+        field === "check_in" ? value as string : updated[index].check_in,
+        field === "check_out" ? value as string : updated[index].check_out
+      );
+      const pricePerNight = field === "price_per_night" ? value as number : updated[index].price_per_night;
+      updated[index].nights = nights;
+      updated[index].total = pricePerNight * nights;
+    }
+    
+    setHotels(updated);
+  };
 
   const addFlight = () => {
     setFlights([...flights, { type: "Ritorno", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 }]);
@@ -238,6 +303,24 @@ export function CreateQuoteDialog({
 
     setSaving(true);
     try {
+      // Prepare hotels with calculated totals
+      const hotelsWithTotals = hotels.filter(h => h.name).map(hotel => ({
+        ...hotel,
+        nights: calculateHotelNightsForDates(hotel.check_in, hotel.check_out),
+        total: hotel.price_per_night * calculateHotelNightsForDates(hotel.check_in, hotel.check_out),
+      }));
+
+      // Use first hotel for legacy fields (backward compatibility) and total calculation
+      const firstHotel = hotelsWithTotals[0];
+      const firstHotelTotals = hotels[0]?.name ? calculateHotelOptionTotal(0) : { subtotal: baseTotals.flightsTotal + baseTotals.transfersTotal + baseTotals.otherTotal, markupAmount: 0, total: 0 };
+      
+      // Calculate markup for first hotel option
+      const subtotal = firstHotelTotals.subtotal;
+      const markupAmount = markupType === "percentage" 
+        ? subtotal * (markupPercentage / 100) 
+        : markupFixed;
+      const totalPrice = subtotal + markupAmount;
+
       const quoteData = {
         customer_name: customerName,
         customer_email: customerEmail || null,
@@ -247,20 +330,22 @@ export function CreateQuoteDialog({
         return_date: returnDate || null,
         num_passengers: numPassengers,
         flights: flights.filter(f => f.airline || f.price > 0) as unknown as any,
-        hotel_name: hotelName || null,
-        hotel_address: hotelAddress || null,
-        hotel_room_type: hotelRoomType || null,
-        hotel_check_in: hotelCheckIn || null,
-        hotel_check_out: hotelCheckOut || null,
-        hotel_price_per_night: hotelPricePerNight,
-        hotel_nights: totals.hotelNights,
-        hotel_total: totals.hotelTotal,
+        hotels: hotelsWithTotals as unknown as any,
+        // Legacy fields for first hotel (backward compatibility)
+        hotel_name: firstHotel?.name || null,
+        hotel_address: firstHotel?.address || null,
+        hotel_room_type: firstHotel?.room_type || null,
+        hotel_check_in: firstHotel?.check_in || null,
+        hotel_check_out: firstHotel?.check_out || null,
+        hotel_price_per_night: firstHotel?.price_per_night || 0,
+        hotel_nights: firstHotel?.nights || 0,
+        hotel_total: firstHotel?.total || 0,
         transfers: transfers.filter(t => t.type || t.price > 0) as unknown as any,
         other_items: otherItems.filter(o => o.description || o.price > 0) as unknown as any,
-        subtotal: totals.subtotal,
+        subtotal: subtotal,
         markup_percentage: markupType === "percentage" ? markupPercentage : 0,
-        markup_amount: totals.markupAmount,
-        total_price: totals.total,
+        markup_amount: markupAmount,
+        total_price: totalPrice,
         notes: notes || null,
       };
 
@@ -316,12 +401,7 @@ export function CreateQuoteDialog({
     setReturnDate("");
     setNumPassengers(1);
     setFlights([{ type: "Andata", airline: "", departure_time: "", arrival_time: "", baggage_type: "", price: 0 }]);
-    setHotelName("");
-    setHotelAddress("");
-    setHotelRoomType("");
-    setHotelCheckIn("");
-    setHotelCheckOut("");
-    setHotelPricePerNight(0);
+    setHotels([{ name: "", address: "", room_type: "", check_in: "", check_out: "", price_per_night: 0, nights: 0, total: 0 }]);
     setTransfers([]);
     setOtherItems([]);
     setMarkupType("percentage");
@@ -513,74 +593,110 @@ export function CreateQuoteDialog({
           </TabsContent>
 
           <TabsContent value="hotel" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Hotel className="h-4 w-4" />
-                  Sistemazione Hotel
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Nome Hotel</Label>
-                    <Input
-                      value={hotelName}
-                      onChange={(e) => setHotelName(e.target.value)}
-                      placeholder="Hotel Praga Centro"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipologia Camera</Label>
-                    <Input
-                      value={hotelRoomType}
-                      onChange={(e) => setHotelRoomType(e.target.value)}
-                      placeholder="Doppia Standard"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Indirizzo</Label>
-                  <Input
-                    value={hotelAddress}
-                    onChange={(e) => setHotelAddress(e.target.value)}
-                    placeholder="Via Example 123, Praga"
-                  />
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Check-in</Label>
-                    <Input
-                      type="date"
-                      value={hotelCheckIn}
-                      onChange={(e) => setHotelCheckIn(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Check-out</Label>
-                    <Input
-                      type="date"
-                      value={hotelCheckOut}
-                      onChange={(e) => setHotelCheckOut(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Prezzo/notte (tot. camera)</Label>
-                    <Input
-                      type="number"
-                      value={hotelPricePerNight}
-                      onChange={(e) => setHotelPricePerNight(parseFloat(e.target.value) || 0)}
-                      placeholder="80"
-                    />
-                  </div>
-                </div>
-                {totals.hotelNights > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {totals.hotelNights} notti × €{hotelPricePerNight.toFixed(2)} = €{totals.hotelTotal.toFixed(2)}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <div className="bg-muted/50 p-3 rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground">
+                💡 Puoi aggiungere più opzioni hotel. Ogni opzione mostrerà il totale separato (volo + hotel + servizi + markup).
+              </p>
+            </div>
+            
+            {hotels.map((hotel, index) => {
+              const hotelTotals = calculateHotelOptionTotal(index);
+              return (
+                <Card key={index} className="border-2">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Hotel className="h-4 w-4" />
+                        Opzione Hotel {index + 1}
+                        {hotel.name && (
+                          <span className="font-normal text-muted-foreground">- {hotel.name}</span>
+                        )}
+                      </CardTitle>
+                      {hotels.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeHotel(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nome Hotel</Label>
+                        <Input
+                          value={hotel.name}
+                          onChange={(e) => updateHotel(index, "name", e.target.value)}
+                          placeholder="Hotel Praga Centro"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tipologia Camera</Label>
+                        <Input
+                          value={hotel.room_type}
+                          onChange={(e) => updateHotel(index, "room_type", e.target.value)}
+                          placeholder="Doppia Standard"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Indirizzo</Label>
+                      <Input
+                        value={hotel.address}
+                        onChange={(e) => updateHotel(index, "address", e.target.value)}
+                        placeholder="Via Example 123, Praga"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Check-in</Label>
+                        <Input
+                          type="date"
+                          value={hotel.check_in}
+                          onChange={(e) => updateHotel(index, "check_in", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Check-out</Label>
+                        <Input
+                          type="date"
+                          value={hotel.check_out}
+                          onChange={(e) => updateHotel(index, "check_out", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Prezzo/notte (tot. camera)</Label>
+                        <Input
+                          type="number"
+                          value={hotel.price_per_night}
+                          onChange={(e) => updateHotel(index, "price_per_night", parseFloat(e.target.value) || 0)}
+                          placeholder="80"
+                        />
+                      </div>
+                    </div>
+                    
+                    {hotel.name && hotelTotals.nights > 0 && (
+                      <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg space-y-1">
+                        <p className="text-sm">
+                          🏨 {hotelTotals.nights} notti × €{hotel.price_per_night.toFixed(2)} = <strong>€{hotelTotals.hotelTotal.toFixed(2)}</strong>
+                        </p>
+                        <p className="text-sm font-medium text-primary">
+                          ✈️ Volo + Hotel + Servizi + Markup = <strong>€{hotelTotals.total.toFixed(2)}</strong>
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            
+            <Button variant="outline" onClick={addHotel} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Aggiungi Opzione Hotel
+            </Button>
           </TabsContent>
 
           <TabsContent value="altro" className="space-y-4 mt-4">
@@ -681,36 +797,12 @@ export function CreateQuoteDialog({
           </TabsContent>
 
           <TabsContent value="riepilogo" className="space-y-4 mt-4">
+            {/* Markup settings */}
             <Card>
-              <CardHeader>
-                <CardTitle>Riepilogo Costi</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Impostazioni Markup</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Voli ({numPassengers} pax)</span>
-                  <span>€{totals.flightsTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Hotel ({totals.hotelNights} notti)</span>
-                  <span>€{totals.hotelTotal.toFixed(2)}</span>
-                </div>
-                {totals.transfersTotal > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Transfer</span>
-                    <span>€{totals.transfersTotal.toFixed(2)}</span>
-                  </div>
-                )}
-                {totals.otherTotal > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span>Altro</span>
-                    <span>€{totals.otherTotal.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="border-t pt-2 flex justify-between font-medium">
-                  <span>Subtotale (costo)</span>
-                  <span>€{totals.subtotal.toFixed(2)}</span>
-                </div>
-
+              <CardContent>
                 <div className="bg-muted/50 p-3 rounded-lg space-y-3">
                   <div className="flex items-center gap-3 flex-wrap">
                     <Label className="text-sm">Markup</Label>
@@ -749,19 +841,78 @@ export function CreateQuoteDialog({
                         />
                       </div>
                     )}
-                    <span className="text-sm text-muted-foreground">
-                      = €{totals.markupAmount.toFixed(2)}
-                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Il markup non sarà visibile al cliente
                   </p>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="border-t pt-2 flex justify-between text-lg font-bold text-primary">
-                  <span>TOTALE CLIENTE</span>
-                  <span>€{totals.total.toFixed(2)}</span>
+            {/* Base costs */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Costi Base (comuni a tutte le opzioni)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Voli ({numPassengers} pax)</span>
+                  <span>€{baseTotals.flightsTotal.toFixed(2)}</span>
                 </div>
+                {baseTotals.transfersTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Transfer</span>
+                    <span>€{baseTotals.transfersTotal.toFixed(2)}</span>
+                  </div>
+                )}
+                {baseTotals.otherTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Altro</span>
+                    <span>€{baseTotals.otherTotal.toFixed(2)}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Hotel options with totals */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Opzioni Hotel con Totali</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {hotels.filter(h => h.name).map((hotel, index) => {
+                  const hotelTotals = calculateHotelOptionTotal(index);
+                  return (
+                    <div key={index} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Hotel className="h-4 w-4" />
+                          {hotel.name}
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                        <span>Hotel ({hotelTotals.nights} notti)</span>
+                        <span className="text-right">€{hotelTotals.hotelTotal.toFixed(2)}</span>
+                        <span>+ Voli + Transfer + Altro</span>
+                        <span className="text-right">€{(baseTotals.flightsTotal + baseTotals.transfersTotal + baseTotals.otherTotal).toFixed(2)}</span>
+                        <span>Subtotale (costo)</span>
+                        <span className="text-right">€{hotelTotals.subtotal.toFixed(2)}</span>
+                        <span>Markup</span>
+                        <span className="text-right">€{hotelTotals.markupAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t pt-2 flex justify-between text-lg font-bold text-primary">
+                        <span>TOTALE CLIENTE</span>
+                        <span>€{hotelTotals.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {hotels.filter(h => h.name).length === 0 && (
+                  <p className="text-muted-foreground text-sm text-center py-4">
+                    Aggiungi almeno un hotel nella scheda "Hotel" per vedere i totali
+                  </p>
+                )}
               </CardContent>
             </Card>
 
