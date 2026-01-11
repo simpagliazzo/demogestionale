@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, Building2, MessageSquare, Info, Upload, X, Image, Link } from "lucide-react";
+import { Loader2, Save, Building2, MessageSquare, Info, Upload, X, Image, Link, Settings } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface AgencySettings {
@@ -33,6 +34,10 @@ interface AgencySettings {
   og_confirmation_image_url: string | null;
   travel_conditions: string | null;
   whatsapp_notification_phone: string | null;
+  whatsapp_include_bus_seat: boolean | null;
+  whatsapp_include_document_upload: boolean | null;
+  whatsapp_include_confirmation_link: boolean | null;
+  whatsapp_include_economic_details: boolean | null;
 }
 
 interface WhatsAppTemplate {
@@ -239,6 +244,10 @@ export default function Impostazioni() {
           og_confirmation_image_url: agencySettings.og_confirmation_image_url,
           travel_conditions: agencySettings.travel_conditions,
           whatsapp_notification_phone: agencySettings.whatsapp_notification_phone,
+          whatsapp_include_bus_seat: agencySettings.whatsapp_include_bus_seat,
+          whatsapp_include_document_upload: agencySettings.whatsapp_include_document_upload,
+          whatsapp_include_confirmation_link: agencySettings.whatsapp_include_confirmation_link,
+          whatsapp_include_economic_details: agencySettings.whatsapp_include_economic_details,
         })
         .eq("id", agencySettings.id);
 
@@ -501,6 +510,67 @@ export default function Impostazioni() {
                       <p className="text-xs text-muted-foreground">
                         Riceverai qui le conferme dei clienti. Se vuoto, usa il telefono principale.
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Opzioni Contenuto WhatsApp */}
+                  <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <Label className="text-base font-medium">Contenuto Messaggi WhatsApp</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-2 mb-4">
+                      Scegli quali elementi includere nei messaggi WhatsApp di conferma prenotazione
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between space-x-2 p-3 border rounded-lg bg-background">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="include_economic">💰 Dati Economici</Label>
+                          <p className="text-xs text-muted-foreground">Quota, versato, saldo</p>
+                        </div>
+                        <Switch
+                          id="include_economic"
+                          checked={agencySettings.whatsapp_include_economic_details ?? true}
+                          onCheckedChange={(checked) => setAgencySettings({ ...agencySettings, whatsapp_include_economic_details: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between space-x-2 p-3 border rounded-lg bg-background">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="include_bus">🚌 Scelta Posto Bus</Label>
+                          <p className="text-xs text-muted-foreground">Link per scegliere il posto</p>
+                        </div>
+                        <Switch
+                          id="include_bus"
+                          checked={agencySettings.whatsapp_include_bus_seat ?? true}
+                          onCheckedChange={(checked) => setAgencySettings({ ...agencySettings, whatsapp_include_bus_seat: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between space-x-2 p-3 border rounded-lg bg-background">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="include_docs">📄 Caricamento Documenti</Label>
+                          <p className="text-xs text-muted-foreground">Link per caricare il documento</p>
+                        </div>
+                        <Switch
+                          id="include_docs"
+                          checked={agencySettings.whatsapp_include_document_upload ?? true}
+                          onCheckedChange={(checked) => setAgencySettings({ ...agencySettings, whatsapp_include_document_upload: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between space-x-2 p-3 border rounded-lg bg-background">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="include_confirm">✅ Link Conferma</Label>
+                          <p className="text-xs text-muted-foreground">Pulsante conferma prenotazione</p>
+                        </div>
+                        <Switch
+                          id="include_confirm"
+                          checked={agencySettings.whatsapp_include_confirmation_link ?? true}
+                          onCheckedChange={(checked) => setAgencySettings({ ...agencySettings, whatsapp_include_confirmation_link: checked })}
+                        />
+                      </div>
                     </div>
                   </div>
 
