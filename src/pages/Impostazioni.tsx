@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, Building2, MessageSquare, Info } from "lucide-react";
+import { Loader2, Save, Building2, MessageSquare, Info, Upload, X, Image } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface AgencySettings {
@@ -83,8 +83,10 @@ const PLACEHOLDERS_INFO = {
 export default function Impostazioni() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [agencySettings, setAgencySettings] = useState<AgencySettings | null>(null);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadData();
@@ -118,6 +120,85 @@ export default function Impostazioni() {
       toast.error("Errore nel caricamento delle impostazioni");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !agencySettings) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Seleziona un file immagine valido");
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Il file è troppo grande. Dimensione massima: 2MB");
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `agency-logo-${agencySettings.id}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("agency-assets")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("agency-assets")
+        .getPublicUrl(filePath);
+
+      const logoUrl = urlData.publicUrl;
+
+      // Update agency settings with new logo URL
+      const { error: updateError } = await supabase
+        .from("agency_settings")
+        .update({ logo_url: logoUrl })
+        .eq("id", agencySettings.id);
+
+      if (updateError) throw updateError;
+
+      setAgencySettings({ ...agencySettings, logo_url: logoUrl });
+      toast.success("Logo caricato con successo");
+    } catch (error) {
+      console.error("Errore nel caricamento del logo:", error);
+      toast.error("Errore nel caricamento del logo");
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!agencySettings) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("agency_settings")
+        .update({ logo_url: null })
+        .eq("id", agencySettings.id);
+
+      if (error) throw error;
+
+      setAgencySettings({ ...agencySettings, logo_url: null });
+      toast.success("Logo rimosso");
+    } catch (error) {
+      console.error("Errore nella rimozione del logo:", error);
+      toast.error("Errore nella rimozione del logo");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -221,6 +302,59 @@ export default function Impostazioni() {
             <CardContent className="space-y-6">
               {agencySettings && (
                 <>
+                  {/* Logo Upload Section */}
+                  <div className="space-y-3">
+                    <Label>Logo Agenzia</Label>
+                    <div className="flex items-center gap-4">
+                      {agencySettings.logo_url ? (
+                        <div className="relative">
+                          <img 
+                            src={agencySettings.logo_url} 
+                            alt="Logo agenzia" 
+                            className="h-20 w-auto max-w-[200px] object-contain border rounded-lg p-2 bg-white"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6"
+                            onClick={handleRemoveLogo}
+                            disabled={saving}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="h-20 w-32 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
+                          <Image className="h-8 w-8" />
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleLogoUpload}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                        >
+                          {uploadingLogo ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="mr-2 h-4 w-4" />
+                          )}
+                          {agencySettings.logo_url ? "Cambia Logo" : "Carica Logo"}
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Formati: JPG, PNG, GIF. Max 2MB
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="business_name">Nome Attività *</Label>
