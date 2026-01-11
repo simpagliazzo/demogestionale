@@ -162,6 +162,48 @@ export default function TripConfirmationDialog({
     }
   };
 
+  // Genera token per conferma prenotazione
+  const generateConfirmationToken = async (): Promise<string | null> => {
+    if (!participantId || !tripId) return null;
+
+    try {
+      // Controlla se esiste già un token valido
+      const { data: existingToken } = await supabase
+        .from('booking_confirmation_tokens')
+        .select('token')
+        .eq('participant_id', participantId)
+        .eq('trip_id', tripId)
+        .gt('expires_at', new Date().toISOString())
+        .is('confirmed_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingToken) {
+        return existingToken.token;
+      }
+
+      // Genera nuovo token
+      const array = new Uint8Array(24);
+      crypto.getRandomValues(array);
+      const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+      const { error } = await supabase
+        .from('booking_confirmation_tokens')
+        .insert({
+          participant_id: participantId,
+          trip_id: tripId,
+          token,
+        });
+
+      if (error) throw error;
+      return token;
+    } catch (err) {
+      console.error('Error generating confirmation token:', err);
+      return null;
+    }
+  };
+
   const handleWhatsApp = async () => {
     const phone = formatPhoneForWhatsApp(participantPhone);
     
@@ -196,20 +238,30 @@ export default function TripConfirmationDialog({
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
     const roomLabel = currentRoomType ? ROOM_LABELS[currentRoomType] || currentRoomType : "";
 
-    // Usa template dal database
+    // Genera link conferma prenotazione
+    let confirmationLink = "";
+    if (participantId && tripId) {
+      const token = await generateConfirmationToken();
+      if (token) {
+        confirmationLink = `${window.location.origin}/conferma-prenotazione/${token}`;
+      }
+    }
+
+    // Usa template dal database (NOTA: i placeholder nel DB sono lowercase!)
     const message = formatMessage("booking_confirmation", {
-      NOME_PARTECIPANTE: participantName,
-      TITOLO_VIAGGIO: tripTitle,
-      DESTINAZIONE: tripDestination,
-      DATA_PARTENZA: departureDate,
-      DATA_RITORNO: returnDate,
-      TIPO_CAMERA: roomLabel,
-      NUMERO_GRUPPO: groupNumber?.toString() || "",
-      QUOTA_TOTALE: totalPrice.toFixed(2),
-      TOTALE_PAGATO: totalPaid.toFixed(2),
-      SALDO_RESIDUO: balance > 0 ? balance.toFixed(2) : "SALDATO",
-      LINK_POSTO_BUS: busSeatLink,
-      LINK_UPLOAD_DOCUMENTO: uploadLink,
+      nome_partecipante: participantName,
+      titolo_viaggio: tripTitle,
+      destinazione: tripDestination,
+      data_partenza: departureDate,
+      data_rientro: returnDate,
+      tipo_camera: roomLabel,
+      numero_gruppo: groupNumber?.toString() || "",
+      totale: totalPrice.toFixed(2),
+      versato: totalPaid.toFixed(2),
+      saldo: balance > 0 ? balance.toFixed(2) : "SALDATO",
+      link_posto_bus: busSeatLink ? `\n🪑 Scegli il tuo posto: ${busSeatLink}` : "",
+      link_documenti: uploadLink ? `\n📄 Carica documento: ${uploadLink}` : "",
+      link_conferma: confirmationLink ? `\n✅ Conferma prenotazione: ${confirmationLink}` : "",
     });
 
     if (message) {

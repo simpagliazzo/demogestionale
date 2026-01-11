@@ -82,9 +82,11 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           province: string | null
+          travel_conditions: string | null
           updated_at: string
           vat_number: string | null
           website: string | null
+          whatsapp_notification_phone: string | null
         }
         Insert: {
           address?: string | null
@@ -106,9 +108,11 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           province?: string | null
+          travel_conditions?: string | null
           updated_at?: string
           vat_number?: string | null
           website?: string | null
+          whatsapp_notification_phone?: string | null
         }
         Update: {
           address?: string | null
@@ -130,9 +134,11 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           province?: string | null
+          travel_conditions?: string | null
           updated_at?: string
           vat_number?: string | null
           website?: string | null
+          whatsapp_notification_phone?: string | null
         }
         Relationships: []
       }
@@ -174,6 +180,51 @@ export type Database = {
             columns: ["participant_id"]
             isOneToOne: false
             referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_confirmation_tokens: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          participant_id: string
+          token: string
+          trip_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          participant_id: string
+          token: string
+          trip_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          participant_id?: string
+          token?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_confirmation_tokens_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_confirmation_tokens_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]
