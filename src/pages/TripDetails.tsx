@@ -92,8 +92,18 @@ interface Hotel {
   name: string;
   address: string | null;
   phone: string | null;
+  email: string | null;
   check_in_date: string;
   check_out_date: string;
+}
+
+interface HotelRegistry {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
 }
 
 interface Room {
@@ -157,7 +167,9 @@ export default function TripDetails() {
   const [tripCompanions, setTripCompanions] = useState<TripCompanion[]>([]);
   const [availableGuides, setAvailableGuides] = useState<Guide[]>([]);
   const [availableCompanions, setAvailableCompanions] = useState<Guide[]>([]);
-  const [newHotelData, setNewHotelData] = useState({ name: "", address: "", phone: "" });
+  const [newHotelData, setNewHotelData] = useState({ name: "", address: "", phone: "", email: "" });
+  const [hotelRegistry, setHotelRegistry] = useState<HotelRegistry[]>([]);
+  const [showManualHotelEntry, setShowManualHotelEntry] = useState(false);
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -188,6 +200,7 @@ export default function TripDetails() {
     loadAvailableCompanions();
     loadTripGuides();
     loadTripCompanions();
+    loadHotelRegistry();
   }, [id]);
 
   useEffect(() => {
@@ -361,7 +374,8 @@ export default function TripDetails() {
       if (hotelsError) throw hotelsError;
       setHotels(hotelsData || []);
       
-      setNewHotelData({ name: "", address: "", phone: "" });
+      setNewHotelData({ name: "", address: "", phone: "", email: "" });
+      setShowManualHotelEntry(false);
 
       if (hotelsData && hotelsData.length > 0) {
         const hotelIds = hotelsData.map(h => h.id);
@@ -506,17 +520,80 @@ export default function TripDetails() {
           name: newHotelData.name,
           address: newHotelData.address || null,
           phone: newHotelData.phone || null,
+          email: newHotelData.email || null,
           check_in_date: trip.departure_date,
           check_out_date: trip.return_date,
         });
 
       if (error) throw error;
       toast.success("Hotel aggiunto con successo");
-      setNewHotelData({ name: "", address: "", phone: "" });
+      setNewHotelData({ name: "", address: "", phone: "", email: "" });
+      setShowManualHotelEntry(false);
       loadTripDetails();
     } catch (error) {
       console.error("Errore aggiunta hotel:", error);
       toast.error("Errore nell'aggiunta dell'hotel");
+    }
+  };
+
+  const addHotelFromRegistry = async (registryHotel: HotelRegistry) => {
+    if (!trip) return;
+    
+    try {
+      const { error } = await supabase
+        .from("hotels")
+        .insert({
+          trip_id: trip.id,
+          name: registryHotel.name,
+          address: registryHotel.address || null,
+          phone: registryHotel.phone || null,
+          email: registryHotel.email || null,
+          check_in_date: trip.departure_date,
+          check_out_date: trip.return_date,
+        });
+
+      if (error) throw error;
+      toast.success("Hotel aggiunto con successo");
+      loadTripDetails();
+    } catch (error) {
+      console.error("Errore aggiunta hotel:", error);
+      toast.error("Errore nell'aggiunta dell'hotel");
+    }
+  };
+
+  const saveHotelToRegistry = async () => {
+    if (!newHotelData.name) return;
+    
+    try {
+      const { error } = await supabase
+        .from("hotel_registry")
+        .insert({
+          name: newHotelData.name,
+          address: newHotelData.address || null,
+          phone: newHotelData.phone || null,
+          email: newHotelData.email || null,
+        });
+
+      if (error) throw error;
+      toast.success("Hotel salvato in rubrica");
+      loadHotelRegistry();
+    } catch (error) {
+      console.error("Errore salvataggio rubrica hotel:", error);
+      toast.error("Errore nel salvataggio in rubrica");
+    }
+  };
+
+  const loadHotelRegistry = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("hotel_registry")
+        .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      setHotelRegistry(data || []);
+    } catch (error) {
+      console.error("Errore caricamento rubrica hotel:", error);
     }
   };
 
@@ -1390,34 +1467,89 @@ export default function TripDetails() {
                               </Button>
                             </div>
                             {hotel.address && <p className="text-[10px] text-muted-foreground">{hotel.address}</p>}
-                            {hotel.phone && <p className="text-[10px] text-muted-foreground">{hotel.phone}</p>}
+                            {hotel.phone && <p className="text-[10px] text-muted-foreground">📞 {hotel.phone}</p>}
+                            {hotel.email && <p className="text-[10px] text-muted-foreground">✉️ {hotel.email}</p>}
                           </div>
                         ))}
                         
                         <div className="pt-2 border-t space-y-1.5">
-                          <p className="text-xs font-medium">Nuovo hotel</p>
-                          <Input
-                            value={newHotelData.name}
-                            onChange={(e) => setNewHotelData({...newHotelData, name: e.target.value})}
-                            placeholder="Nome"
-                            className="h-7 text-xs"
-                          />
-                          <Input
-                            value={newHotelData.address}
-                            onChange={(e) => setNewHotelData({...newHotelData, address: e.target.value})}
-                            placeholder="Indirizzo"
-                            className="h-7 text-xs"
-                          />
-                          <Input
-                            value={newHotelData.phone}
-                            onChange={(e) => setNewHotelData({...newHotelData, phone: e.target.value})}
-                            placeholder="Telefono"
-                            className="h-7 text-xs"
-                          />
-                          <Button onClick={addHotel} size="sm" className="w-full gap-1.5 h-7 text-xs">
-                            <Plus className="h-3 w-3" />
-                            Aggiungi
+                          <p className="text-xs font-medium">Aggiungi hotel</p>
+                          
+                          {/* Selezione da rubrica */}
+                          <Select onValueChange={(value) => {
+                            const hotel = hotelRegistry.find(h => h.id === value);
+                            if (hotel) addHotelFromRegistry(hotel);
+                          }}>
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue placeholder="Seleziona dalla rubrica..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {hotelRegistry.map((hotel) => (
+                                <SelectItem key={hotel.id} value={hotel.id} className="text-xs">
+                                  {hotel.name} {hotel.city && `(${hotel.city})`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="flex-1 border-t" />
+                            <span>oppure</span>
+                            <div className="flex-1 border-t" />
+                          </div>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-7 text-xs"
+                            onClick={() => setShowManualHotelEntry(!showManualHotelEntry)}
+                          >
+                            {showManualHotelEntry ? "Nascondi" : "Inserisci manualmente"}
                           </Button>
+                          
+                          {showManualHotelEntry && (
+                            <div className="space-y-1.5 pt-2">
+                              <Input
+                                value={newHotelData.name}
+                                onChange={(e) => setNewHotelData({...newHotelData, name: e.target.value})}
+                                placeholder="Nome hotel *"
+                                className="h-7 text-xs"
+                              />
+                              <Input
+                                value={newHotelData.address}
+                                onChange={(e) => setNewHotelData({...newHotelData, address: e.target.value})}
+                                placeholder="Indirizzo"
+                                className="h-7 text-xs"
+                              />
+                              <Input
+                                value={newHotelData.phone}
+                                onChange={(e) => setNewHotelData({...newHotelData, phone: e.target.value})}
+                                placeholder="Telefono"
+                                className="h-7 text-xs"
+                              />
+                              <Input
+                                value={newHotelData.email}
+                                onChange={(e) => setNewHotelData({...newHotelData, email: e.target.value})}
+                                placeholder="Email"
+                                className="h-7 text-xs"
+                              />
+                              <div className="flex gap-1.5">
+                                <Button onClick={addHotel} size="sm" className="flex-1 gap-1 h-7 text-xs">
+                                  <Plus className="h-3 w-3" />
+                                  Aggiungi
+                                </Button>
+                                <Button 
+                                  onClick={() => { addHotel(); saveHotelToRegistry(); }} 
+                                  variant="outline"
+                                  size="sm" 
+                                  className="gap-1 h-7 text-xs"
+                                  title="Aggiungi e salva in rubrica"
+                                >
+                                  <Save className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -1429,7 +1561,8 @@ export default function TripDetails() {
                             <div key={hotel.id} className="border-b last:border-b-0 pb-1.5">
                               <p className="text-xs font-medium">{hotel.name}</p>
                               {hotel.address && <p className="text-[10px] text-muted-foreground">{hotel.address}</p>}
-                              {hotel.phone && <p className="text-[10px] text-muted-foreground">{hotel.phone}</p>}
+                              {hotel.phone && <p className="text-[10px] text-muted-foreground">📞 {hotel.phone}</p>}
+                              {hotel.email && <p className="text-[10px] text-muted-foreground">✉️ {hotel.email}</p>}
                             </div>
                           ))
                         )}

@@ -481,12 +481,49 @@ export type Database = {
           },
         ]
       }
+      hotel_registry: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       hotels: {
         Row: {
           address: string | null
           check_in_date: string
           check_out_date: string
           created_at: string
+          email: string | null
           id: string
           name: string
           phone: string | null
@@ -497,6 +534,7 @@ export type Database = {
           check_in_date: string
           check_out_date: string
           created_at?: string
+          email?: string | null
           id?: string
           name: string
           phone?: string | null
@@ -507,6 +545,7 @@ export type Database = {
           check_in_date?: string
           check_out_date?: string
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
           phone?: string | null
