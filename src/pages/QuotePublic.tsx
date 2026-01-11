@@ -6,15 +6,23 @@ import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plane, Hotel, Car, Phone, Mail, Globe } from "lucide-react";
 
-// Update OG meta tags dynamically
+// Update OG meta tags dynamically using agency templates
 const updateMetaTags = (quote: Quote | null, agencySettings: AgencySettings | null) => {
   if (!quote) return;
   
-  const title = agencySettings?.business_name 
-    ? `Preventivo ${quote.destination} - ${agencySettings.business_name}`
-    : `Preventivo Viaggio - ${quote.destination}`;
+  // Build title from template or default
+  let title = agencySettings?.og_quote_title || "Preventivo di Viaggio - {DESTINAZIONE}";
+  title = title
+    .replace(/\{DESTINAZIONE\}/g, quote.destination)
+    .replace(/\{NOME_CLIENTE\}/g, quote.customer_name)
+    .replace(/\{NOME_AGENZIA\}/g, agencySettings?.business_name || "");
   
-  const description = `Preventivo di viaggio per ${quote.destination} - ${quote.num_passengers} passeggeri`;
+  // Build description from template or default
+  let description = agencySettings?.og_quote_description || "Preventivo personalizzato per il tuo viaggio a {DESTINAZIONE}";
+  description = description
+    .replace(/\{DESTINAZIONE\}/g, quote.destination)
+    .replace(/\{NOME_CLIENTE\}/g, quote.customer_name)
+    .replace(/\{NOME_AGENZIA\}/g, agencySettings?.business_name || "");
   
   // Update page title
   document.title = title;
@@ -45,10 +53,11 @@ const updateMetaTags = (quote: Quote | null, agencySettings: AgencySettings | nu
   updateMetaName("twitter:title", title);
   updateMetaName("twitter:description", description);
   
-  // Update image to agency logo if available
-  if (agencySettings?.logo_url) {
-    updateMeta("og:image", agencySettings.logo_url);
-    updateMetaName("twitter:image", agencySettings.logo_url);
+  // Use custom image, or fallback to logo
+  const imageUrl = agencySettings?.og_quote_image_url || agencySettings?.logo_url;
+  if (imageUrl) {
+    updateMeta("og:image", imageUrl);
+    updateMetaName("twitter:image", imageUrl);
   }
 };
 
@@ -122,6 +131,9 @@ interface AgencySettings {
   website: string | null;
   vat_number: string | null;
   logo_url: string | null;
+  og_quote_title: string | null;
+  og_quote_description: string | null;
+  og_quote_image_url: string | null;
 }
 
 const BAGGAGE_LABELS: Record<string, string> = {

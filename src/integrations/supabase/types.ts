@@ -73,6 +73,12 @@ export type Database = {
           id: string
           legal_name: string | null
           logo_url: string | null
+          og_confirmation_description: string | null
+          og_confirmation_image_url: string | null
+          og_confirmation_title: string | null
+          og_quote_description: string | null
+          og_quote_image_url: string | null
+          og_quote_title: string | null
           phone: string | null
           postal_code: string | null
           province: string | null
@@ -91,6 +97,12 @@ export type Database = {
           id?: string
           legal_name?: string | null
           logo_url?: string | null
+          og_confirmation_description?: string | null
+          og_confirmation_image_url?: string | null
+          og_confirmation_title?: string | null
+          og_quote_description?: string | null
+          og_quote_image_url?: string | null
+          og_quote_title?: string | null
           phone?: string | null
           postal_code?: string | null
           province?: string | null
@@ -109,6 +121,12 @@ export type Database = {
           id?: string
           legal_name?: string | null
           logo_url?: string | null
+          og_confirmation_description?: string | null
+          og_confirmation_image_url?: string | null
+          og_confirmation_title?: string | null
+          og_quote_description?: string | null
+          og_quote_image_url?: string | null
+          og_quote_title?: string | null
           phone?: string | null
           postal_code?: string | null
           province?: string | null
