@@ -70,6 +70,7 @@ export type Database = {
           created_at: string
           email: string | null
           fiscal_code: string | null
+          iban: string | null
           id: string
           legal_name: string | null
           logo_url: string | null
@@ -82,6 +83,7 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           province: string | null
+          sdi_code: string | null
           travel_conditions: string | null
           updated_at: string
           vat_number: string | null
@@ -100,6 +102,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           fiscal_code?: string | null
+          iban?: string | null
           id?: string
           legal_name?: string | null
           logo_url?: string | null
@@ -112,6 +115,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           province?: string | null
+          sdi_code?: string | null
           travel_conditions?: string | null
           updated_at?: string
           vat_number?: string | null
@@ -130,6 +134,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           fiscal_code?: string | null
+          iban?: string | null
           id?: string
           legal_name?: string | null
           logo_url?: string | null
@@ -142,6 +147,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           province?: string | null
+          sdi_code?: string | null
           travel_conditions?: string | null
           updated_at?: string
           vat_number?: string | null
