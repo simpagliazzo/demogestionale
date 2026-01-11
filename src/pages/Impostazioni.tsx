@@ -25,6 +25,8 @@ interface AgencySettings {
   website: string | null;
   vat_number: string | null;
   fiscal_code: string | null;
+  iban: string | null;
+  sdi_code: string | null;
   logo_url: string | null;
   og_quote_title: string | null;
   og_quote_description: string | null;
@@ -236,6 +238,8 @@ export default function Impostazioni() {
           website: agencySettings.website,
           vat_number: agencySettings.vat_number,
           fiscal_code: agencySettings.fiscal_code,
+          iban: agencySettings.iban,
+          sdi_code: agencySettings.sdi_code,
           og_quote_title: agencySettings.og_quote_title,
           og_quote_description: agencySettings.og_quote_description,
           og_quote_image_url: agencySettings.og_quote_image_url,
@@ -423,6 +427,28 @@ export default function Impostazioni() {
                         value={agencySettings.fiscal_code || ""}
                         onChange={(e) => setAgencySettings({ ...agencySettings, fiscal_code: e.target.value })}
                         placeholder="Codice fiscale"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="iban">IBAN</Label>
+                      <Input
+                        id="iban"
+                        value={agencySettings.iban || ""}
+                        onChange={(e) => setAgencySettings({ ...agencySettings, iban: e.target.value })}
+                        placeholder="IT60X0542811101000000123456"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sdi_code">Codice SDI (Fattura Elettronica)</Label>
+                      <Input
+                        id="sdi_code"
+                        value={agencySettings.sdi_code || ""}
+                        onChange={(e) => setAgencySettings({ ...agencySettings, sdi_code: e.target.value })}
+                        placeholder="XXXXXXX"
+                        maxLength={7}
                       />
                     </div>
                   </div>
