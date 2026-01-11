@@ -1,1 +1,6 @@
-/*    /index.html   200
+# Redirect all routes to index.html for SPA
+/trips/*  /index.html  200
+/preventivo/*  /index.html  200
+/upload-documenti/*  /index.html  200
+/scegli-posto/*  /index.html  200
+/*  /index.html  200
