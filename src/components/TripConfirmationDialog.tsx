@@ -214,9 +214,15 @@ export default function TripConfirmationDialog({
 
     setSendingWhatsApp(true);
 
+    // Impostazioni WhatsApp (default tutti attivi)
+    const includeBusSeat = agencySettings?.whatsapp_include_bus_seat ?? true;
+    const includeDocUpload = agencySettings?.whatsapp_include_document_upload ?? true;
+    const includeConfirmation = agencySettings?.whatsapp_include_confirmation_link ?? true;
+    const includeEconomic = agencySettings?.whatsapp_include_economic_details ?? true;
+
     // Genera link upload documento
     let uploadLink = "";
-    if (participantId) {
+    if (includeDocUpload && participantId) {
       const token = await generateUploadToken();
       if (token) {
         uploadLink = `${window.location.origin}/upload-documenti/${token}`;
@@ -225,10 +231,19 @@ export default function TripConfirmationDialog({
 
     // Genera link scelta posto bus
     let busSeatLink = "";
-    if (participantId && tripId) {
+    if (includeBusSeat && participantId && tripId) {
       const token = await generateBusSeatToken();
       if (token) {
         busSeatLink = `${window.location.origin}/scegli-posto/${token}`;
+      }
+    }
+
+    // Genera link conferma prenotazione
+    let confirmationLink = "";
+    if (includeConfirmation && participantId && tripId) {
+      const token = await generateConfirmationToken();
+      if (token) {
+        confirmationLink = `${window.location.origin}/conferma-prenotazione/${token}`;
       }
     }
 
@@ -238,69 +253,75 @@ export default function TripConfirmationDialog({
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
     const roomLabel = currentRoomType ? ROOM_LABELS[currentRoomType] || currentRoomType : "";
 
-    // Genera link conferma prenotazione
-    let confirmationLink = "";
-    if (participantId && tripId) {
-      const token = await generateConfirmationToken();
-      if (token) {
-        confirmationLink = `${window.location.origin}/conferma-prenotazione/${token}`;
-      }
-    }
+    // Costruisci messaggio completo (fallback - sempre usato per garantire correttezza)
+    const messageParts = [
+      `✅ *CONFERMA PRENOTAZIONE*`,
+      ``,
+      `Gentile *${participantName}*,`,
+      ``,
+      `Siamo lieti di confermare la Sua partecipazione al viaggio:`,
+      ``,
+      `🚌 *${tripTitle}*`,
+      `📍 *Destinazione:* ${tripDestination}`,
+      `📅 *Partenza:* ${departureDate}`,
+      `📅 *Ritorno:* ${returnDate}`,
+      roomLabel ? `🏨 *Sistemazione:* ${roomLabel}` : null,
+      groupNumber ? `👥 *Gruppo prenotazione:* #${groupNumber}` : null,
+    ];
 
-    // Usa template dal database (NOTA: i placeholder nel DB sono lowercase!)
-    const message = formatMessage("booking_confirmation", {
-      nome_partecipante: participantName,
-      titolo_viaggio: tripTitle,
-      destinazione: tripDestination,
-      data_partenza: departureDate,
-      data_rientro: returnDate,
-      tipo_camera: roomLabel,
-      numero_gruppo: groupNumber?.toString() || "",
-      totale: totalPrice.toFixed(2),
-      versato: totalPaid.toFixed(2),
-      saldo: balance > 0 ? balance.toFixed(2) : "SALDATO",
-      link_posto_bus: busSeatLink ? `\n🪑 Scegli il tuo posto: ${busSeatLink}` : "",
-      link_documenti: uploadLink ? `\n📄 Carica documento: ${uploadLink}` : "",
-      link_conferma: confirmationLink ? `\n✅ Conferma prenotazione: ${confirmationLink}` : "",
-    });
-
-    if (message) {
-      openWhatsApp(phone, message);
-    } else {
-      // Fallback se template non trovato
-      const messageParts = [
-        `✅ *CONFERMA PRENOTAZIONE*`,
+    // Aggiungi sezione economica se abilitata
+    if (includeEconomic) {
+      messageParts.push(
         ``,
-        `Gentile *${participantName}*,`,
-        ``,
-        `Siamo lieti di confermare la Sua partecipazione al viaggio:`,
-        ``,
-        `🚌 *${tripTitle}*`,
-        `📍 *Destinazione:* ${tripDestination}`,
-        `📅 *Partenza:* ${departureDate}`,
-        `📅 *Ritorno:* ${returnDate}`,
-        roomLabel ? `🏨 *Sistemazione:* ${roomLabel}` : null,
-        groupNumber ? `👥 *Gruppo prenotazione:* #${groupNumber}` : null,
-        ``,
-        `💵 *RIEPILOGO ECONOMICO*`,
+        `💰 *RIEPILOGO ECONOMICO*`,
         `Quota di partecipazione: €${totalPrice.toFixed(2)}`,
         `Totale versato: €${totalPaid.toFixed(2)}`,
-        balance > 0 ? `Saldo da versare: €${balance.toFixed(2)}` : `✅ Quota completamente saldata`,
-        ``,
-        busSeatLink ? `🪑 *SCEGLI IL TUO POSTO SUL BUS*` : null,
-        busSeatLink ? busSeatLink : null,
-        busSeatLink ? `` : null,
-        uploadLink ? `📄 *DOCUMENTO DI IDENTITÀ*` : null,
-        uploadLink ? uploadLink : null,
-        uploadLink ? `` : null,
-        `Grazie per aver scelto i nostri viaggi!`,
-        ``,
-        `_${agencySettings?.business_name || "Agenzia Viaggi"}_`,
-        agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null,
-      ].filter(Boolean).join("\n");
-
-      openWhatsApp(phone, messageParts);
+        balance > 0 ? `Saldo da versare: €${balance.toFixed(2)}` : `✅ Quota completamente saldata`
+      );
     }
+
+    // Aggiungi link scelta posto bus se abilitato
+    if (busSeatLink) {
+      messageParts.push(
+        ``,
+        `🪑 *SCEGLI IL TUO POSTO SUL BUS*`,
+        `Clicca qui per scegliere il tuo posto:`,
+        busSeatLink
+      );
+    }
+
+    // Aggiungi link upload documenti se abilitato
+    if (uploadLink) {
+      messageParts.push(
+        ``,
+        `📄 *DOCUMENTO DI IDENTITÀ*`,
+        `Per completare la prenotazione, carica una copia del documento:`,
+        uploadLink
+      );
+    }
+
+    // Aggiungi link conferma se abilitato
+    if (confirmationLink) {
+      messageParts.push(
+        ``,
+        `✅ *CONFERMA LA TUA PRENOTAZIONE*`,
+        `Clicca qui per confermare:`,
+        confirmationLink
+      );
+    }
+
+    // Footer
+    messageParts.push(
+      ``,
+      `Per qualsiasi informazione non esiti a contattarci.`,
+      `Grazie per aver scelto i nostri viaggi!`,
+      ``,
+      `_${agencySettings?.business_name || "Agenzia Viaggi"}_`,
+      agencySettings?.phone ? `_Tel. ${agencySettings.phone}_` : null
+    );
+
+    const finalMessage = messageParts.filter(Boolean).join("\n");
+    openWhatsApp(phone, finalMessage);
   };
 
   const departureDate = format(new Date(tripDepartureDate), "EEEE d MMMM yyyy", { locale: it });

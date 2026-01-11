@@ -86,6 +86,10 @@ export type Database = {
           updated_at: string
           vat_number: string | null
           website: string | null
+          whatsapp_include_bus_seat: boolean | null
+          whatsapp_include_confirmation_link: boolean | null
+          whatsapp_include_document_upload: boolean | null
+          whatsapp_include_economic_details: boolean | null
           whatsapp_notification_phone: string | null
         }
         Insert: {
@@ -112,6 +116,10 @@ export type Database = {
           updated_at?: string
           vat_number?: string | null
           website?: string | null
+          whatsapp_include_bus_seat?: boolean | null
+          whatsapp_include_confirmation_link?: boolean | null
+          whatsapp_include_document_upload?: boolean | null
+          whatsapp_include_economic_details?: boolean | null
           whatsapp_notification_phone?: string | null
         }
         Update: {
@@ -138,6 +146,10 @@ export type Database = {
           updated_at?: string
           vat_number?: string | null
           website?: string | null
+          whatsapp_include_bus_seat?: boolean | null
+          whatsapp_include_confirmation_link?: boolean | null
+          whatsapp_include_document_upload?: boolean | null
+          whatsapp_include_economic_details?: boolean | null
           whatsapp_notification_phone?: string | null
         }
         Relationships: []

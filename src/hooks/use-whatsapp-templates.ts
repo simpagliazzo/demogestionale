@@ -24,6 +24,12 @@ export interface AgencySettings {
   vat_number: string | null;
   fiscal_code: string | null;
   logo_url: string | null;
+  travel_conditions: string | null;
+  whatsapp_notification_phone: string | null;
+  whatsapp_include_bus_seat: boolean | null;
+  whatsapp_include_document_upload: boolean | null;
+  whatsapp_include_confirmation_link: boolean | null;
+  whatsapp_include_economic_details: boolean | null;
 }
 
 export function useWhatsAppTemplates() {
@@ -60,12 +66,18 @@ export function useWhatsAppTemplates() {
   const replaceAgencyPlaceholders = (content: string): string => {
     if (!agencySettings) return content;
 
+    // Support both uppercase and lowercase placeholders
     return content
-      .replace(/\{NOME_AGENZIA\}/g, agencySettings.business_name || "")
-      .replace(/\{TELEFONO_AGENZIA\}/g, agencySettings.phone || "")
-      .replace(/\{EMAIL_AGENZIA\}/g, agencySettings.email || "")
-      .replace(/\{SITO_AGENZIA\}/g, agencySettings.website || "")
-      .replace(/\{INDIRIZZO_AGENZIA\}/g, agencySettings.address || "");
+      .replace(/\{NOME_AGENZIA\}/gi, agencySettings.business_name || "")
+      .replace(/\{nome_agenzia\}/gi, agencySettings.business_name || "")
+      .replace(/\{TELEFONO_AGENZIA\}/gi, agencySettings.phone || "")
+      .replace(/\{telefono_agenzia\}/gi, agencySettings.phone || "")
+      .replace(/\{EMAIL_AGENZIA\}/gi, agencySettings.email || "")
+      .replace(/\{email_agenzia\}/gi, agencySettings.email || "")
+      .replace(/\{SITO_AGENZIA\}/gi, agencySettings.website || "")
+      .replace(/\{sito_agenzia\}/gi, agencySettings.website || "")
+      .replace(/\{INDIRIZZO_AGENZIA\}/gi, agencySettings.address || "")
+      .replace(/\{indirizzo_agenzia\}/gi, agencySettings.address || "");
   };
 
   const formatMessage = (
