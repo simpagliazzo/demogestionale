@@ -16,6 +16,7 @@ import { FileText, MessageCircle, Receipt, Copy } from "lucide-react";
 import PaymentReceiptDialog from "@/components/PaymentReceiptDialog";
 import TripConfirmationDialog from "@/components/TripConfirmationDialog";
 import GenerateUploadLinkButton from "@/components/GenerateUploadLinkButton";
+import { calculateTotalSingleSupplement } from "@/lib/format-utils";
 const participantSchema = z.object({
   cognome: z.string().min(1, "Il cognome è obbligatorio"),
   nome: z.string().min(1, "Il nome è obbligatorio"),
@@ -196,25 +197,37 @@ export default function EditParticipantDialog({
     }
   };
 
-  const calculateDepositAmount = () => {
-    if (depositType === "fixed") {
-      return depositAmount;
-    } else {
-      return (tripPrice * depositAmount) / 100;
-    }
-  };
-
   const calculateDiscount = () => {
     if (!discountType || discountAmount <= 0) return 0;
     if (discountType === "fixed") return discountAmount;
     return (tripPrice * discountAmount) / 100;
   };
 
-  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const depositDue = calculateDepositAmount();
-  const supplementAmount = isSingleRoom ? singleRoomSupplement : 0;
+  // Calcola il supplemento singola totale (tariffa giornaliera * notti)
+  const calculateSupplementAmount = () => {
+    if (!isSingleRoom || !singleRoomSupplement) return 0;
+    if (tripDepartureDate && tripReturnDate) {
+      return calculateTotalSingleSupplement(singleRoomSupplement, tripDepartureDate, tripReturnDate);
+    }
+    return singleRoomSupplement; // Fallback se mancano le date
+  };
+
+  const supplementAmount = calculateSupplementAmount();
   const discountValue = calculateDiscount();
   const totalPrice = tripPrice + supplementAmount - discountValue;
+
+  // L'acconto deve essere calcolato sul prezzo TOTALE (incluso supplemento singola)
+  const calculateDepositAmount = () => {
+    if (depositType === "fixed") {
+      return depositAmount;
+    } else {
+      // Percentuale calcolata sul totale (prezzo + supplemento - sconto)
+      return (totalPrice * depositAmount) / 100;
+    }
+  };
+
+  const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const depositDue = calculateDepositAmount();
   const balance = totalPrice - totalPaid;
 
   const handleAddPayment = async () => {

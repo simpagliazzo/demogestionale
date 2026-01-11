@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
+import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
 
 interface Trip {
   id: string;
@@ -175,7 +175,11 @@ export default function CompanionList() {
   const getParticipantTotal = (participant: Participant) => {
     const base = trip?.price || 0;
     const discountedPrice = calculateDiscountedPrice(base, participant.discount_type, participant.discount_amount);
-    const supplement = isSingleRoom(participant) ? (trip?.single_room_supplement || 0) : 0;
+    // Il supplemento singola è la tariffa giornaliera * notti
+    const dailySupplement = trip?.single_room_supplement || 0;
+    const supplement = isSingleRoom(participant) && trip?.departure_date && trip?.return_date
+      ? calculateTotalSingleSupplement(dailySupplement, trip.departure_date, trip.return_date)
+      : 0;
     return discountedPrice + supplement;
   };
 

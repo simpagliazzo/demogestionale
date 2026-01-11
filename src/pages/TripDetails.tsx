@@ -19,7 +19,7 @@ import EditParticipantDialog from "@/components/EditParticipantDialog";
 import { DeleteTripDialog } from "@/components/DeleteTripDialog";
 import EditTripDialog from "@/components/EditTripDialog";
 import EditRoomDialog from "@/components/EditRoomDialog";
-import { formatNameSurnameFirst, calculateDiscountedPrice } from "@/lib/format-utils";
+import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
 import { TripFileUpload } from "@/components/TripFileUpload";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 
@@ -169,7 +169,11 @@ export default function TripDetails() {
     const basePrice = trip?.price || 0;
     const discountedPrice = calculateDiscountedPrice(basePrice, participant.discount_type, participant.discount_amount);
     const isSingle = participant.notes?.includes("Camera: singola");
-    const supplement = isSingle ? (trip?.single_room_supplement || 0) : 0;
+    // Il supplemento singola è ora la tariffa giornaliera, moltiplicata per le notti
+    const dailySupplement = trip?.single_room_supplement || 0;
+    const supplement = isSingle && trip?.departure_date && trip?.return_date
+      ? calculateTotalSingleSupplement(dailySupplement, trip.departure_date, trip.return_date)
+      : 0;
     return discountedPrice + supplement;
   };
 
@@ -1505,8 +1509,8 @@ export default function TripDetails() {
                             className="h-7 text-xs"
                           />
                         </div>
-                        <div className="space-y-0.5">
-                          <Label htmlFor="singleSupplement" className="text-[10px]">Suppl. Sing. €</Label>
+                        <div className="space-y-0.5 col-span-2">
+                          <Label htmlFor="singleSupplement" className="text-[10px]">Suppl. Sing. €/notte</Label>
                           <Input
                             id="singleSupplement"
                             type="number"
@@ -1515,7 +1519,9 @@ export default function TripDetails() {
                             value={singleSupplement}
                             onChange={(e) => setSingleSupplement(parseFloat(e.target.value) || 0)}
                             className="h-7 text-xs"
+                            placeholder="Tariffa giornaliera"
                           />
+                          <p className="text-[9px] text-muted-foreground">Verrà moltiplicato per le notti di soggiorno</p>
                         </div>
                       </div>
                     </CardContent>

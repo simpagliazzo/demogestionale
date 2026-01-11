@@ -328,12 +328,12 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
                 name="single_room_supplement"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Supplemento Singola (€)</FormLabel>
+                    <FormLabel>Supplemento Singola (€/notte)</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
                         step="0.01" 
-                        placeholder="Es: 50.00"
+                        placeholder="Es: 20.00 (verrà moltiplicato per le notti)"
                         {...field} 
                       />
                     </FormControl>
