@@ -511,6 +511,30 @@ export default function Impostazioni() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
+              {/* Info Box */}
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Come funziona
+                </h4>
+                <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                  Per le anteprime WhatsApp ottimizzate, usa questi link speciali al posto dei link diretti:
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="bg-white dark:bg-background rounded p-2 font-mono text-xs break-all">
+                    <strong>Preventivi:</strong><br/>
+                    https://bfxvynutptmyqoetjqne.supabase.co/functions/v1/og-preview?type=quote&id=ID_PREVENTIVO
+                  </div>
+                  <div className="bg-white dark:bg-background rounded p-2 font-mono text-xs break-all">
+                    <strong>Conferme:</strong><br/>
+                    https://bfxvynutptmyqoetjqne.supabase.co/functions/v1/og-preview?type=confirmation&id=ID_PARTECIPANTE
+                  </div>
+                </div>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                  Il link reindirizzerà automaticamente alla pagina corretta dopo aver mostrato l'anteprima.
+                </p>
+              </div>
+
               {agencySettings && (
                 <>
                   {/* Quote Preview Settings */}
