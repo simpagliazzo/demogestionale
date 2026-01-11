@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, Building2, MessageSquare, Info, Upload, X, Image } from "lucide-react";
+import { Loader2, Save, Building2, MessageSquare, Info, Upload, X, Image, Link } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface AgencySettings {
@@ -25,6 +25,12 @@ interface AgencySettings {
   vat_number: string | null;
   fiscal_code: string | null;
   logo_url: string | null;
+  og_quote_title: string | null;
+  og_quote_description: string | null;
+  og_quote_image_url: string | null;
+  og_confirmation_title: string | null;
+  og_confirmation_description: string | null;
+  og_confirmation_image_url: string | null;
 }
 
 interface WhatsAppTemplate {
@@ -222,6 +228,12 @@ export default function Impostazioni() {
           website: agencySettings.website,
           vat_number: agencySettings.vat_number,
           fiscal_code: agencySettings.fiscal_code,
+          og_quote_title: agencySettings.og_quote_title,
+          og_quote_description: agencySettings.og_quote_description,
+          og_quote_image_url: agencySettings.og_quote_image_url,
+          og_confirmation_title: agencySettings.og_confirmation_title,
+          og_confirmation_description: agencySettings.og_confirmation_description,
+          og_confirmation_image_url: agencySettings.og_confirmation_image_url,
         })
         .eq("id", agencySettings.id);
 
@@ -284,6 +296,10 @@ export default function Impostazioni() {
           <TabsTrigger value="agency" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Dati Agenzia
+          </TabsTrigger>
+          <TabsTrigger value="link-preview" className="flex items-center gap-2">
+            <Link className="h-4 w-4" />
+            Anteprime Link
           </TabsTrigger>
           <TabsTrigger value="whatsapp" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -477,6 +493,120 @@ export default function Impostazioni() {
                         <Save className="mr-2 h-4 w-4" />
                       )}
                       Salva Dati Agenzia
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="link-preview">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personalizzazione Anteprime Link</CardTitle>
+              <CardDescription>
+                Personalizza come appaiono i link quando vengono condivisi su WhatsApp, Facebook e altri social.
+                Usa i segnaposto per inserire dati dinamici.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {agencySettings && (
+                <>
+                  {/* Quote Preview Settings */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      📋 Anteprime Preventivi
+                    </h3>
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="og_quote_title">Titolo Anteprima</Label>
+                        <Input
+                          id="og_quote_title"
+                          value={agencySettings.og_quote_title || ""}
+                          onChange={(e) => setAgencySettings({ ...agencySettings, og_quote_title: e.target.value })}
+                          placeholder="Preventivo di Viaggio - {DESTINAZIONE}"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Segnaposto: <code className="bg-background px-1 rounded">{"{DESTINAZIONE}"}</code>, <code className="bg-background px-1 rounded">{"{NOME_CLIENTE}"}</code>, <code className="bg-background px-1 rounded">{"{NOME_AGENZIA}"}</code>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="og_quote_description">Descrizione Anteprima</Label>
+                        <Textarea
+                          id="og_quote_description"
+                          value={agencySettings.og_quote_description || ""}
+                          onChange={(e) => setAgencySettings({ ...agencySettings, og_quote_description: e.target.value })}
+                          placeholder="Preventivo personalizzato per il tuo viaggio a {DESTINAZIONE}"
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="og_quote_image_url">URL Immagine Anteprima (opzionale)</Label>
+                        <Input
+                          id="og_quote_image_url"
+                          value={agencySettings.og_quote_image_url || ""}
+                          onChange={(e) => setAgencySettings({ ...agencySettings, og_quote_image_url: e.target.value })}
+                          placeholder="https://... (lascia vuoto per usare il logo)"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Se vuoto, verrà usato il logo dell'agenzia
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Confirmation Preview Settings */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      ✅ Anteprime Conferme Viaggio
+                    </h3>
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="og_confirmation_title">Titolo Anteprima</Label>
+                        <Input
+                          id="og_confirmation_title"
+                          value={agencySettings.og_confirmation_title || ""}
+                          onChange={(e) => setAgencySettings({ ...agencySettings, og_confirmation_title: e.target.value })}
+                          placeholder="Conferma Prenotazione - {VIAGGIO}"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Segnaposto: <code className="bg-background px-1 rounded">{"{VIAGGIO}"}</code>, <code className="bg-background px-1 rounded">{"{PARTECIPANTE}"}</code>, <code className="bg-background px-1 rounded">{"{NOME_AGENZIA}"}</code>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="og_confirmation_description">Descrizione Anteprima</Label>
+                        <Textarea
+                          id="og_confirmation_description"
+                          value={agencySettings.og_confirmation_description || ""}
+                          onChange={(e) => setAgencySettings({ ...agencySettings, og_confirmation_description: e.target.value })}
+                          placeholder="La tua prenotazione per {VIAGGIO} è confermata!"
+                          rows={2}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="og_confirmation_image_url">URL Immagine Anteprima (opzionale)</Label>
+                        <Input
+                          id="og_confirmation_image_url"
+                          value={agencySettings.og_confirmation_image_url || ""}
+                          onChange={(e) => setAgencySettings({ ...agencySettings, og_confirmation_image_url: e.target.value })}
+                          placeholder="https://... (lascia vuoto per usare il logo)"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Se vuoto, verrà usato il logo dell'agenzia
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveAgency} disabled={saving}>
+                      {saving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Salva Impostazioni Anteprime
                     </Button>
                   </div>
                 </>
