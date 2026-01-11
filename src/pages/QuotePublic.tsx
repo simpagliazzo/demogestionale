@@ -6,6 +6,52 @@ import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plane, Hotel, Car, Phone, Mail, Globe } from "lucide-react";
 
+// Update OG meta tags dynamically
+const updateMetaTags = (quote: Quote | null, agencySettings: AgencySettings | null) => {
+  if (!quote) return;
+  
+  const title = agencySettings?.business_name 
+    ? `Preventivo ${quote.destination} - ${agencySettings.business_name}`
+    : `Preventivo Viaggio - ${quote.destination}`;
+  
+  const description = `Preventivo di viaggio per ${quote.destination} - ${quote.num_passengers} passeggeri`;
+  
+  // Update page title
+  document.title = title;
+  
+  // Update OG tags
+  const updateMeta = (property: string, content: string) => {
+    let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("property", property);
+      document.head.appendChild(meta);
+    }
+    meta.content = content;
+  };
+  
+  const updateMetaName = (name: string, content: string) => {
+    let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", name);
+      document.head.appendChild(meta);
+    }
+    meta.content = content;
+  };
+  
+  updateMeta("og:title", title);
+  updateMeta("og:description", description);
+  updateMetaName("twitter:title", title);
+  updateMetaName("twitter:description", description);
+  
+  // Update image to agency logo if available
+  if (agencySettings?.logo_url) {
+    updateMeta("og:image", agencySettings.logo_url);
+    updateMetaName("twitter:image", agencySettings.logo_url);
+  }
+};
+
 interface Flight {
   type: string;
   airline: string;
@@ -126,6 +172,18 @@ export default function QuotePublic() {
       if (!agencyResult.error && agencyResult.data) {
         setAgencySettings(agencyResult.data);
       }
+
+      // Update meta tags for WhatsApp preview
+      updateMetaTags(
+        {
+          ...quoteResult.data,
+          flights: (quoteResult.data.flights as unknown as Flight[]) || [],
+          transfers: (quoteResult.data.transfers as unknown as Transfer[]) || [],
+          other_items: (quoteResult.data.other_items as unknown as OtherItem[]) || [],
+          hotels: (quoteResult.data.hotels as unknown as HotelOption[]) || [],
+        },
+        agencyResult.data || null
+      );
 
       setLoading(false);
     };
