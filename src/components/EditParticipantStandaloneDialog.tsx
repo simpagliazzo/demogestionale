@@ -87,12 +87,12 @@ export default function EditParticipantStandaloneDialog({
     return null;
   };
 
-  // Splitta full_name in cognome e nome (assume ultimo elemento = cognome)
+  // Splitta full_name in cognome e nome (assume PRIMO elemento = cognome)
   const splitFullName = (fullName: string) => {
     const parts = fullName.trim().split(/\s+/);
     if (parts.length >= 2) {
-      const cognome = parts[parts.length - 1];
-      const nome = parts.slice(0, -1).join(' ');
+      const cognome = parts[0];
+      const nome = parts.slice(1).join(' ');
       return { cognome, nome };
     }
     return { cognome: fullName, nome: "" };
@@ -117,7 +117,7 @@ export default function EditParticipantStandaloneDialog({
     if (!participant) return;
     
     setIsSubmitting(true);
-    const fullName = `${values.nome} ${values.cognome}`.trim();
+    const fullName = `${values.cognome} ${values.nome}`.trim();
     try {
       const { error } = await supabase
         .from("participants")

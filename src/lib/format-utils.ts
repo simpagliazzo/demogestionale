@@ -1,16 +1,17 @@
 import { differenceInDays, parseISO } from "date-fns";
 
 /**
- * Converte un nome completo dal formato "Nome Cognome" a "COGNOME Nome"
+ * Formatta un nome completo nel formato "COGNOME Nome"
+ * Il nome è già salvato come "Cognome Nome", quindi il primo elemento è il cognome
  */
 export function formatNameSurnameFirst(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
   if (parts.length === 1) {
     return parts[0].toUpperCase();
   }
-  // Assume l'ultimo elemento sia il cognome
-  const surname = parts[parts.length - 1].toUpperCase();
-  const name = parts.slice(0, -1).join(' ');
+  // Il PRIMO elemento è il cognome (formato database: "Cognome Nome")
+  const surname = parts[0].toUpperCase();
+  const name = parts.slice(1).join(' ');
   return `${surname} ${name}`;
 }
 

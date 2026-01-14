@@ -80,7 +80,7 @@ export default function AddParticipantStandaloneDialog({
   const onSubmit = async (data: ParticipantFormData) => {
     setIsSubmitting(true);
     try {
-      const fullName = `${data.nome} ${data.cognome}`;
+      const fullName = `${data.cognome} ${data.nome}`;
       const dateOfBirth = convertDateToISO(data.date_of_birth || "");
 
       const { error } = await supabase.from("participants").insert({

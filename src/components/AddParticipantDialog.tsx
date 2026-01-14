@@ -412,11 +412,11 @@ export default function AddParticipantDialog({
 
               {fields.map((field, index) => {
                 const handleParticipantSelect = (participant: ExistingParticipant) => {
-                  // Splitta il full_name in cognome e nome (assume ultimo = cognome)
+                  // Splitta il full_name in cognome e nome (assume PRIMO = cognome)
                   const nameParts = participant.full_name.trim().split(/\s+/);
                   if (nameParts.length >= 2) {
-                    const cognome = nameParts[nameParts.length - 1];
-                    const nome = nameParts.slice(0, -1).join(' ');
+                    const cognome = nameParts[0];
+                    const nome = nameParts.slice(1).join(' ');
                     setValue(`participants.${index}.cognome`, cognome);
                     setValue(`participants.${index}.nome`, nome);
                   } else {
