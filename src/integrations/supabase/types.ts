@@ -1014,6 +1014,7 @@ export type Database = {
           deposit_type: Database["public"]["Enums"]["deposit_type"]
           description: string | null
           destination: string
+          flyer_url: string | null
           guide_name: string | null
           id: string
           max_participants: number | null
@@ -1040,6 +1041,7 @@ export type Database = {
           deposit_type?: Database["public"]["Enums"]["deposit_type"]
           description?: string | null
           destination: string
+          flyer_url?: string | null
           guide_name?: string | null
           id?: string
           max_participants?: number | null
@@ -1066,6 +1068,7 @@ export type Database = {
           deposit_type?: Database["public"]["Enums"]["deposit_type"]
           description?: string | null
           destination?: string
+          flyer_url?: string | null
           guide_name?: string | null
           id?: string
           max_participants?: number | null

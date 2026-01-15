@@ -46,6 +46,7 @@ interface Trip {
   companion_name: string | null;
   guide_name: string | null;
   trip_type: string;
+  flyer_url: string | null;
 }
 
 interface Guide {

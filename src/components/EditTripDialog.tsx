@@ -7,13 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useActivityLog } from "@/hooks/use-activity-log";
-import { Pencil } from "lucide-react";
+import { Pencil, Link as LinkIcon, ExternalLink } from "lucide-react";
 
 interface Guide {
   id: string;
@@ -36,6 +36,7 @@ const tripSchema = z.object({
   trip_type: z.enum(["standard", "day_trip"]),
   companion_name: z.string().optional(),
   guide_name: z.string().optional(),
+  flyer_url: z.string().url("Inserisci un URL valido").optional().or(z.literal("")),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -59,6 +60,7 @@ interface Trip {
   trip_type: string;
   companion_name: string | null;
   guide_name: string | null;
+  flyer_url: string | null;
 }
 
 interface EditTripDialogProps {
@@ -90,6 +92,7 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
       trip_type: "standard",
       companion_name: "",
       guide_name: "",
+      flyer_url: "",
     },
   });
 
@@ -127,6 +130,7 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
         trip_type: (trip.trip_type || "standard") as TripFormValues["trip_type"],
         companion_name: trip.companion_name || "",
         guide_name: trip.guide_name || "",
+        flyer_url: trip.flyer_url || "",
       });
     }
   }, [trip, open, form]);
@@ -154,6 +158,7 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
           trip_type: values.trip_type,
           companion_name: values.companion_name || null,
           guide_name: values.guide_name || null,
+          flyer_url: values.flyer_url || null,
         })
         .eq("id", trip.id);
 
@@ -489,6 +494,42 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="flyer_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <LinkIcon className="h-4 w-4" />
+                    Link Locandina
+                  </FormLabel>
+                  <FormControl>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="url" 
+                        placeholder="https://esempio.com/locandina-viaggio" 
+                        {...field} 
+                      />
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => window.open(field.value, "_blank")}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Inserisci l'URL della locandina del viaggio sul tuo sito
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

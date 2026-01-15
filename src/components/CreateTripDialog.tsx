@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Link } from "lucide-react";
 
 interface Guide {
   id: string;
@@ -35,6 +36,7 @@ const tripSchema = z.object({
   trip_type: z.enum(["standard", "day_trip"]),
   companion_name: z.string().optional(),
   guide_name: z.string().optional(),
+  flyer_url: z.string().url("Inserisci un URL valido").optional().or(z.literal("")),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -70,6 +72,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
       trip_type: "standard",
       companion_name: "",
       guide_name: "",
+      flyer_url: "",
     },
   });
 
@@ -116,6 +119,7 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
         trip_type: values.trip_type,
         companion_name: values.companion_name || null,
         guide_name: values.guide_name || null,
+        flyer_url: values.flyer_url || null,
         created_by: user.id,
       });
 
@@ -443,6 +447,30 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="flyer_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Link className="h-4 w-4" />
+                    Link Locandina
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="url" 
+                      placeholder="https://esempio.com/locandina-viaggio" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Inserisci l'URL della locandina del viaggio sul tuo sito
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
