@@ -371,9 +371,9 @@ export default function CompanionList() {
             <th className="border p-2 text-center text-xs" style={{width: '30px'}}>Bus</th>
             <th className="border p-2 text-left text-xs" style={{width: '85px'}}>Telefono</th>
             <th className="border p-2 text-left text-xs" style={{width: '65px'}}>Data Nasc.</th>
-            <th className="border p-2 text-left text-xs">Note</th>
-            <th className="border p-2 text-right text-xs" style={{width: '55px'}}>Pagato</th>
-            <th className="border p-2 text-right text-xs" style={{width: '55px'}}>Saldo</th>
+            <th className="border p-2 text-left text-xs" style={{width: '140px'}}>Note</th>
+            <th className="border p-2 text-right text-xs" style={{width: '60px'}}>Pagato</th>
+            <th className="border p-2 text-right text-xs" style={{width: '60px'}}>Saldo</th>
           </tr>
         </thead>
         <tbody>
