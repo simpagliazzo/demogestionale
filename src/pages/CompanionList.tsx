@@ -304,11 +304,14 @@ export default function CompanionList() {
     <div className="p-8 max-w-6xl mx-auto print:p-4">
       <style>{`
         @media print {
-          body { font-size: 11px; }
+          body { font-size: 10px; }
           .no-print { display: none !important; }
-          table { page-break-inside: auto; }
+          table { page-break-inside: auto; width: 100% !important; table-layout: fixed; }
           tr { page-break-inside: avoid; }
+          th, td { padding: 4px 6px !important; word-wrap: break-word; }
+          .note-cell { min-width: 180px !important; }
         }
+        @page { size: landscape; margin: 10mm; }
       `}</style>
 
       <div className="text-center mb-4">
@@ -360,19 +363,19 @@ export default function CompanionList() {
         Stampa Lista
       </button>
 
-      <table className="w-full border-collapse mb-6">
+      <table className="w-full border-collapse mb-6" style={{tableLayout: 'fixed'}}>
         <thead>
           <tr className="bg-muted">
-            <th className="border p-2 text-left text-xs w-20">P. Carico</th>
-            <th className="border p-2 text-center text-xs w-10">Gr.</th>
-            <th className="border p-2 text-left text-xs w-20">Camera</th>
-            <th className="border p-2 text-left text-xs">Nominativo</th>
-            <th className="border p-2 text-center text-xs w-12">Bus</th>
-            <th className="border p-2 text-left text-xs w-24">Telefono</th>
-            <th className="border p-2 text-left text-xs w-20">Data Nasc.</th>
+            <th className="border p-2 text-left text-xs" style={{width: '55px'}}>P. Carico</th>
+            <th className="border p-2 text-center text-xs" style={{width: '30px'}}>Gr.</th>
+            <th className="border p-2 text-left text-xs" style={{width: '65px'}}>Camera</th>
+            <th className="border p-2 text-left text-xs" style={{width: '130px'}}>Nominativo</th>
+            <th className="border p-2 text-center text-xs" style={{width: '30px'}}>Bus</th>
+            <th className="border p-2 text-left text-xs" style={{width: '85px'}}>Telefono</th>
+            <th className="border p-2 text-left text-xs" style={{width: '65px'}}>Data Nasc.</th>
             <th className="border p-2 text-left text-xs">Note</th>
-            <th className="border p-2 text-right text-xs w-16">Pagato</th>
-            <th className="border p-2 text-right text-xs w-16">Saldo</th>
+            <th className="border p-2 text-right text-xs" style={{width: '55px'}}>Pagato</th>
+            <th className="border p-2 text-right text-xs" style={{width: '55px'}}>Saldo</th>
           </tr>
         </thead>
         <tbody>
