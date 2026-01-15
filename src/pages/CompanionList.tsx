@@ -364,16 +364,15 @@ export default function CompanionList() {
       <table className="w-full border-collapse mb-6" style={{tableLayout: 'fixed'}}>
         <thead>
           <tr className="bg-muted">
-            <th className="border p-2 text-left text-xs" style={{width: '50px'}}>P. Carico</th>
-            <th className="border p-2 text-center text-xs" style={{width: '25px'}}>Gr.</th>
-            <th className="border p-2 text-left text-xs" style={{width: '60px'}}>Camera</th>
-            <th className="border p-2 text-left text-xs" style={{width: '120px'}}>Nominativo</th>
-            <th className="border p-2 text-center text-xs" style={{width: '25px'}}>Bus</th>
-            <th className="border p-2 text-left text-xs" style={{width: '80px'}}>Telefono</th>
-            <th className="border p-2 text-left text-xs" style={{width: '60px'}}>Data Nasc.</th>
-            <th className="border p-2 text-left text-xs">Note</th>
-            <th className="border p-2 text-right text-xs" style={{width: '70px'}}>Pagato</th>
-            <th className="border p-2 text-right text-xs" style={{width: '70px'}}>Saldo</th>
+            <th className="border p-1 text-left" style={{width: '50px', fontSize: '9px'}}>P. Carico</th>
+            <th className="border p-1 text-center" style={{width: '25px', fontSize: '9px'}}>Gr.</th>
+            <th className="border p-1 text-left whitespace-nowrap" style={{width: '75px', fontSize: '9px'}}>Camera</th>
+            <th className="border p-1 text-left" style={{width: '130px', fontSize: '9px'}}>Nominativo</th>
+            <th className="border p-1 text-center" style={{width: '35px', fontSize: '9px'}}>Bus</th>
+            <th className="border p-1 text-left whitespace-nowrap" style={{width: '90px', fontSize: '9px'}}>Telefono</th>
+            <th className="border p-1 text-left" style={{fontSize: '9px'}}>Note</th>
+            <th className="border p-1 text-right whitespace-nowrap" style={{width: '65px', fontSize: '9px'}}>Pagato</th>
+            <th className="border p-1 text-right whitespace-nowrap" style={{width: '65px', fontSize: '9px'}}>Saldo</th>
           </tr>
         </thead>
         <tbody>
@@ -388,44 +387,43 @@ export default function CompanionList() {
 
               return (
                 <tr key={p.id} className={isFirstInRoom ? "border-t-2 border-foreground/40" : ""}>
-                  <td className="border p-2 text-xs bg-white">
+                  <td className="border p-1 bg-white" style={{fontSize: '9px'}}>
                     <div className="border-b border-muted-foreground/30 h-4"></div>
                   </td>
                   {isFirstInRoom && (
                     <td
-                      className="border p-2 text-xs font-bold text-center bg-muted/50"
+                      className="border p-1 font-bold text-center bg-muted/50"
                       rowSpan={group.participants.length}
+                      style={{fontSize: '9px'}}
                     >
                       {group.groupNumber || "-"}
                     </td>
                   )}
                   {isFirstInRoom && (
                     <td
-                      className="border p-2 text-xs font-semibold text-center bg-muted/30 capitalize"
+                      className="border p-1 font-semibold text-center bg-muted/30 capitalize whitespace-nowrap"
                       rowSpan={group.participants.length}
+                      style={{fontSize: '9px'}}
                     >
                       {getRoomLabel(group.roomType)}
                     </td>
                   )}
-                  <td className="border p-2 text-xs font-medium">{formatNameSurnameFirst(p.full_name)}</td>
-                  <td className="border p-2 text-xs text-center font-bold">
+                  <td className="border p-1 font-medium" style={{fontSize: '9px'}}>{formatNameSurnameFirst(p.full_name)}</td>
+                  <td className="border p-1 text-center font-bold" style={{fontSize: '9px'}}>
                     {seatNumber ? (
-                      <span className="bg-primary/20 text-primary px-2 py-0.5 rounded">
+                      <span className="bg-primary/20 text-primary px-1 py-0.5 rounded">
                         {seatNumber}
                       </span>
                     ) : (
                       "-"
                     )}
                   </td>
-                  <td className="border p-2 text-xs">{p.phone || "-"}</td>
-                  <td className="border p-2 text-xs">
-                    {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
-                  </td>
-                  <td className="border p-2 text-xs text-orange-600 italic">
+                  <td className="border p-1 whitespace-nowrap" style={{fontSize: '9px'}}>{p.phone || "-"}</td>
+                  <td className="border p-1 text-orange-600 italic" style={{fontSize: '9px'}}>
                     {displayNotes || "-"}
                   </td>
-                  <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
-                  <td className={`border p-2 text-xs text-right font-bold ${balance > 0 ? "text-red-600" : "text-green-600"}`}>
+                  <td className="border p-1 text-right text-green-600 whitespace-nowrap" style={{fontSize: '9px'}}>€{paid.toFixed(2)}</td>
+                  <td className={`border p-1 text-right font-bold whitespace-nowrap ${balance > 0 ? "text-red-600" : "text-green-600"}`} style={{fontSize: '9px'}}>
                     €{balance.toFixed(2)}
                     {hasDiscount(p) && (
                       <span className="ml-1 text-orange-500 text-[10px]">(sconto)</span>
