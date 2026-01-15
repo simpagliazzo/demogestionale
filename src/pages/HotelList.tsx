@@ -153,29 +153,50 @@ export default function HotelList() {
   const { groups, noGroup } = getParticipantsByGroup();
   const sortedGroupNumbers = Object.keys(groups).map(Number).sort((a, b) => a - b);
 
-  // Conta camere per tipologia
+  // Conta camere per tipologia (gli infant non contano per la capacità)
   const roomCounts: Record<string, number> = {};
   sortedGroupNumbers.forEach(groupNum => {
     const roomTypes = groups[groupNum];
     Object.entries(roomTypes).forEach(([roomType, roomParticipants]) => {
-      // Conta quante camere di questo tipo nel gruppo (basato sulla capacità)
+      // Conta solo i NON-infant per determinare il numero di camere
+      const nonInfantCount = roomParticipants.filter(p => !p.is_infant).length;
       const capacity = getRoomCapacity(roomType);
-      const numRooms = Math.ceil(roomParticipants.length / capacity);
-      roomCounts[roomType] = (roomCounts[roomType] || 0) + numRooms;
+      const numRooms = nonInfantCount > 0 ? Math.ceil(nonInfantCount / capacity) : 0;
+      if (numRooms > 0) {
+        roomCounts[roomType] = (roomCounts[roomType] || 0) + numRooms;
+      }
     });
   });
   noGroup.forEach(p => {
-    const roomType = getRoomType(p);
-    roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
+    // Gli infant senza gruppo non creano camere
+    if (!p.is_infant) {
+      const roomType = getRoomType(p);
+      roomCounts[roomType] = (roomCounts[roomType] || 0) + 1;
+    }
   });
 
-  // Divide i partecipanti in camere singole in base alla capacità
-  const splitIntoRooms = (participants: Participant[], roomType: string): Participant[][] => {
+  // Divide i partecipanti in camere in base alla capacità
+  // Gli infant rimangono con i genitori nella stessa camera (non contano per la capacità)
+  const splitIntoRooms = (allParticipants: Participant[], roomType: string): Participant[][] => {
     const capacity = getRoomCapacity(roomType);
-    const rooms: Participant[][] = [];
-    for (let i = 0; i < participants.length; i += capacity) {
-      rooms.push(participants.slice(i, i + capacity));
+    const nonInfants = allParticipants.filter(p => !p.is_infant);
+    const infants = allParticipants.filter(p => p.is_infant);
+    
+    // Se ci sono solo infant, restituisci una camera con tutti
+    if (nonInfants.length === 0 && infants.length > 0) {
+      return [infants];
     }
+    
+    const rooms: Participant[][] = [];
+    for (let i = 0; i < nonInfants.length; i += capacity) {
+      rooms.push(nonInfants.slice(i, i + capacity));
+    }
+    
+    // Aggiungi gli infant alla prima camera (dormono con i genitori)
+    if (rooms.length > 0 && infants.length > 0) {
+      rooms[0] = [...rooms[0], ...infants];
+    }
+    
     return rooms;
   };
 
