@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, X, Users, Hotel, MessageCircle, Loader2, UserPlus } from "lucide-react";
-import { formatNameSurnameFirst } from "@/lib/format-utils";
+import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useAuth } from "@/lib/auth-context";
@@ -36,6 +36,13 @@ interface Participant {
   notes: string | null;
   created_at: string;
   group_number: number | null;
+  discount_type: string | null;
+  discount_amount: number | null;
+}
+
+interface ParticipantPayment {
+  participant_id: string;
+  amount: number;
 }
 
 interface EditRoomDialogProps {
@@ -48,7 +55,10 @@ interface EditRoomDialogProps {
   tripDestination: string;
   tripDepartureDate: string;
   tripReturnDate: string;
+  tripPrice: number;
+  tripSingleSupplement: number;
   allParticipants: Participant[];
+  participantPayments: ParticipantPayment[];
   onSuccess: () => void;
 }
 
@@ -78,7 +88,10 @@ export default function EditRoomDialog({
   tripDestination,
   tripDepartureDate,
   tripReturnDate,
+  tripPrice,
+  tripSingleSupplement,
   allParticipants,
+  participantPayments,
   onSuccess,
 }: EditRoomDialogProps) {
   const { user } = useAuth();
@@ -370,11 +383,35 @@ export default function EditRoomDialog({
     const includeBusSeat = agencySettings?.whatsapp_include_bus_seat ?? true;
     const includeDocUpload = agencySettings?.whatsapp_include_document_upload ?? true;
     const includeConfirmation = agencySettings?.whatsapp_include_confirmation_link ?? true;
+    const includeEconomicDetails = agencySettings?.whatsapp_include_economic_details ?? true;
 
     const departureDate = format(new Date(tripDepartureDate), "d MMMM yyyy", { locale: it });
     const returnDate = format(new Date(tripReturnDate), "d MMMM yyyy", { locale: it });
     const roomLabel = ROOM_LABELS[selectedRoomType] || selectedRoomType;
     const participantNames = roomParticipants.map((p) => `• ${formatNameSurnameFirst(p.full_name)}`).join("\n");
+
+    // Calcola la quota totale della camera e gli acconti versati
+    const getParticipantPrice = (participant: Participant) => {
+      const basePrice = tripPrice;
+      const discountedPrice = calculateDiscountedPrice(basePrice, participant.discount_type, participant.discount_amount);
+      const isSingle = participant.notes?.includes("Camera: singola") || selectedRoomType === "singola";
+      const dailySupplement = tripSingleSupplement || 0;
+      const supplement = isSingle && tripDepartureDate && tripReturnDate
+        ? calculateTotalSingleSupplement(dailySupplement, tripDepartureDate, tripReturnDate)
+        : 0;
+      return discountedPrice + supplement;
+    };
+
+    const getParticipantDeposit = (participantId: string) => {
+      return participantPayments
+        .filter(p => p.participant_id === participantId)
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    };
+
+    // Calcola totali per la camera
+    const roomTotal = roomParticipants.reduce((sum, p) => sum + getParticipantPrice(p), 0);
+    const roomPaid = roomParticipants.reduce((sum, p) => sum + getParticipantDeposit(p.id), 0);
+    const roomBalance = roomTotal - roomPaid;
 
     // Genera i link per il primo partecipante (quello con il telefono)
     let uploadLink = "";
@@ -413,6 +450,17 @@ export default function EditRoomDialog({
       `📅 *Partenza:* ${departureDate}`,
       `📅 *Rientro:* ${returnDate}`,
     ];
+
+    // Aggiungi dettagli economici se abilitati
+    if (includeEconomicDetails) {
+      messageParts.push(
+        ``,
+        `💰 *RIEPILOGO ECONOMICO CAMERA*`,
+        `Quota totale camera: *€${roomTotal.toFixed(2)}*`,
+        `Acconti versati: *€${roomPaid.toFixed(2)}*`,
+        `Saldo da versare: *€${roomBalance.toFixed(2)}*`
+      );
+    }
 
     // Aggiungi link scelta posto bus se abilitato
     if (busSeatLink) {
