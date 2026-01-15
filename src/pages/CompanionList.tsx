@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
+import { Baby } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -45,6 +46,7 @@ interface Participant {
   group_number: number | null;
   discount_type: string | null;
   discount_amount: number | null;
+  is_infant: boolean;
 }
 
 interface Payment {
@@ -256,18 +258,41 @@ export default function CompanionList() {
       const [groupKey, roomType] = key.split('__');
       const capacity = getRoomCapacity(roomType);
       // Mantieni l'ordine originale (created_at) invece di ordinare alfabeticamente
-      const sortedParticipants = groupParticipants;
+      // Separa infant e non-infant
+      const nonInfants = groupParticipants.filter(p => !p.is_infant);
+      const infants = groupParticipants.filter(p => p.is_infant);
       
-      // Dividi in chunk per capacità camera
-      for (let i = 0; i < sortedParticipants.length; i += capacity) {
-        const chunk = sortedParticipants.slice(i, i + capacity);
+      // Se ci sono solo infant, mettili in una sola camera
+      if (nonInfants.length === 0 && infants.length > 0) {
         roomGroups.push({
-          groupKey: `${key}_${Math.floor(i / capacity)}`,
+          groupKey: `${key}_0`,
           groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
           roomType,
-          participants: chunk,
+          participants: infants,
         });
+        return;
       }
+      
+      // Dividi i non-infant in chunk per capacità camera
+      const rooms: Participant[][] = [];
+      for (let i = 0; i < nonInfants.length; i += capacity) {
+        rooms.push(nonInfants.slice(i, i + capacity));
+      }
+      
+      // Aggiungi gli infant alla prima camera (dormono con i genitori)
+      if (rooms.length > 0 && infants.length > 0) {
+        rooms[0] = [...rooms[0], ...infants];
+      }
+      
+      // Aggiungi ogni camera come gruppo separato
+      rooms.forEach((roomOccupants, roomIdx) => {
+        roomGroups.push({
+          groupKey: `${key}_${roomIdx}`,
+          groupNumber: groupKey.startsWith('solo-') ? null : parseInt(groupKey),
+          roomType,
+          participants: roomOccupants,
+        });
+      });
     });
 
     // Ordina per numero gruppo, poi per tipologia camera
@@ -410,7 +435,15 @@ export default function CompanionList() {
                       {getRoomLabel(group.roomType)}
                     </td>
                   )}
-                  <td className="border p-1 font-medium" style={{fontSize: '9px'}}>{formatNameSurnameFirst(p.full_name)}</td>
+                  <td className="border p-1 font-medium" style={{fontSize: '9px'}}>
+                    {formatNameSurnameFirst(p.full_name)}
+                    {p.is_infant && (
+                      <span className="ml-1 inline-flex items-center gap-0.5 text-blue-600 text-[8px]">
+                        <Baby className="h-3 w-3" />
+                        infant
+                      </span>
+                    )}
+                  </td>
                   <td className="border p-1 text-center font-bold" style={{fontSize: '9px'}}>
                     {seatNumber ? (
                       <span className="bg-primary/20 text-primary px-1 py-0.5 rounded">
