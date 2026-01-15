@@ -364,16 +364,16 @@ export default function CompanionList() {
       <table className="w-full border-collapse mb-6" style={{tableLayout: 'fixed'}}>
         <thead>
           <tr className="bg-muted">
-            <th className="border p-2 text-left text-xs" style={{width: '55px'}}>P. Carico</th>
-            <th className="border p-2 text-center text-xs" style={{width: '30px'}}>Gr.</th>
-            <th className="border p-2 text-left text-xs" style={{width: '65px'}}>Camera</th>
-            <th className="border p-2 text-left text-xs" style={{width: '130px'}}>Nominativo</th>
-            <th className="border p-2 text-center text-xs" style={{width: '30px'}}>Bus</th>
-            <th className="border p-2 text-left text-xs" style={{width: '85px'}}>Telefono</th>
-            <th className="border p-2 text-left text-xs" style={{width: '65px'}}>Data Nasc.</th>
-            <th className="border p-2 text-left text-xs" style={{width: '140px'}}>Note</th>
-            <th className="border p-2 text-right text-xs" style={{width: '60px'}}>Pagato</th>
-            <th className="border p-2 text-right text-xs" style={{width: '60px'}}>Saldo</th>
+            <th className="border p-2 text-left text-xs" style={{width: '50px'}}>P. Carico</th>
+            <th className="border p-2 text-center text-xs" style={{width: '25px'}}>Gr.</th>
+            <th className="border p-2 text-left text-xs" style={{width: '60px'}}>Camera</th>
+            <th className="border p-2 text-left text-xs" style={{width: '120px'}}>Nominativo</th>
+            <th className="border p-2 text-center text-xs" style={{width: '25px'}}>Bus</th>
+            <th className="border p-2 text-left text-xs" style={{width: '80px'}}>Telefono</th>
+            <th className="border p-2 text-left text-xs" style={{width: '60px'}}>Data Nasc.</th>
+            <th className="border p-2 text-left text-xs">Note</th>
+            <th className="border p-2 text-right text-xs" style={{width: '70px'}}>Pagato</th>
+            <th className="border p-2 text-right text-xs" style={{width: '70px'}}>Saldo</th>
           </tr>
         </thead>
         <tbody>
