@@ -1846,7 +1846,10 @@ export default function TripDetails() {
         tripDestination={trip?.destination || ""}
         tripDepartureDate={trip?.departure_date || ""}
         tripReturnDate={trip?.return_date || ""}
+        tripPrice={trip?.price || 0}
+        tripSingleSupplement={trip?.single_room_supplement || 0}
         allParticipants={participants}
+        participantPayments={participantPayments}
         onSuccess={loadTripDetails}
       />
     </div>
