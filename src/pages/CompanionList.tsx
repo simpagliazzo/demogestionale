@@ -306,12 +306,10 @@ export default function CompanionList() {
         @media print {
           body { font-size: 10px; }
           .no-print { display: none !important; }
-          table { page-break-inside: auto; width: 100% !important; table-layout: fixed; }
+          table { page-break-inside: auto; width: 100% !important; }
           tr { page-break-inside: avoid; }
           th, td { padding: 4px 6px !important; word-wrap: break-word; }
-          .note-cell { min-width: 180px !important; }
         }
-        @page { size: landscape; margin: 10mm; }
       `}</style>
 
       <div className="text-center mb-4">
