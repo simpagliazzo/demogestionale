@@ -370,7 +370,6 @@ export default function CompanionList() {
             <th className="border p-2 text-center text-xs w-12">Bus</th>
             <th className="border p-2 text-left text-xs w-24">Telefono</th>
             <th className="border p-2 text-left text-xs w-20">Data Nasc.</th>
-            <th className="border p-2 text-left text-xs">Luogo Nasc.</th>
             <th className="border p-2 text-left text-xs">Note</th>
             <th className="border p-2 text-right text-xs w-16">Pagato</th>
             <th className="border p-2 text-right text-xs w-16">Saldo</th>
@@ -421,8 +420,7 @@ export default function CompanionList() {
                   <td className="border p-2 text-xs">
                     {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
                   </td>
-                  <td className="border p-2 text-xs">{p.place_of_birth || "-"}</td>
-                  <td className="border p-2 text-xs text-orange-600 italic max-w-[150px]">
+                  <td className="border p-2 text-xs text-orange-600 italic">
                     {displayNotes || "-"}
                   </td>
                   <td className="border p-2 text-xs text-right text-green-600">€{paid.toFixed(2)}</td>
@@ -439,7 +437,7 @@ export default function CompanionList() {
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
-            <td colSpan={9} className="border p-2 text-xs text-right">TOTALI:</td>
+            <td colSpan={8} className="border p-2 text-xs text-right">TOTALI:</td>
             <td className="border p-2 text-xs text-right text-green-600">€{totalPaid.toFixed(2)}</td>
             <td className={`border p-2 text-xs text-right ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`}>
               €{totalBalance.toFixed(2)}
