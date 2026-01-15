@@ -436,9 +436,9 @@ export default function CompanionList() {
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
-            <td colSpan={8} className="border p-2 text-xs text-right">TOTALI:</td>
-            <td className="border p-2 text-xs text-right text-green-600">€{totalPaid.toFixed(2)}</td>
-            <td className={`border p-2 text-xs text-right ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`}>
+            <td colSpan={7} className="border p-2 text-right" style={{fontSize: '9px'}}>TOTALI:</td>
+            <td className="border p-2 text-right text-green-600 whitespace-nowrap" style={{fontSize: '9px'}}>€{totalPaid.toFixed(2)}</td>
+            <td className={`border p-2 text-right whitespace-nowrap ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`} style={{fontSize: '9px'}}>
               €{totalBalance.toFixed(2)}
             </td>
           </tr>
