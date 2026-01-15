@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2, Pencil, FolderOpen, LayoutDashboard } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2, Pencil, FolderOpen, LayoutDashboard, ExternalLink, Link as LinkIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -872,6 +872,21 @@ export default function TripDetails() {
             <span className="mx-1">•</span>
             <Calendar className="h-3 w-3" />
             <span>{format(new Date(trip.departure_date), "dd/MM/yyyy", { locale: it })} - {format(new Date(trip.return_date), "dd/MM/yyyy", { locale: it })}</span>
+            {trip.flyer_url && (
+              <>
+                <span className="mx-1">•</span>
+                <a 
+                  href={trip.flyer_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-primary hover:underline"
+                >
+                  <LinkIcon className="h-3 w-3" />
+                  <span>Locandina</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </>
+            )}
           </div>
         </div>
         
