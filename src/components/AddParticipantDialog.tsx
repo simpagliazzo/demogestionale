@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import ParticipantAutocomplete from "@/components/ParticipantAutocomplete";
 import { ExistingParticipant } from "@/hooks/use-participant-search";
 import { useActivityLog } from "@/hooks/use-activity-log";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Baby } from "lucide-react";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { formatNameSurnameFirst } from "@/lib/format-utils";
 const participantSchema = z.object({
@@ -26,6 +27,7 @@ const participantSchema = z.object({
   email: z.string().email("Email non valida").optional().or(z.literal("")),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  is_infant: z.boolean().optional(),
 });
 
 const formSchema = z.object({
@@ -71,7 +73,7 @@ export default function AddParticipantDialog({
   } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      participants: [{ cognome: "", nome: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "" }],
+      participants: [{ cognome: "", nome: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "", is_infant: false }],
       room_type: isDayTrip ? "nessuna" : "doppia",
       group_number: "",
       customNumParticipants: undefined,
@@ -195,6 +197,7 @@ export default function AddParticipantDialog({
           : (p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`),
         group_number: groupNum,
         created_by: user?.id || null,
+        is_infant: p.is_infant || false,
       }));
 
       const { data: insertedData, error } = await supabase.from("participants").insert(participantsToInsert).select();
@@ -233,7 +236,8 @@ export default function AddParticipantDialog({
       place_of_birth: "", 
       email: "", 
       phone: "", 
-      notes: ""
+      notes: "",
+      is_infant: false,
     }));
     reset({
       participants: newParticipants,
@@ -524,6 +528,29 @@ export default function AddParticipantDialog({
                     />
                   </div>
                 </div>
+
+                  <div className="flex items-start space-x-3 p-3 rounded-md border bg-blue-50/50">
+                    <Controller
+                      name={`participants.${index}.is_infant`}
+                      control={control}
+                      render={({ field }) => (
+                        <Checkbox
+                          id={`participants.${index}.is_infant`}
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor={`participants.${index}.is_infant`} className="flex items-center gap-2 cursor-pointer">
+                        <Baby className="h-4 w-4 text-blue-500" />
+                        È un Infant
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        L'infant non paga e dorme nel letto con i genitori
+                      </p>
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor={`participants.${index}.notes`}>Note (Viaggia con...)</Label>

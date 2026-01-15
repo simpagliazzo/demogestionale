@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { formatNameSurnameFirst } from "@/lib/format-utils";
+import { Baby } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -22,6 +23,7 @@ interface Participant {
   notes_hotel: string | null;
   created_at: string;
   group_number: number | null;
+  is_infant: boolean;
 }
 
 export default function HotelList() {
@@ -46,7 +48,7 @@ export default function HotelList() {
 
       const { data: participantsData } = await supabase
         .from("participants")
-        .select("*")
+        .select("*, is_infant")
         .eq("trip_id", id)
         .order("full_name");
 
@@ -288,7 +290,15 @@ export default function HotelList() {
                     {getRoomLabel(row.roomType)}
                   </td>
                 )}
-                <td className="border p-2 text-sm font-medium">{formatNameSurnameFirst(p.full_name)}</td>
+                <td className="border p-2 text-sm font-medium">
+                  {formatNameSurnameFirst(p.full_name)}
+                  {p.is_infant && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-blue-600 text-xs">
+                      <Baby className="h-3 w-3" />
+                      infant
+                    </span>
+                  )}
+                </td>
                 <td className="border p-2 text-sm">
                   {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
                 </td>
@@ -303,7 +313,15 @@ export default function HotelList() {
             <tr key={p.id} className="bg-orange-50">
               <td className="border p-2 text-sm text-center text-muted-foreground">-</td>
               <td className="border p-2 text-sm font-medium capitalize">{getRoomLabel(getRoomType(p))}</td>
-              <td className="border p-2 text-sm font-medium">{formatNameSurnameFirst(p.full_name)}</td>
+              <td className="border p-2 text-sm font-medium">
+                {formatNameSurnameFirst(p.full_name)}
+                {p.is_infant && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-blue-600 text-xs">
+                    <Baby className="h-3 w-3" />
+                    infant
+                  </span>
+                )}
+              </td>
               <td className="border p-2 text-sm">
                 {p.date_of_birth ? format(new Date(p.date_of_birth), "dd/MM/yyyy") : "-"}
               </td>

@@ -578,6 +578,7 @@ export type Database = {
           full_name: string
           group_number: number | null
           id: string
+          is_infant: boolean
           notes: string | null
           notes_companion: string | null
           notes_hotel: string | null
@@ -596,6 +597,7 @@ export type Database = {
           full_name: string
           group_number?: number | null
           id?: string
+          is_infant?: boolean
           notes?: string | null
           notes_companion?: string | null
           notes_hotel?: string | null
@@ -614,6 +616,7 @@ export type Database = {
           full_name?: string
           group_number?: number | null
           id?: string
+          is_infant?: boolean
           notes?: string | null
           notes_companion?: string | null
           notes_hotel?: string | null

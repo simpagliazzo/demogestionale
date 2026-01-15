@@ -22,6 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Baby } from "lucide-react";
 
 const participantSchema = z.object({
   cognome: z.string().min(1, "Il cognome è obbligatorio"),
@@ -31,6 +33,7 @@ const participantSchema = z.object({
   email: z.string().email("Email non valida").optional().or(z.literal("")),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  is_infant: z.boolean().optional(),
 });
 
 type ParticipantFormData = z.infer<typeof participantSchema>;
@@ -60,6 +63,7 @@ export default function AddParticipantStandaloneDialog({
       email: "",
       phone: "",
       notes: "",
+      is_infant: false,
     },
   });
 
@@ -91,6 +95,7 @@ export default function AddParticipantStandaloneDialog({
         phone: data.phone || null,
         notes: data.notes || null,
         trip_id: null, // Nessun viaggio associato
+        is_infant: data.is_infant || false,
       });
 
       if (error) throw error;
@@ -213,6 +218,30 @@ export default function AddParticipantStandaloneDialog({
                     <Input placeholder="333 1234567" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="is_infant"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-blue-50/50">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="flex items-center gap-2">
+                      <Baby className="h-4 w-4 text-blue-500" />
+                      È un Infant
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      L'infant non paga e dorme nel letto con i genitori
+                    </p>
+                  </div>
                 </FormItem>
               )}
             />
