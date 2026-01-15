@@ -81,7 +81,8 @@ export default function CompanionList() {
         .from("participants")
         .select("id, full_name, date_of_birth, place_of_birth, email, phone, notes, notes_companion, created_at, group_number, discount_type, discount_amount")
         .eq("trip_id", id)
-        .order("full_name");
+        .order("group_number", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
 
       // Carica hotel
       const { data: hotelsData } = await supabase

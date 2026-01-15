@@ -50,7 +50,8 @@ export default function HotelList() {
         .from("participants")
         .select("*, is_infant")
         .eq("trip_id", id)
-        .order("full_name");
+        .order("group_number", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
 
       setParticipants(participantsData || []);
     } catch (error) {
@@ -105,23 +106,9 @@ export default function HotelList() {
       }
     });
 
-    // Ordina partecipanti all'interno di ogni camera per cognome
-    Object.values(groups).forEach(roomTypes => {
-      Object.values(roomTypes).forEach(roomParticipants => {
-        roomParticipants.sort((a, b) => {
-          const aSurname = a.full_name.split(' ').pop() || '';
-          const bSurname = b.full_name.split(' ').pop() || '';
-          return aSurname.localeCompare(bSurname, 'it');
-        });
-      });
-    });
+    // I partecipanti mantengono l'ordine originale (created_at) all'interno di ogni camera
 
-    // Ordina partecipanti senza gruppo per cognome
-    noGroup.sort((a, b) => {
-      const aSurname = a.full_name.split(' ').pop() || '';
-      const bSurname = b.full_name.split(' ').pop() || '';
-      return aSurname.localeCompare(bSurname, 'it');
-    });
+    // I partecipanti senza gruppo mantengono l'ordine originale (created_at)
 
     return { groups, noGroup };
   };

@@ -85,7 +85,8 @@ export default function CompanionList() {
         .from("participants")
         .select("*")
         .eq("trip_id", id)
-        .order("full_name");
+        .order("group_number", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
 
       setParticipants(participantsData || []);
 
@@ -254,7 +255,8 @@ export default function CompanionList() {
     Object.entries(byGroupAndType).forEach(([key, groupParticipants]) => {
       const [groupKey, roomType] = key.split('__');
       const capacity = getRoomCapacity(roomType);
-      const sortedParticipants = groupParticipants.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      // Mantieni l'ordine originale (created_at) invece di ordinare alfabeticamente
+      const sortedParticipants = groupParticipants;
       
       // Dividi in chunk per capacità camera
       for (let i = 0; i < sortedParticipants.length; i += capacity) {
