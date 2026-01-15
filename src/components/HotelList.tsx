@@ -43,7 +43,8 @@ export default function HotelList() {
         .from("participants")
         .select("*")
         .eq("trip_id", id)
-        .order("full_name");
+        .order("group_number", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
 
       setTrip(tripData);
       setParticipants(participantsData || []);
