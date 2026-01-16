@@ -184,8 +184,10 @@ export default function EditRoomDialog({
         if (existingError) {
           console.error("Errore verifica duplicati:", existingError);
         } else if (existingParticipants && existingParticipants.length > 0) {
-          const existingNames = existingParticipants.map(p => p.full_name.toLowerCase());
-          if (existingNames.includes(fullName.toLowerCase())) {
+          // Normalizza i nomi rimuovendo spazi multipli e convertendo in lowercase
+          const normalizeString = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+          const existingNames = existingParticipants.map(p => normalizeString(p.full_name));
+          if (existingNames.includes(normalizeString(fullName))) {
             setDuplicateAlert({ name: fullName, pendingInsert: true });
             setCreatingNew(false);
             return;

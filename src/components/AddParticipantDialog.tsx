@@ -187,10 +187,18 @@ export default function AddParticipantDialog({
         if (existingError) {
           console.error("Errore verifica duplicati:", existingError);
         } else if (existingParticipants && existingParticipants.length > 0) {
-          const existingNames = existingParticipants.map(p => p.full_name.toLowerCase());
+          // Normalizza i nomi rimuovendo spazi multipli e convertendo in lowercase
+          const normalizeString = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+          const existingNames = existingParticipants.map(p => normalizeString(p.full_name));
+          
+          console.log("Existing names (normalized):", existingNames);
+          console.log("New participants:", values.participants.map(p => normalizeString(`${p.cognome} ${p.nome}`)));
+          
           const duplicateNames = values.participants
-            .filter(p => existingNames.includes(`${p.cognome} ${p.nome}`.trim().toLowerCase()))
+            .filter(p => existingNames.includes(normalizeString(`${p.cognome} ${p.nome}`)))
             .map(p => `${p.cognome} ${p.nome}`);
+
+          console.log("Duplicate names found:", duplicateNames);
 
           if (duplicateNames.length > 0) {
             setDuplicateAlert({ names: duplicateNames, pendingData: values });
