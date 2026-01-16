@@ -17,9 +17,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, X, Users, Hotel, MessageCircle, Loader2, UserPlus } from "lucide-react";
+import { Plus, X, Users, Hotel, MessageCircle, Loader2, UserPlus, AlertTriangle } from "lucide-react";
 import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -104,6 +113,7 @@ export default function EditRoomDialog({
   const [saving, setSaving] = useState(false);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [creatingNew, setCreatingNew] = useState(false);
+  const [duplicateAlert, setDuplicateAlert] = useState<{ name: string; pendingInsert: boolean } | null>(null);
   
   // Form per nuovo partecipante
   const [newParticipant, setNewParticipant] = useState({
@@ -153,7 +163,7 @@ export default function EditRoomDialog({
     }
   };
 
-  const handleCreateAndAddParticipant = async () => {
+  const handleCreateAndAddParticipant = async (skipDuplicateCheck = false) => {
     if (!newParticipant.cognome.trim() || !newParticipant.nome.trim()) {
       toast.error("Cognome e Nome sono obbligatori");
       return;
@@ -163,6 +173,26 @@ export default function EditRoomDialog({
 
     try {
       const fullName = `${newParticipant.nome.trim()} ${newParticipant.cognome.trim()}`;
+      
+      // Verifica duplicati (solo se non stiamo già confermando)
+      if (!skipDuplicateCheck) {
+        const { data: existingParticipants, error: existingError } = await supabase
+          .from("participants")
+          .select("full_name")
+          .eq("trip_id", tripId);
+
+        if (existingError) {
+          console.error("Errore verifica duplicati:", existingError);
+        } else if (existingParticipants && existingParticipants.length > 0) {
+          const existingNames = existingParticipants.map(p => p.full_name.toLowerCase());
+          if (existingNames.includes(fullName.toLowerCase())) {
+            setDuplicateAlert({ name: fullName, pendingInsert: true });
+            setCreatingNew(false);
+            return;
+          }
+        }
+      }
+      
       const groupCreatedAt = participants[0]?.created_at || new Date().toISOString();
 
       // Converti la data dal formato DD/MM/YYYY a YYYY-MM-DD
@@ -205,6 +235,12 @@ export default function EditRoomDialog({
     } finally {
       setCreatingNew(false);
     }
+  };
+
+  // Handler per confermare l'inserimento nonostante i duplicati
+  const handleConfirmDuplicate = async () => {
+    setDuplicateAlert(null);
+    await handleCreateAndAddParticipant(true);
   };
 
   const handleSave = async () => {
@@ -509,6 +545,7 @@ export default function EditRoomDialog({
   const currentRoomCapacity = ROOM_TYPES.find((r) => r.value === selectedRoomType)?.capacity || 4;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
@@ -705,7 +742,7 @@ export default function EditRoomDialog({
                       <Button
                         size="sm"
                         className="flex-1 gap-1"
-                        onClick={handleCreateAndAddParticipant}
+                        onClick={() => handleCreateAndAddParticipant(false)}
                         disabled={creatingNew || !newParticipant.cognome.trim() || !newParticipant.nome.trim()}
                       >
                         {creatingNew ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -765,5 +802,40 @@ export default function EditRoomDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Alert dialog per duplicati/omonimia */}
+    <AlertDialog open={!!duplicateAlert} onOpenChange={(open) => !open && setDuplicateAlert(null)}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+            <AlertTriangle className="h-6 w-6" />
+            ATTENZIONE - POSSIBILE DUPLICATO
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-4 pt-2">
+              <p className="text-base font-medium text-foreground">
+                Il seguente nominativo risulta già iscritto a questo viaggio:
+              </p>
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                <p className="font-semibold text-amber-700">{duplicateAlert?.name}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Potrebbe trattarsi di un caso di <span className="font-medium">omonimia</span> (persone diverse con lo stesso nome).
+                Vuoi procedere comunque con l'inserimento?
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="gap-2">
+          <AlertDialogCancel onClick={() => setDuplicateAlert(null)}>
+            Annulla
+          </AlertDialogCancel>
+          <Button onClick={handleConfirmDuplicate} className="bg-amber-600 hover:bg-amber-700">
+            Conferma inserimento
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
