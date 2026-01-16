@@ -59,6 +59,7 @@ export default function AddParticipantDialog({
   const [nextGroupNumber, setNextGroupNumber] = useState<number>(1);
   const [useExistingGroup, setUseExistingGroup] = useState<boolean>(false);
   const [blacklistAlert, setBlacklistAlert] = useState<{ names: string[]; reasons: { [key: string]: string | null } } | null>(null);
+  const [duplicateAlert, setDuplicateAlert] = useState<{ names: string[]; pendingData: z.infer<typeof formSchema> | null } | null>(null);
 
   const isDayTrip = tripType === "day_trip";
 
@@ -138,7 +139,7 @@ export default function AddParticipantDialog({
     return null;
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const processSubmit = async (values: z.infer<typeof formSchema>, skipDuplicateCheck = false) => {
     setIsSubmitting(true);
     try {
       // Verifica se qualche partecipante è in blacklist (case-insensitive con ilike)
@@ -173,6 +174,29 @@ export default function AddParticipantDialog({
           setBlacklistAlert({ names: matchedNames, reasons });
           setIsSubmitting(false);
           return;
+        }
+      }
+
+      // Verifica duplicati nel viaggio (solo se non stiamo già confermando)
+      if (!skipDuplicateCheck) {
+        const { data: existingParticipants, error: existingError } = await supabase
+          .from("participants")
+          .select("full_name")
+          .eq("trip_id", tripId);
+
+        if (existingError) {
+          console.error("Errore verifica duplicati:", existingError);
+        } else if (existingParticipants && existingParticipants.length > 0) {
+          const existingNames = existingParticipants.map(p => p.full_name.toLowerCase());
+          const duplicateNames = values.participants
+            .filter(p => existingNames.includes(`${p.cognome} ${p.nome}`.trim().toLowerCase()))
+            .map(p => `${p.cognome} ${p.nome}`);
+
+          if (duplicateNames.length > 0) {
+            setDuplicateAlert({ names: duplicateNames, pendingData: values });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
@@ -224,6 +248,19 @@ export default function AddParticipantDialog({
       toast.error("Errore durante l'aggiunta dei partecipanti");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Wrapper per handleSubmit (senza skipDuplicateCheck)
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    await processSubmit(values, false);
+  };
+
+  // Handler per confermare l'inserimento nonostante i duplicati
+  const handleConfirmDuplicate = async () => {
+    if (duplicateAlert?.pendingData) {
+      setDuplicateAlert(null);
+      await processSubmit(duplicateAlert.pendingData, true);
     }
   };
 
@@ -619,6 +656,42 @@ export default function AddParticipantDialog({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Chiudi</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alert dialog per duplicati/omonimia */}
+      <AlertDialog open={!!duplicateAlert} onOpenChange={(open) => !open && setDuplicateAlert(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-6 w-6" />
+              ATTENZIONE - POSSIBILE DUPLICATO
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 pt-2">
+                <p className="text-base font-medium text-foreground">
+                  I seguenti nominativi risultano già iscritti a questo viaggio:
+                </p>
+                {duplicateAlert?.names.map((name) => (
+                  <div key={name} className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                    <p className="font-semibold text-amber-700">{name}</p>
+                  </div>
+                ))}
+                <p className="text-sm text-muted-foreground">
+                  Potrebbe trattarsi di un caso di <span className="font-medium">omonimia</span> (persone diverse con lo stesso nome).
+                  Vuoi procedere comunque con l'inserimento?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel onClick={() => setDuplicateAlert(null)}>
+              Annulla
+            </AlertDialogCancel>
+            <Button onClick={handleConfirmDuplicate} className="bg-amber-600 hover:bg-amber-700">
+              Conferma inserimento
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
