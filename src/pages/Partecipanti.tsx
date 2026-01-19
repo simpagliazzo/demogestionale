@@ -38,8 +38,8 @@ interface ParticipantWithTrip {
 const statusColors = {
   planned: "bg-blue-500",
   confirmed: "bg-green-500",
-  ongoing: "bg-yellow-500",
-  completed: "bg-gray-500",
+  ongoing: "bg-orange-500",
+  completed: "bg-yellow-500",
   cancelled: "bg-red-500",
 };
 
