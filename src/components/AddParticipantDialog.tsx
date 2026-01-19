@@ -225,8 +225,9 @@ export default function AddParticipantDialog({
         email: p.email || null,
         phone: p.phone || null,
         notes: isDayTrip 
-          ? (p.notes || null)
-          : (p.notes ? `${p.notes} | Camera: ${values.room_type}` : `Camera: ${values.room_type}`),
+          ? null
+          : `Camera: ${values.room_type}`,
+        notes_companion: p.notes || null,
         group_number: groupNum,
         created_by: user?.id || null,
         is_infant: p.is_infant || false,
