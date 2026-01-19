@@ -8,6 +8,7 @@ import { CalendarDays, Users, DollarSign, MapPin, Search, FileText } from "lucid
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { TripCalendar } from "@/components/TripCalendar";
+import { NotificationsCard } from "@/components/NotificationsCard";
 interface DashboardStats {
   totalTrips: number;
   upcomingTrips: number;
@@ -256,6 +257,8 @@ export default function Dashboard() {
             </p>
           </CardContent>
         </Card>
+
+        <NotificationsCard />
       </div>
 
       <TripCalendar trips={allTrips} />
