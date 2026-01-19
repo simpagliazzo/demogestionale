@@ -181,7 +181,11 @@ export function NotificationsCard() {
                     <div
                       key={notification.tripId}
                       className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer transition-colors text-sm"
-                      onClick={() => setSelectedNotification(notification)}
+                      onClick={() => {
+                        console.log("Notifica selezionata:", notification);
+                        console.log("Partecipanti senza acconto:", notification.participantsWithoutDeposit);
+                        setSelectedNotification(notification);
+                      }}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{notification.tripTitle}</p>
