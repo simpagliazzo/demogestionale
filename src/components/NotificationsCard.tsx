@@ -31,6 +31,7 @@ export function NotificationsCard() {
   const [notifications, setNotifications] = useState<TripNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<TripNotification | null>(null);
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -205,14 +206,69 @@ export function NotificationsCard() {
               </ScrollArea>
 
               {notifications.length > 3 && (
-                <p className="text-xs text-muted-foreground text-center">
-                  +{notifications.length - 3} altri viaggi
-                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowAllNotifications(true)}
+                >
+                  +{notifications.length - 3} altri viaggi - Vedi tutti
+                </Button>
               )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog tutti i viaggi */}
+      <Dialog open={showAllNotifications} onOpenChange={setShowAllNotifications}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-destructive" />
+              Tutti i Viaggi con Acconti Mancanti
+            </DialogTitle>
+            <DialogDescription>
+              {notifications.length} viaggi con partecipanti da contattare
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-80">
+            <div className="space-y-2">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.tripId}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => {
+                    setShowAllNotifications(false);
+                    setSelectedNotification(notification);
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{notification.tripTitle}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(notification.departureDate), "dd MMM yyyy", { locale: it })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {notification.participantsWithoutDeposit.length} da contattare
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={getUrgencyColor(notification.daysUntilDeparture)} className="text-xs">
+                      {getUrgencyText(notification.daysUntilDeparture)}
+                    </Badge>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog dettaglio notifica */}
       <Dialog open={!!selectedNotification} onOpenChange={() => setSelectedNotification(null)}>
