@@ -42,10 +42,11 @@ export function NotificationsCard() {
       const today = new Date();
       const thirtyDaysFromNow = addDays(today, 30);
       
-      // Carica viaggi con partenza entro 30 giorni
+      // Carica viaggi con partenza entro 30 giorni (solo viaggi multi-giornalieri)
       const { data: trips, error: tripsError } = await supabase
         .from("trips")
-        .select("id, title, destination, departure_date, price, deposit_amount, deposit_type")
+        .select("id, title, destination, departure_date, price, deposit_amount, deposit_type, trip_type")
+        .eq("trip_type", "standard")
         .gte("departure_date", today.toISOString().split("T")[0])
         .lte("departure_date", thirtyDaysFromNow.toISOString().split("T")[0])
         .order("departure_date", { ascending: true });
