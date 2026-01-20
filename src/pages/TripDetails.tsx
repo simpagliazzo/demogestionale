@@ -116,6 +116,23 @@ interface Room {
   hotel_id: string;
 }
 
+interface SeatAssignment {
+  participant_id: string;
+  seat_number: number;
+}
+
+interface SeatAssignment {
+  participant_id: string;
+  seat_number: number;
+}
+
+interface BusSeatInfo {
+  room_number: string;
+  room_type: string;
+  capacity: number;
+  hotel_id: string;
+}
+
 const statusColors = {
   planned: "bg-blue-500",
   confirmed: "bg-green-500",
@@ -174,6 +191,7 @@ export default function TripDetails() {
   const [showManualHotelEntry, setShowManualHotelEntry] = useState(false);
   const [editHotelDialogOpen, setEditHotelDialogOpen] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+  const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -205,6 +223,7 @@ export default function TripDetails() {
     loadTripGuides();
     loadTripCompanions();
     loadHotelRegistry();
+    loadBusSeatAssignments();
   }, [id]);
 
   useEffect(() => {
@@ -335,6 +354,39 @@ export default function TripDetails() {
     return participantPayments
       .filter(p => p.participant_id === participantId)
       .reduce((sum, p) => sum + Number(p.amount), 0);
+  };
+
+  const getParticipantSeatNumber = (participantId: string): number | null => {
+    const assignment = seatAssignments.find(a => a.participant_id === participantId);
+    return assignment ? assignment.seat_number : null;
+  };
+
+  const loadBusSeatAssignments = async () => {
+    if (!id) return;
+    try {
+      // Prima trova la configurazione bus per questo viaggio
+      const { data: busConfig, error: busConfigError } = await supabase
+        .from("bus_configurations")
+        .select("id")
+        .eq("trip_id", id)
+        .maybeSingle();
+
+      if (busConfigError) throw busConfigError;
+      
+      if (busConfig) {
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from("bus_seat_assignments")
+          .select("participant_id, seat_number")
+          .eq("bus_config_id", busConfig.id);
+
+        if (assignmentsError) throw assignmentsError;
+        setSeatAssignments(assignments || []);
+      } else {
+        setSeatAssignments([]);
+      }
+    } catch (error) {
+      console.error("Errore caricamento posti bus:", error);
+    }
   };
 
   const loadTripDetails = async () => {
@@ -1284,7 +1336,14 @@ export default function TripDetails() {
                                   onClick={() => (isAdmin || isAgent) && handleEditParticipant(participant)}
                                 >
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium">{formatNameSurnameFirst(participant.full_name)}</p>
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-xs font-medium">{formatNameSurnameFirst(participant.full_name)}</p>
+                                      {getParticipantSeatNumber(participant.id) && (
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-50 dark:bg-blue-950/30 border-blue-300 text-blue-700 dark:text-blue-400">
+                                          🚌 {getParticipantSeatNumber(participant.id)}
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <div className="text-[10px] text-muted-foreground">
                                       {participant.date_of_birth && (
                                         <span>{format(new Date(participant.date_of_birth), "dd/MM/yyyy")}</span>
@@ -1362,6 +1421,11 @@ export default function TripDetails() {
                                               {participant.group_number && (
                                                 <Badge variant="secondary" className="text-[10px] px-1 py-0">
                                                   #{participant.group_number}
+                                                </Badge>
+                                              )}
+                                              {getParticipantSeatNumber(participant.id) && (
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-50 dark:bg-blue-950/30 border-blue-300 text-blue-700 dark:text-blue-400">
+                                                  🚌 {getParticipantSeatNumber(participant.id)}
                                                 </Badge>
                                               )}
                                             </div>
@@ -1457,6 +1521,11 @@ export default function TripDetails() {
                               {participant.group_number && (
                                 <Badge variant="secondary" className="text-[10px] px-1 py-0">
                                   #{participant.group_number}
+                                </Badge>
+                              )}
+                              {getParticipantSeatNumber(participant.id) && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-50 dark:bg-blue-950/30 border-blue-300 text-blue-700 dark:text-blue-400">
+                                  🚌 {getParticipantSeatNumber(participant.id)}
                                 </Badge>
                               )}
                             </div>
