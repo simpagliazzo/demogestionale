@@ -6,9 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Phone, AlertTriangle, ChevronRight, X, Calendar, Users } from "lucide-react";
+import { Bell, Phone, AlertTriangle, ChevronRight, X, Calendar, Users, CheckCircle, Trash2 } from "lucide-react";
 import { format, differenceInDays, addDays } from "date-fns";
 import { it } from "date-fns/locale";
+import { toast } from "@/hooks/use-toast";
+
+const MANAGED_NOTIFICATIONS_KEY = "managed_notifications";
 
 interface ParticipantWithoutDeposit {
   id: string;
@@ -26,12 +29,32 @@ interface TripNotification {
   participantsWithoutDeposit: ParticipantWithoutDeposit[];
 }
 
+// Tipo per notifica gestita
+interface ManagedNotification {
+  tripId: string;
+  participantId: string;
+  managedAt: string;
+}
+
 export function NotificationsCard() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<TripNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<TripNotification | null>(null);
   const [showAllNotifications, setShowAllNotifications] = useState(false);
+  const [managedNotifications, setManagedNotifications] = useState<ManagedNotification[]>([]);
+
+  // Carica notifiche gestite da localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(MANAGED_NOTIFICATIONS_KEY);
+    if (stored) {
+      try {
+        setManagedNotifications(JSON.parse(stored));
+      } catch (e) {
+        console.error("Errore parsing notifiche gestite:", e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     loadNotifications();
@@ -118,10 +141,91 @@ export function NotificationsCard() {
     }
   };
 
-  const totalParticipantsWithoutDeposit = notifications.reduce(
+  // Filtra le notifiche escludendo i partecipanti già gestiti
+  const getFilteredNotifications = () => {
+    return notifications.map(notification => ({
+      ...notification,
+      participantsWithoutDeposit: notification.participantsWithoutDeposit.filter(
+        p => !managedNotifications.some(
+          m => m.tripId === notification.tripId && m.participantId === p.id
+        )
+      )
+    })).filter(n => n.participantsWithoutDeposit.length > 0);
+  };
+
+  const filteredNotifications = getFilteredNotifications();
+
+  const totalParticipantsWithoutDeposit = filteredNotifications.reduce(
     (sum, n) => sum + n.participantsWithoutDeposit.length,
     0
   );
+
+  // Segna un partecipante come gestito
+  const markAsManaged = (tripId: string, participantId: string, participantName: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    
+    const newManagedNotification: ManagedNotification = {
+      tripId,
+      participantId,
+      managedAt: new Date().toISOString()
+    };
+    
+    const updated = [...managedNotifications, newManagedNotification];
+    setManagedNotifications(updated);
+    localStorage.setItem(MANAGED_NOTIFICATIONS_KEY, JSON.stringify(updated));
+    
+    toast({
+      title: "Notifica gestita",
+      description: `${participantName} è stato segnato come gestito`,
+    });
+
+    // Aggiorna la notifica selezionata se necessario
+    if (selectedNotification && selectedNotification.tripId === tripId) {
+      const updatedParticipants = selectedNotification.participantsWithoutDeposit.filter(
+        p => p.id !== participantId
+      );
+      if (updatedParticipants.length === 0) {
+        setSelectedNotification(null);
+      } else {
+        setSelectedNotification({
+          ...selectedNotification,
+          participantsWithoutDeposit: updatedParticipants
+        });
+      }
+    }
+  };
+
+  // Segna tutti i partecipanti di un viaggio come gestiti
+  const markAllAsManaged = (notification: TripNotification, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    
+    const newManagedNotifications: ManagedNotification[] = notification.participantsWithoutDeposit.map(p => ({
+      tripId: notification.tripId,
+      participantId: p.id,
+      managedAt: new Date().toISOString()
+    }));
+    
+    const updated = [...managedNotifications, ...newManagedNotifications];
+    setManagedNotifications(updated);
+    localStorage.setItem(MANAGED_NOTIFICATIONS_KEY, JSON.stringify(updated));
+    
+    toast({
+      title: "Viaggio gestito",
+      description: `${notification.participantsWithoutDeposit.length} partecipanti segnati come gestiti`,
+    });
+    
+    setSelectedNotification(null);
+  };
+
+  // Ripristina tutte le notifiche gestite
+  const clearManagedNotifications = () => {
+    setManagedNotifications([]);
+    localStorage.removeItem(MANAGED_NOTIFICATIONS_KEY);
+    toast({
+      title: "Notifiche ripristinate",
+      description: "Tutte le notifiche sono state ripristinate",
+    });
+  };
 
   const getUrgencyColor = (days: number) => {
     if (days <= 7) return "destructive";
@@ -165,27 +269,49 @@ export function NotificationsCard() {
           <Bell className="h-4 w-4 text-red-500" />
         </CardHeader>
         <CardContent>
-          {notifications.length === 0 ? (
+          {filteredNotifications.length === 0 ? (
             <div className="text-center py-2">
               <p className="text-sm text-muted-foreground">Nessuna notifica</p>
               <p className="text-xs text-muted-foreground mt-1">Tutti gli acconti sono stati versati</p>
+              {managedNotifications.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-xs text-muted-foreground"
+                  onClick={clearManagedNotifications}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Ripristina notifiche gestite ({managedNotifications.length})
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                {notifications.length} viaggio/i con acconti mancanti
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {filteredNotifications.length} viaggio/i con acconti mancanti
+                </p>
+                {managedNotifications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground"
+                    onClick={clearManagedNotifications}
+                    title="Ripristina notifiche gestite"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
               
               <ScrollArea className="max-h-32">
                 <div className="space-y-1.5">
-                  {notifications.slice(0, 3).map((notification) => (
+                  {filteredNotifications.slice(0, 3).map((notification) => (
                     <div
                       key={notification.tripId}
                       className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer transition-colors text-sm"
                       onClick={() => {
-                        console.log("Notifica selezionata:", notification);
-                        console.log("Partecipanti senza acconto:", notification.participantsWithoutDeposit);
                         setSelectedNotification(notification);
                       }}
                     >
@@ -199,6 +325,15 @@ export function NotificationsCard() {
                         <Badge variant={getUrgencyColor(notification.daysUntilDeparture)} className="text-xs">
                           {getUrgencyText(notification.daysUntilDeparture)}
                         </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-100"
+                          onClick={(e) => markAllAsManaged(notification, e)}
+                          title="Segna tutti come gestiti"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
@@ -206,14 +341,14 @@ export function NotificationsCard() {
                 </div>
               </ScrollArea>
 
-              {notifications.length > 3 && (
+              {filteredNotifications.length > 3 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="w-full text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setShowAllNotifications(true)}
                 >
-                  +{notifications.length - 3} altri viaggi - Vedi tutti
+                  +{filteredNotifications.length - 3} altri viaggi - Vedi tutti
                 </Button>
               )}
             </div>
@@ -236,7 +371,7 @@ export function NotificationsCard() {
 
           <ScrollArea className="max-h-80">
             <div className="space-y-2">
-              {notifications.map((notification) => (
+              {filteredNotifications.map((notification) => (
                 <div
                   key={notification.tripId}
                   className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted cursor-pointer transition-colors"
@@ -262,6 +397,15 @@ export function NotificationsCard() {
                     <Badge variant={getUrgencyColor(notification.daysUntilDeparture)} className="text-xs">
                       {getUrgencyText(notification.daysUntilDeparture)}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-100"
+                      onClick={(e) => markAllAsManaged(notification, e)}
+                      title="Segna tutti come gestiti"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
@@ -314,7 +458,7 @@ export function NotificationsCard() {
                       key={participant.id}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card"
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-1 flex-1 min-w-0">
                         <p className="font-medium">{participant.full_name}</p>
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                           {participant.phone && (
@@ -341,38 +485,60 @@ export function NotificationsCard() {
                           )}
                         </div>
                       </div>
-                      {participant.phone && (
+                      <div className="flex items-center gap-2">
+                        {participant.phone && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => window.open(`tel:${participant.phone}`, '_self')}
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            Chiama
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1"
-                          onClick={() => window.open(`tel:${participant.phone}`, '_self')}
+                          className="gap-1 text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
+                          onClick={(e) => markAsManaged(selectedNotification.tripId, participant.id, participant.full_name, e)}
+                          title="Segna come gestito"
                         >
-                          <Phone className="h-3.5 w-3.5" />
-                          Chiama
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Gestito
                         </Button>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </ScrollArea>
 
               {/* Azioni */}
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setSelectedNotification(null)}
                 >
                   Chiudi
                 </Button>
-                <Button
-                  onClick={() => {
-                    navigate(`/viaggi/${selectedNotification.tripId}`);
-                    setSelectedNotification(null);
-                  }}
-                >
-                  Vai al Viaggio
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-1 text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
+                    onClick={(e) => markAllAsManaged(selectedNotification, e)}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Segna tutti gestiti
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      navigate(`/viaggi/${selectedNotification.tripId}`);
+                      setSelectedNotification(null);
+                    }}
+                  >
+                    Vai al Viaggio
+                  </Button>
+                </div>
               </div>
             </div>
           )}
