@@ -451,8 +451,8 @@ export function NotificationsCard() {
               </div>
 
               {/* Lista partecipanti */}
-              <ScrollArea className="max-h-64">
-                <div className="space-y-2">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2 pr-4">
                   {selectedNotification.participantsWithoutDeposit.map((participant) => (
                     <div
                       key={participant.id}
