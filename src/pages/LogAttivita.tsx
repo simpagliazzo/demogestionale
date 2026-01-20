@@ -103,8 +103,9 @@ export default function LogAttivita() {
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string>("");
   const [isRestoring, setIsRestoring] = useState(false);
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, isSuperAdmin, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
+  const [superAdminUserIds, setSuperAdminUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (roleLoading) return;
@@ -114,7 +115,18 @@ export default function LogAttivita() {
     }
     loadLogs();
     loadTrips();
+    loadSuperAdminIds();
   }, [isAdmin, roleLoading, navigate]);
+
+  const loadSuperAdminIds = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "super_admin");
+    if (data) {
+      setSuperAdminUserIds(data.map(d => d.user_id));
+    }
+  };
 
   const loadTrips = async () => {
     const { data } = await supabase
@@ -194,7 +206,12 @@ export default function LogAttivita() {
     }
   };
 
-  const filteredLogs = logs.filter((log) => {
+  // Filtra log escludendo super_admin (a meno che l'utente corrente sia super_admin)
+  const visibleLogs = isSuperAdmin 
+    ? logs 
+    : logs.filter(log => !superAdminUserIds.includes(log.user_id));
+
+  const filteredLogs = visibleLogs.filter((log) => {
     const matchesSearch =
       searchQuery === "" ||
       log.profile?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -206,8 +223,8 @@ export default function LogAttivita() {
     return matchesSearch && matchesAction;
   });
 
-  // Statistiche
-  const todayLogs = logs.filter((log) => {
+  // Statistiche (basate sui log visibili)
+  const todayLogs = visibleLogs.filter((log) => {
     const today = new Date().toDateString();
     return new Date(log.created_at).toDateString() === today;
   });
