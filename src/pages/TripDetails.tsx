@@ -1293,8 +1293,18 @@ export default function TripDetails() {
                                         <span> - {participant.place_of_birth}</span>
                                       )}
                                     </div>
-                                    {cleanNotes && (
-                                      <p className="text-[10px] text-orange-600 italic mt-0.5">📝 {cleanNotes}</p>
+                                    {(cleanNotes || participant.notes_hotel || participant.notes_companion) && (
+                                      <div className="mt-0.5 space-y-0.5">
+                                        {cleanNotes && (
+                                          <p className="text-[10px] text-orange-600 italic">📝 {cleanNotes}</p>
+                                        )}
+                                        {participant.notes_hotel && (
+                                          <p className="text-[10px] text-blue-600 italic">🏨 {participant.notes_hotel}</p>
+                                        )}
+                                        {participant.notes_companion && (
+                                          <p className="text-[10px] text-purple-600 italic">👤 {participant.notes_companion}</p>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                   <div className="text-right text-xs flex-shrink-0 ml-3">
@@ -1359,8 +1369,18 @@ export default function TripDetails() {
                                               {participant.date_of_birth && format(new Date(participant.date_of_birth), "dd/MM/yyyy")}
                                               {participant.place_of_birth && ` - ${participant.place_of_birth}`}
                                             </div>
-                                            {cleanNotes && (
-                                              <p className="text-[10px] ml-6 text-orange-600 italic">📝 {cleanNotes}</p>
+                                            {(cleanNotes || participant.notes_hotel || participant.notes_companion) && (
+                                              <div className="ml-6 mt-0.5 space-y-0.5">
+                                                {cleanNotes && (
+                                                  <p className="text-[10px] text-orange-600 italic">📝 {cleanNotes}</p>
+                                                )}
+                                                {participant.notes_hotel && (
+                                                  <p className="text-[10px] text-blue-600 italic">🏨 {participant.notes_hotel}</p>
+                                                )}
+                                                {participant.notes_companion && (
+                                                  <p className="text-[10px] text-purple-600 italic">👤 {participant.notes_companion}</p>
+                                                )}
+                                              </div>
                                             )}
                                           </div>
                                           <div className="text-right text-xs flex-shrink-0 ml-3">
@@ -1444,10 +1464,24 @@ export default function TripDetails() {
                               {participant.date_of_birth && format(new Date(participant.date_of_birth), "dd/MM/yyyy")}
                               {participant.place_of_birth && ` a ${participant.place_of_birth}`}
                             </div>
-                            {cleanNotes && (
-                              <p className="text-[10px] mt-1 text-orange-600 italic bg-orange-50 dark:bg-orange-950/30 px-1.5 py-0.5 rounded inline-block">
-                                📝 {cleanNotes}
-                              </p>
+                            {(cleanNotes || participant.notes_hotel || participant.notes_companion) && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {cleanNotes && (
+                                  <span className="text-[10px] text-orange-600 italic bg-orange-50 dark:bg-orange-950/30 px-1.5 py-0.5 rounded">
+                                    📝 {cleanNotes}
+                                  </span>
+                                )}
+                                {participant.notes_hotel && (
+                                  <span className="text-[10px] text-blue-600 italic bg-blue-50 dark:bg-blue-950/30 px-1.5 py-0.5 rounded">
+                                    🏨 {participant.notes_hotel}
+                                  </span>
+                                )}
+                                {participant.notes_companion && (
+                                  <span className="text-[10px] text-purple-600 italic bg-purple-50 dark:bg-purple-950/30 px-1.5 py-0.5 rounded">
+                                    👤 {participant.notes_companion}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                           <div className="text-right flex-shrink-0 ml-3 text-xs">
