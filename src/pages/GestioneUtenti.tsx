@@ -417,7 +417,7 @@ export default function GestioneUtenti() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {visibleUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.full_name}</TableCell>
                   <TableCell>{user.phone || "-"}</TableCell>
