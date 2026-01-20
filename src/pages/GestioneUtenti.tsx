@@ -250,8 +250,13 @@ export default function GestioneUtenti() {
     return null;
   }
 
-  const usersWithRole = users.filter((u) => u.role);
-  const usersWithoutRole = users.filter((u) => !u.role);
+  // Filtra gli utenti: i super_admin sono visibili solo ad altri super_admin
+  const visibleUsers = isSuperAdmin 
+    ? users 
+    : users.filter((u) => u.role !== "super_admin");
+  
+  const usersWithRole = visibleUsers.filter((u) => u.role);
+  const usersWithoutRole = visibleUsers.filter((u) => !u.role);
 
   const openPermissionsDialog = (role: UserRole) => {
     setSelectedRole(role);
