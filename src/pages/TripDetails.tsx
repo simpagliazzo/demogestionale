@@ -765,9 +765,57 @@ export default function TripDetails() {
   };
 
   const getFilteredAndSortedParticipants = () => {
-    let filtered = participants.filter(p => 
+    // Prima trova i partecipanti che corrispondono direttamente alla ricerca
+    const directMatches = participants.filter(p => 
       p.full_name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    let filtered: Participant[] = [];
+
+    if (searchQuery.trim() === "") {
+      // Nessuna ricerca, mostra tutti
+      filtered = [...participants];
+    } else if (groupByRoom && directMatches.length > 0) {
+      // Raggruppa per camera: includi tutti i partecipanti della stessa camera
+      // La camera è identificata dal tipo camera + created_at
+      const roomKeys = new Set<string>();
+      
+      directMatches.forEach(p => {
+        let roomType = 'altro';
+        if (p.notes?.includes("Camera: singola")) roomType = 'singola';
+        else if (p.notes?.includes("Camera: doppia")) roomType = 'doppia';
+        else if (p.notes?.includes("Camera: matrimoniale")) roomType = 'matrimoniale';
+        else if (p.notes?.includes("Camera: tripla")) roomType = 'tripla';
+        else if (p.notes?.includes("Camera: quadrupla")) roomType = 'quadrupla';
+        
+        roomKeys.add(`${roomType}-${p.created_at}`);
+      });
+      
+      // Trova tutti i partecipanti che appartengono alle stesse camere
+      filtered = participants.filter(p => {
+        let roomType = 'altro';
+        if (p.notes?.includes("Camera: singola")) roomType = 'singola';
+        else if (p.notes?.includes("Camera: doppia")) roomType = 'doppia';
+        else if (p.notes?.includes("Camera: matrimoniale")) roomType = 'matrimoniale';
+        else if (p.notes?.includes("Camera: tripla")) roomType = 'tripla';
+        else if (p.notes?.includes("Camera: quadrupla")) roomType = 'quadrupla';
+        
+        return roomKeys.has(`${roomType}-${p.created_at}`);
+      });
+    } else if (groupByGroupNumber && directMatches.length > 0) {
+      // Raggruppa per gruppo: includi tutti i partecipanti dello stesso group_number
+      const groupNumbers = new Set<number | null>();
+      
+      directMatches.forEach(p => {
+        groupNumbers.add(p.group_number);
+      });
+      
+      // Trova tutti i partecipanti che appartengono agli stessi gruppi
+      filtered = participants.filter(p => groupNumbers.has(p.group_number));
+    } else {
+      // Ordine alfabetico o nessun raggruppamento: mostra solo i match diretti
+      filtered = directMatches;
+    }
 
     if (sortAlphabetically) {
       filtered = [...filtered].sort((a, b) => a.full_name.localeCompare(b.full_name));
