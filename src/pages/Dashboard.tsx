@@ -30,6 +30,8 @@ interface AllTrip {
   destination: string;
   departure_date: string;
   return_date: string;
+  max_participants?: number | null;
+  participant_count?: number;
 }
 
 export default function Dashboard() {
@@ -63,7 +65,23 @@ export default function Dashboard() {
       const today = new Date().toISOString().split("T")[0];
       const upcoming = trips?.filter((trip) => trip.departure_date >= today) || [];
 
-      // Salva tutti i viaggi per la ricerca
+      // Carica conteggio partecipanti per ogni viaggio
+      const tripParticipantCounts: Record<string, number> = {};
+      if (trips && trips.length > 0) {
+        const { data: participantCounts } = await supabase
+          .from("participants")
+          .select("trip_id");
+        
+        if (participantCounts) {
+          participantCounts.forEach((p) => {
+            if (p.trip_id) {
+              tripParticipantCounts[p.trip_id] = (tripParticipantCounts[p.trip_id] || 0) + 1;
+            }
+          });
+        }
+      }
+
+      // Salva tutti i viaggi per la ricerca con conteggio partecipanti
       setAllTrips(
         trips?.map((t) => ({
           id: t.id,
@@ -71,6 +89,8 @@ export default function Dashboard() {
           destination: t.destination,
           departure_date: t.departure_date,
           return_date: t.return_date,
+          max_participants: t.max_participants,
+          participant_count: tripParticipantCounts[t.id] || 0,
         })) || []
       );
 
@@ -289,7 +309,6 @@ export default function Dashboard() {
             return (
               <div className="space-y-4">
                 {monthTrips.map((trip) => {
-                  const participantCount = upcomingTrips.find(u => u.id === trip.id)?.participantCount || 0;
                   return (
                     <div
                       key={trip.id}
@@ -302,15 +321,16 @@ export default function Dashboard() {
                           {trip.destination}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right space-y-1">
                         <p className="text-sm font-medium">
                           {format(parseISO(trip.departure_date), "dd MMM yyyy", {
                             locale: it,
                           })}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {participantCount} partecipanti
-                        </p>
+                        <span className="inline-flex items-center text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          👥 {trip.participant_count ?? 0}
+                          {trip.max_participants ? ` / ${trip.max_participants}` : ""}
+                        </span>
                       </div>
                     </div>
                   );

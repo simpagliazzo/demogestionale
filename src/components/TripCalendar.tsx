@@ -16,6 +16,8 @@ interface Trip {
   destination: string;
   departure_date: string;
   return_date: string;
+  max_participants?: number | null;
+  participant_count?: number;
 }
 
 interface TripCalendarProps {
@@ -176,9 +178,17 @@ export function TripCalendar({ trips, onMonthChange }: TripCalendarProps) {
                             )}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {format(departure, "dd/MM")} - {format(returnDate, "dd/MM/yyyy")}
-                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            {format(departure, "dd/MM")} - {format(returnDate, "dd/MM/yyyy")}
+                          </p>
+                          {(trip.participant_count !== undefined || trip.max_participants) && (
+                            <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                              👥 {trip.participant_count ?? 0}
+                              {trip.max_participants ? ` / ${trip.max_participants}` : ""}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
