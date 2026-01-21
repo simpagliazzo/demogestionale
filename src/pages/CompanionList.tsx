@@ -15,6 +15,7 @@ interface Trip {
   price: number;
   companion_name: string | null;
   single_room_supplement: number;
+  trip_type: string | null;
 }
 
 interface Guide {
@@ -77,7 +78,7 @@ export default function CompanionList() {
     try {
       const { data: tripData } = await supabase
         .from("trips")
-        .select("id, title, destination, departure_date, return_date, price, companion_name, single_room_supplement")
+        .select("id, title, destination, departure_date, return_date, price, companion_name, single_room_supplement, trip_type")
         .eq("id", id)
         .maybeSingle();
 
@@ -322,6 +323,9 @@ export default function CompanionList() {
     return <div className="p-8 text-center">Viaggio non trovato</div>;
   }
 
+  // Determina se è un viaggio giornaliero (solo bus, senza pernottamento)
+  const isSingleDayTrip = trip.trip_type === 'day_trip' || trip.departure_date === trip.return_date;
+
   const roomGroups = getParticipantsByRoom();
   const totalDue = participants.reduce((sum, p) => sum + getParticipantTotal(p), 0);
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
@@ -393,7 +397,9 @@ export default function CompanionList() {
           <tr className="bg-muted">
             <th className="border p-1 text-left" style={{width: '50px', fontSize: '9px'}}>P. Carico</th>
             <th className="border p-1 text-center" style={{width: '25px', fontSize: '9px'}}>Gr.</th>
-            <th className="border p-1 text-left whitespace-nowrap" style={{width: '75px', fontSize: '9px'}}>Camera</th>
+            {!isSingleDayTrip && (
+              <th className="border p-1 text-left whitespace-nowrap" style={{width: '75px', fontSize: '9px'}}>Camera</th>
+            )}
             <th className="border p-1 text-left" style={{width: '130px', fontSize: '9px'}}>Nominativo</th>
             <th className="border p-1 text-center" style={{width: '35px', fontSize: '9px'}}>Bus</th>
             <th className="border p-1 text-left whitespace-nowrap" style={{width: '90px', fontSize: '9px'}}>Telefono</th>
@@ -426,7 +432,7 @@ export default function CompanionList() {
                       {group.groupNumber || "-"}
                     </td>
                   )}
-                  {isFirstInRoom && (
+                  {!isSingleDayTrip && isFirstInRoom && (
                     <td
                       className="border p-1 font-semibold text-center bg-muted/30 capitalize whitespace-nowrap"
                       rowSpan={group.participants.length}
@@ -471,7 +477,7 @@ export default function CompanionList() {
         </tbody>
         <tfoot>
           <tr className="bg-muted font-bold">
-            <td colSpan={7} className="border p-2 text-right" style={{fontSize: '9px'}}>TOTALI:</td>
+            <td colSpan={isSingleDayTrip ? 6 : 7} className="border p-2 text-right" style={{fontSize: '9px'}}>TOTALI:</td>
             <td className="border p-2 text-right text-green-600 whitespace-nowrap" style={{fontSize: '9px'}}>€{totalPaid.toFixed(2)}</td>
             <td className={`border p-2 text-right whitespace-nowrap ${totalBalance > 0 ? "text-red-600" : "text-green-600"}`} style={{fontSize: '9px'}}>
               €{totalBalance.toFixed(2)}
