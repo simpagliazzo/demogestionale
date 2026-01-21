@@ -18,6 +18,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import EditCarrierDialog from "@/components/EditCarrierDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import BusTypeForm, { BusTypeFormValues } from "@/components/bus/BusTypeForm";
+import { Badge } from "@/components/ui/badge";
 
 const carrierSchema = z.object({
   name: z.string().min(2, "Il nome deve contenere almeno 2 caratteri"),
@@ -25,13 +27,6 @@ const carrierSchema = z.object({
   phone: z.string().optional(),
   contact_person: z.string().optional(),
   notes: z.string().optional(),
-});
-
-const busTypeSchema = z.object({
-  name: z.string().min(2, "Il nome deve contenere almeno 2 caratteri"),
-  rows: z.coerce.number().min(1, "Minimo 1 riga"),
-  seats_per_row: z.coerce.number().min(1, "Minimo 1 posto per riga"),
-  description: z.string().optional(),
 });
 
 interface Carrier {
@@ -50,6 +45,14 @@ interface BusType {
   seats_per_row: number;
   total_seats: number;
   description: string | null;
+  length_meters?: number;
+  has_driver_seat?: boolean;
+  has_guide_seat?: boolean;
+  has_front_door?: boolean;
+  has_rear_door?: boolean;
+  has_wc?: boolean;
+  last_row_seats?: number;
+  layout_type?: string;
 }
 
 export default function Vettori() {
@@ -70,24 +73,6 @@ export default function Vettori() {
   } = useForm<z.infer<typeof carrierSchema>>({
     resolver: zodResolver(carrierSchema),
   });
-
-  const {
-    register: registerBusType,
-    handleSubmit: handleSubmitBusType,
-    formState: { errors: busTypeErrors },
-    reset: resetBusType,
-    watch: watchBusType,
-  } = useForm<z.infer<typeof busTypeSchema>>({
-    resolver: zodResolver(busTypeSchema),
-    defaultValues: {
-      rows: 13,
-      seats_per_row: 4,
-    },
-  });
-
-  const watchedRows = watchBusType("rows");
-  const watchedSeatsPerRow = watchBusType("seats_per_row");
-  const calculatedTotalSeats = (watchedRows || 0) * (watchedSeatsPerRow || 0);
 
   useEffect(() => {
     loadData();
@@ -138,22 +123,32 @@ export default function Vettori() {
     }
   };
 
-  const onSubmitBusType = async (values: z.infer<typeof busTypeSchema>) => {
+  const onSubmitBusType = async (values: BusTypeFormValues) => {
     setIsSubmitting(true);
     try {
-      const totalSeats = values.rows * values.seats_per_row;
+      // Calcola posti totali: (righe normali × 4) + ultima fila
+      const normalRowSeats = (values.rows - 1) * values.seats_per_row;
+      const totalSeats = normalRowSeats + values.last_row_seats;
+      
       const { error } = await supabase.from("bus_types").insert({
         name: values.name,
         rows: values.rows,
         seats_per_row: values.seats_per_row,
         total_seats: totalSeats,
         description: values.description || null,
+        length_meters: values.length_meters,
+        has_driver_seat: values.has_driver_seat,
+        has_guide_seat: values.has_guide_seat,
+        has_front_door: values.has_front_door,
+        has_rear_door: values.has_rear_door,
+        has_wc: values.has_wc,
+        last_row_seats: values.last_row_seats,
+        layout_type: values.layout_type,
       });
 
       if (error) throw error;
 
       toast.success("Tipo bus aggiunto con successo");
-      resetBusType();
       setBusTypeDialogOpen(false);
       loadData();
     } catch (error) {
@@ -323,16 +318,26 @@ export default function Vettori() {
                       {busType.name}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary/10 px-3 py-1 rounded-full">
-                        <span className="text-sm font-bold text-primary">
-                          {busType.total_seats} posti
-                        </span>
-                      </div>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
+                        {busType.total_seats} posti
+                      </Badge>
+                      {busType.length_meters && (
+                        <Badge variant="outline">{busType.length_meters}m</Badge>
+                      )}
+                      {busType.has_wc && (
+                        <Badge variant="outline">🚻 WC</Badge>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {busType.rows} righe × {busType.seats_per_row} posti per riga
+                      {(busType.rows || 1) - 1} file × 4 + ultima fila da {busType.last_row_seats ?? 5}
+                    </div>
+                    <div className="flex flex-wrap gap-1 text-xs">
+                      {busType.has_driver_seat && <Badge variant="secondary">🚌 Autista</Badge>}
+                      {busType.has_guide_seat && <Badge variant="secondary">👤 Guida</Badge>}
+                      {busType.has_front_door && <Badge variant="secondary">🚪 Ant.</Badge>}
+                      {busType.has_rear_door && <Badge variant="secondary">🚪 Centr.</Badge>}
                     </div>
                     {busType.description && (
                       <p className="text-sm text-muted-foreground">{busType.description}</p>
@@ -429,83 +434,19 @@ export default function Vettori() {
 
       {/* Add Bus Type Dialog */}
       <Dialog open={busTypeDialogOpen} onOpenChange={setBusTypeDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Aggiungi Tipo Bus</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Bus className="h-5 w-5" />
+              Nuovo Tipo Bus
+            </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitBusType(onSubmitBusType)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="busTypeName">
-                Nome Tipo Bus <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="busTypeName"
-                {...registerBusType("name")}
-                placeholder="Es. GT Standard 52 posti"
-              />
-              {busTypeErrors.name && (
-                <p className="text-sm text-destructive">{busTypeErrors.name.message}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rows">Numero Righe</Label>
-                <Input
-                  id="rows"
-                  type="number"
-                  {...registerBusType("rows")}
-                  min={1}
-                />
-                {busTypeErrors.rows && (
-                  <p className="text-sm text-destructive">{busTypeErrors.rows.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="seats_per_row">Posti per Riga</Label>
-                <Input
-                  id="seats_per_row"
-                  type="number"
-                  {...registerBusType("seats_per_row")}
-                  min={1}
-                />
-                {busTypeErrors.seats_per_row && (
-                  <p className="text-sm text-destructive">{busTypeErrors.seats_per_row.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-muted p-3 rounded-lg text-center">
-              <p className="text-sm text-muted-foreground">Posti totali calcolati:</p>
-              <p className="text-2xl font-bold text-primary">{calculatedTotalSeats}</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="busTypeDescription">Descrizione (opzionale)</Label>
-              <Textarea
-                id="busTypeDescription"
-                {...registerBusType("description")}
-                placeholder="Es. Bus grande con corridoio centrale"
-                rows={2}
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setBusTypeDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Annulla
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Salvataggio..." : "Aggiungi Tipo Bus"}
-              </Button>
-            </div>
-          </form>
+          <BusTypeForm
+            onSubmit={onSubmitBusType}
+            onCancel={() => setBusTypeDialogOpen(false)}
+            isSubmitting={isSubmitting}
+          />
         </DialogContent>
       </Dialog>
 

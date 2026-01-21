@@ -216,45 +216,65 @@ export default function ScegliPosto() {
   const renderBusMap = () => {
     if (!busConfig) return null;
 
+    const lastRowSeats = 5; // Default per bus GT
+    const normalRowSeats = busConfig.total_seats - lastRowSeats;
+    const normalRows = Math.ceil(normalRowSeats / 4);
+    
     const rows = [];
     let seatNumber = 1;
 
-    for (let row = 0; row < busConfig.rows; row++) {
+    for (let row = 0; row < normalRows && seatNumber <= busConfig.total_seats - lastRowSeats; row++) {
       const leftSeats = [];
       const rightSeats = [];
 
-      // Left side (2 seats)
-      for (let col = 0; col < 2; col++) {
-        if (seatNumber <= busConfig.total_seats) {
-          leftSeats.push(renderSeat(seatNumber++));
-        }
+      for (let col = 0; col < 2 && seatNumber <= busConfig.total_seats - lastRowSeats; col++) {
+        leftSeats.push(renderSeat(seatNumber++));
       }
 
-      // Right side (2 seats)
-      for (let col = 0; col < 2; col++) {
-        if (seatNumber <= busConfig.total_seats) {
-          rightSeats.push(renderSeat(seatNumber++));
-        }
+      for (let col = 0; col < 2 && seatNumber <= busConfig.total_seats - lastRowSeats; col++) {
+        rightSeats.push(renderSeat(seatNumber++));
       }
 
       rows.push(
         <div key={row} className="flex items-center justify-center gap-2">
           <div className="flex gap-1">{leftSeats}</div>
-          <div className="w-6 sm:w-10" /> {/* Corridoio */}
+          <div className="w-6 sm:w-10" />
           <div className="flex gap-1">{rightSeats}</div>
         </div>
       );
     }
 
+    // Ultima fila (5 posti)
+    const lastRow = [];
+    for (let i = 0; i < lastRowSeats && seatNumber <= busConfig.total_seats; i++) {
+      lastRow.push(renderSeat(seatNumber++));
+    }
+
     return (
       <div className="flex flex-col gap-2">
-        {/* Area autista */}
-        <div className="flex items-center justify-center mb-4">
-          <div className="bg-primary/20 text-primary px-6 py-2 rounded-lg text-sm font-medium">
-            🚌 Autista
+        {/* Area autista e guida */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex flex-col items-center">
+            <span>🚌</span>
+            <span className="text-[10px]">Autista</span>
+          </div>
+          <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg text-sm font-medium border border-amber-200 flex flex-col items-center">
+            <span>🚪</span>
+            <span className="text-[10px]">Ingresso</span>
+          </div>
+          <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium border border-blue-200 flex flex-col items-center">
+            <span>👤</span>
+            <span className="text-[10px]">Guida</span>
           </div>
         </div>
+        <div className="border-t border-dashed border-muted-foreground/30 my-2" />
         {rows}
+        <div className="border-t border-dashed border-muted-foreground/30 my-2" />
+        {/* Ultima fila */}
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">Ultima fila ({lastRowSeats} posti)</span>
+          <div className="flex gap-1 justify-center">{lastRow}</div>
+        </div>
       </div>
     );
   };
