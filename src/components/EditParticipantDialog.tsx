@@ -644,7 +644,7 @@ export default function EditParticipantDialog({
                         value={discountAmount}
                         onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
                         placeholder={discountType === "percentage" ? "Es: 10" : "Es: 50"}
-                        className="w-24"
+                        className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     )}
                   </div>
@@ -739,6 +739,7 @@ export default function EditParticipantDialog({
                     placeholder="0.00"
                     value={newPaymentAmount}
                     onChange={(e) => setNewPaymentAmount(e.target.value)}
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
                 
