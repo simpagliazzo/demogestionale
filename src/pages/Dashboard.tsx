@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CalendarDays, Users, DollarSign, MapPin, Search, FileText } from "lucide-react";
-import { format } from "date-fns";
+import { format, isSameMonth, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import { TripCalendar } from "@/components/TripCalendar";
 import { NotificationsCard } from "@/components/NotificationsCard";
@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [allTrips, setAllTrips] = useState<AllTrip[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
   useEffect(() => {
     loadDashboardData();
@@ -261,48 +262,62 @@ export default function Dashboard() {
         <NotificationsCard />
       </div>
 
-      <TripCalendar trips={allTrips} />
+      <TripCalendar trips={allTrips} onMonthChange={setSelectedMonth} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Prossime Partenze</CardTitle>
+          <CardTitle>Viaggi di {format(selectedMonth, "MMMM yyyy", { locale: it })}</CardTitle>
           <CardDescription>
-            Viaggi in programma nei prossimi mesi
+            Viaggi con partenza nel mese selezionato
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {upcomingTrips.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              Nessun viaggio in programma
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {upcomingTrips.map((trip) => (
-                <div
-                  key={trip.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/viaggi/${trip.id}`)}
-                >
-                  <div className="space-y-1">
-                    <h4 className="font-semibold">{trip.title}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {trip.destination}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {format(new Date(trip.departure_date), "dd MMM yyyy", {
-                        locale: it,
-                      })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {trip.participantCount} partecipanti
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {(() => {
+            // Filtra i viaggi per il mese selezionato
+            const monthTrips = allTrips.filter(trip => 
+              isSameMonth(parseISO(trip.departure_date), selectedMonth)
+            );
+            
+            if (monthTrips.length === 0) {
+              return (
+                <p className="text-center text-muted-foreground py-8">
+                  Nessun viaggio in partenza a {format(selectedMonth, "MMMM yyyy", { locale: it })}
+                </p>
+              );
+            }
+            
+            return (
+              <div className="space-y-4">
+                {monthTrips.map((trip) => {
+                  const participantCount = upcomingTrips.find(u => u.id === trip.id)?.participantCount || 0;
+                  return (
+                    <div
+                      key={trip.id}
+                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/viaggi/${trip.id}`)}
+                    >
+                      <div className="space-y-1">
+                        <h4 className="font-semibold">{trip.title}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {trip.destination}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">
+                          {format(parseISO(trip.departure_date), "dd MMM yyyy", {
+                            locale: it,
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {participantCount} partecipanti
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
