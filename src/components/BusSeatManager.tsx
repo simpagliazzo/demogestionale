@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bus, Users, X, Settings } from "lucide-react";
+import { Bus, Users, X, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import BusSeatMap, { BusLayoutConfig } from "./bus/BusSeatMap";
@@ -233,6 +233,37 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seat-assignments", busConfig?.id] });
       toast.success("Assegnazione rimossa");
+    },
+  });
+
+  // Delete entire bus configuration
+  const deleteBusConfig = useMutation({
+    mutationFn: async () => {
+      if (!busConfig?.id) return;
+      
+      // Prima elimina tutte le assegnazioni posti
+      const { error: assignError } = await supabase
+        .from("bus_seat_assignments")
+        .delete()
+        .eq("bus_config_id", busConfig.id);
+      
+      if (assignError) throw assignError;
+      
+      // Poi elimina la configurazione
+      const { error } = await supabase
+        .from("bus_configurations")
+        .delete()
+        .eq("id", busConfig.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bus-config", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["seat-assignments"] });
+      toast.success("Configurazione bus eliminata");
+    },
+    onError: () => {
+      toast.error("Errore nell'eliminazione della configurazione");
     },
   });
 
@@ -483,18 +514,38 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
         {/* Bus Map */}
         <Card className={compact ? "" : "lg:col-span-2"}>
           <CardHeader className={compact ? "pb-2" : ""}>
-            <CardTitle className={cn("flex items-center gap-2", compact ? "text-sm" : "")}>
-              <Bus className={compact ? "h-4 w-4" : "h-5 w-5"} />
-              Mappa Posti
-              <Badge variant="secondary" className="ml-2">
-                {busConfig.total_seats} posti
-              </Badge>
-              {busConfig.has_wc && (
-                <Badge variant="outline" className="ml-1">
-                  🚻 WC
+            <div className="flex items-center justify-between">
+              <CardTitle className={cn("flex items-center gap-2", compact ? "text-sm" : "")}>
+                <Bus className={compact ? "h-4 w-4" : "h-5 w-5"} />
+                Mappa Posti
+                <Badge variant="secondary" className="ml-2">
+                  {busConfig.total_seats} posti
                 </Badge>
-              )}
-            </CardTitle>
+                {busConfig.has_wc && (
+                  <Badge variant="outline" className="ml-1">
+                    🚻 WC
+                  </Badge>
+                )}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  const assignedCount = seatAssignments.length;
+                  const message = assignedCount > 0
+                    ? `Eliminare la configurazione bus? Verranno rimossi anche ${assignedCount} posti assegnati.`
+                    : "Eliminare la configurazione bus?";
+                  if (confirm(message)) {
+                    deleteBusConfig.mutate();
+                  }
+                }}
+                disabled={deleteBusConfig.isPending}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {compact ? "" : "Elimina configurazione"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="flex justify-center">
             <div className={cn(
