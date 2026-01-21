@@ -42,7 +42,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 export default function Pagamenti() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: payments = [], isLoading } = useQuery({
+  const { data: payments = [], isLoading, error: queryError } = useQuery({
     queryKey: ["all-payments"],
     queryFn: async () => {
       // First get all payments with participant info
@@ -56,40 +56,64 @@ export default function Pagamenti() {
           payment_method,
           notes,
           paid_by_participant_id,
-          participant:participants(
-            full_name,
-            trip:trips(id, title, destination, trip_type, departure_date)
-          )
+          participant_id
         `)
         .order("payment_date", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching payments:", error);
+        throw error;
+      }
 
-      // Fetch paid_by names for payments that have paid_by_participant_id
-      const paidByIds = [...new Set(paymentsData?.filter(p => p.paid_by_participant_id).map(p => p.paid_by_participant_id) || [])];
+      console.log("Payments fetched:", paymentsData?.length);
+
+      // Get all unique participant IDs
+      const participantIds = [...new Set([
+        ...(paymentsData?.map(p => p.participant_id) || []),
+        ...(paymentsData?.filter(p => p.paid_by_participant_id).map(p => p.paid_by_participant_id) || [])
+      ])].filter(Boolean);
+
+      // Fetch participant details with trip info
+      let participantsMap: Record<string, { full_name: string; trip: { id: string; title: string; destination: string; trip_type: string; departure_date: string } | null }> = {};
       
-      let paidByMap: Record<string, string> = {};
-      if (paidByIds.length > 0) {
-        const { data: paidByData } = await supabase
+      if (participantIds.length > 0) {
+        const { data: participantsData, error: participantsError } = await supabase
           .from("participants")
-          .select("id, full_name")
-          .in("id", paidByIds);
+          .select(`
+            id,
+            full_name,
+            trip:trips(id, title, destination, trip_type, departure_date)
+          `)
+          .in("id", participantIds);
+
+        if (participantsError) {
+          console.error("Error fetching participants:", participantsError);
+        }
         
-        paidByMap = (paidByData || []).reduce((acc, p) => {
-          acc[p.id] = p.full_name;
+        participantsMap = (participantsData || []).reduce((acc, p) => {
+          acc[p.id] = { 
+            full_name: p.full_name, 
+            trip: p.trip as { id: string; title: string; destination: string; trip_type: string; departure_date: string } | null
+          };
           return acc;
-        }, {} as Record<string, string>);
+        }, {} as Record<string, { full_name: string; trip: { id: string; title: string; destination: string; trip_type: string; departure_date: string } | null }>);
       }
 
       // Combine the data
       return (paymentsData || []).map(payment => ({
         ...payment,
-        paid_by_participant: payment.paid_by_participant_id 
-          ? { full_name: paidByMap[payment.paid_by_participant_id] || null }
+        participant: participantsMap[payment.participant_id] || null,
+        paid_by_participant: payment.paid_by_participant_id && participantsMap[payment.paid_by_participant_id]
+          ? { full_name: participantsMap[payment.paid_by_participant_id].full_name }
           : null
       })) as unknown as PaymentWithDetails[];
     },
   });
+
+  // Log any query errors
+  if (queryError) {
+    console.error("Query error:", queryError);
+  }
 
   const filteredPayments = payments.filter((payment) => {
     const searchLower = searchTerm.toLowerCase();
