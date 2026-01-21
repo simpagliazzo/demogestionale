@@ -33,56 +33,46 @@ interface BusTypeFormProps {
   defaultValues?: Partial<BusTypeFormValues>;
 }
 
-// Preset comuni per bus GT
+// Preset completi da Bonaventura Express
 const BUS_PRESETS = [
-  { 
-    label: "GT Standard 12m (49+1+1)", 
-    lengthMeters: 12, 
-    rows: 11, 
-    lastRowSeats: 5, 
-    hasWc: false,
-    layoutType: "gt_standard"
-  },
-  { 
-    label: "GT Grande 12m (53+1+1)", 
-    lengthMeters: 12, 
-    rows: 12, 
-    lastRowSeats: 5, 
-    hasWc: false,
-    layoutType: "gt_standard"
-  },
-  { 
-    label: "GT Large 13m con WC (50+1+1)", 
-    lengthMeters: 13.5, 
-    rows: 11, 
-    lastRowSeats: 5, 
-    hasWc: true,
-    layoutType: "gt_large"
-  },
-  { 
-    label: "GT 15m (57+1+1)", 
-    lengthMeters: 15, 
-    rows: 13, 
-    lastRowSeats: 5, 
-    hasWc: true,
-    layoutType: "gt_large"
-  },
-  { 
-    label: "Minibus 8m (28+1)", 
-    lengthMeters: 8, 
-    rows: 6, 
-    lastRowSeats: 4, 
-    hasWc: false,
-    layoutType: "minibus"
-  },
-  { 
-    label: "Minibus 9m (35+1)", 
-    lengthMeters: 9, 
-    rows: 8, 
-    lastRowSeats: 3, 
-    hasWc: false,
-    layoutType: "minibus"
-  },
+  // MINIBUS
+  { label: "Minibus 19 posti", lengthMeters: 6.5, rows: 5, lastRowSeats: 3, hasWc: false, layoutType: "minibus", hasRearDoor: false, hasGuideSeat: false },
+  { label: "Minibus 20 posti", lengthMeters: 7.0, rows: 5, lastRowSeats: 4, hasWc: false, layoutType: "minibus", hasRearDoor: false },
+  { label: "Minibus 24 posti", lengthMeters: 7.5, rows: 6, lastRowSeats: 4, hasWc: false, layoutType: "minibus", hasRearDoor: false },
+  { label: "Minibus 28 posti", lengthMeters: 8.0, rows: 7, lastRowSeats: 4, hasWc: false, layoutType: "minibus", hasRearDoor: false },
+  
+  // MIDI
+  { label: "Midicoach 35 posti", lengthMeters: 9.0, rows: 8, lastRowSeats: 3, hasWc: false, layoutType: "midi", hasRearDoor: false },
+  { label: "Midicoach 39 posti", lengthMeters: 9.5, rows: 9, lastRowSeats: 3, hasWc: false, layoutType: "midi" },
+  
+  // GT MEDIUM
+  { label: "GT Medium 44 posti", lengthMeters: 10.0, rows: 10, lastRowSeats: 4, hasWc: false, layoutType: "gt_medium" },
+  { label: "GT Medium 45 posti", lengthMeters: 10.5, rows: 11, lastRowSeats: 5, hasWc: false, layoutType: "gt_medium" },
+  
+  // GT STANDARD
+  { label: "GT 49 posti", lengthMeters: 12.0, rows: 11, lastRowSeats: 5, hasWc: false, layoutType: "gt_standard" },
+  { label: "GT 50 posti VIP (WC)", lengthMeters: 12.0, rows: 11, lastRowSeats: 5, hasWc: true, layoutType: "gt_standard" },
+  { label: "GT 52 posti", lengthMeters: 12.0, rows: 12, lastRowSeats: 4, hasWc: false, layoutType: "gt_standard" },
+  { label: "GT 53 posti", lengthMeters: 12.0, rows: 12, lastRowSeats: 5, hasWc: false, layoutType: "gt_standard" },
+  { label: "GT 54 posti", lengthMeters: 12.0, rows: 13, lastRowSeats: 6, hasWc: false, layoutType: "gt_standard" },
+  { label: "GT 55 posti VIP (WC)", lengthMeters: 12.0, rows: 12, lastRowSeats: 5, hasWc: true, layoutType: "gt_standard" },
+  { label: "GT 56 posti", lengthMeters: 12.5, rows: 13, lastRowSeats: 4, hasWc: false, layoutType: "gt_standard" },
+  
+  // GT LARGE
+  { label: "GT 57 posti", lengthMeters: 13.0, rows: 13, lastRowSeats: 5, hasWc: false, layoutType: "gt_large" },
+  { label: "GT 58 posti", lengthMeters: 13.5, rows: 14, lastRowSeats: 6, hasWc: false, layoutType: "gt_large" },
+  { label: "GT 59 posti VIP (WC)", lengthMeters: 13.5, rows: 13, lastRowSeats: 5, hasWc: true, layoutType: "gt_large" },
+  
+  // GT EXTRA LARGE
+  { label: "GT 61 posti", lengthMeters: 14.0, rows: 14, lastRowSeats: 5, hasWc: false, layoutType: "gt_xlarge" },
+  { label: "GT 63 posti", lengthMeters: 14.0, rows: 15, lastRowSeats: 5, hasWc: false, layoutType: "gt_xlarge" },
+  { label: "GT 64 posti VIP (WC)", lengthMeters: 14.5, rows: 14, lastRowSeats: 4, hasWc: true, layoutType: "gt_xlarge" },
+  { label: "GT 65 posti", lengthMeters: 15.0, rows: 15, lastRowSeats: 5, hasWc: false, layoutType: "gt_xlarge" },
+  
+  // BIPIANO
+  { label: "Bipiano 78 posti (WC)", lengthMeters: 13.5, rows: 18, lastRowSeats: 6, hasWc: true, layoutType: "double_decker" },
+  { label: "Bipiano 79 posti (WC)", lengthMeters: 14.0, rows: 19, lastRowSeats: 5, hasWc: true, layoutType: "double_decker" },
+  { label: "Bipiano 80 posti (WC)", lengthMeters: 14.0, rows: 19, lastRowSeats: 4, hasWc: true, layoutType: "double_decker" },
 ];
 
 export default function BusTypeForm({ onSubmit, onCancel, isSubmitting, defaultValues }: BusTypeFormProps) {
@@ -126,7 +116,8 @@ export default function BusTypeForm({ onSubmit, onCancel, isSubmitting, defaultV
     setValue("last_row_seats", preset.lastRowSeats);
     setValue("has_wc", preset.hasWc);
     setValue("layout_type", preset.layoutType);
-    setValue("has_rear_door", preset.layoutType !== "minibus");
+    setValue("has_rear_door", preset.hasRearDoor !== false);
+    setValue("has_guide_seat", preset.hasGuideSeat !== false);
   };
 
   return (

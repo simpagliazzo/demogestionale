@@ -9,7 +9,7 @@ export interface BusLayoutConfig {
   hasFrontDoor?: boolean;
   hasRearDoor?: boolean;
   hasWc?: boolean;
-  lastRowSeats?: number; // 4 o 5
+  lastRowSeats?: number; // 3-6
   layoutType?: string;
 }
 
@@ -38,7 +38,6 @@ export default function BusSeatMap({
   onSeatClick,
 }: BusSeatMapProps) {
   const {
-    rows,
     totalSeats,
     hasDriverSeat = true,
     hasGuideSeat = true,
@@ -53,10 +52,15 @@ export default function BusSeatMap({
     return seatAssignments.find((a) => a.seat_number === seatNumber);
   };
 
-  const seatSize = compact ? "w-9 h-9 text-[10px]" : "w-11 h-11 text-xs";
-  const specialSeatSize = compact ? "w-9 h-9 text-[9px]" : "w-11 h-11 text-[10px]";
+  // Dimensioni sedili più realistiche
+  const seatSize = compact 
+    ? "w-8 h-7 text-[9px]" 
+    : "w-10 h-8 text-[11px]";
+  const lastRowSeatSize = compact 
+    ? "w-7 h-7 text-[8px]" 
+    : "w-9 h-8 text-[10px]";
 
-  const renderSeat = (seatNumber: number, isSpecial = false) => {
+  const renderSeat = (seatNumber: number, isLastRow = false) => {
     const assignment = getSeatAssignment(seatNumber);
     const isOccupied = !!assignment;
     const isSelected = selectedParticipant !== "";
@@ -67,13 +71,20 @@ export default function BusSeatMap({
         onClick={() => onSeatClick(seatNumber, assignment)}
         disabled={!isOccupied && !isSelected}
         className={cn(
-          "rounded-lg font-semibold transition-all flex items-center justify-center shadow-sm border",
-          isSpecial ? specialSeatSize : seatSize,
+          "rounded-md font-bold transition-all flex items-center justify-center border-2 relative",
+          isLastRow ? lastRowSeatSize : seatSize,
           isOccupied
-            ? "bg-red-500 text-white hover:bg-red-600 cursor-pointer border-red-600"
+            ? "bg-red-500 text-white border-red-600 hover:bg-red-600 cursor-pointer shadow-md"
             : isSelected
-            ? "bg-green-500 text-white hover:bg-green-600 cursor-pointer border-green-600"
-            : "bg-muted text-muted-foreground cursor-not-allowed border-muted-foreground/20"
+            ? "bg-green-500 text-white border-green-600 hover:bg-green-600 cursor-pointer shadow-md"
+            : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed",
+          // Effetto sedile con bordo superiore arrotondato
+          "before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[60%] before:h-[3px] before:rounded-t-full",
+          isOccupied 
+            ? "before:bg-red-700" 
+            : isSelected 
+            ? "before:bg-green-700" 
+            : "before:bg-slate-300"
         )}
         title={isOccupied ? `${seatNumber}: ${assignment.participant?.full_name}` : `Posto ${seatNumber}`}
       >
@@ -82,156 +93,254 @@ export default function BusSeatMap({
     );
   };
 
-  // Calcola quante file normali (4 posti) ci sono
+  // Calcola layout
   const seatsInNormalRows = totalSeats - lastRowSeats;
-  const normalRows = Math.ceil(seatsInNormalRows / 4);
+  const normalRowCount = Math.ceil(seatsInNormalRows / 4);
   
-  // Genera la mappa posti
+  // Posizione della porta centrale (circa a metà bus)
+  const centralDoorPosition = Math.floor(normalRowCount * 0.55);
+  
+  // Posizione WC (in fondo, prima dell'ultima fila)
+  const wcPosition = normalRowCount - 1;
+
+  // Genera le righe
   const busRows = [];
   let seatNumber = 1;
 
-  // Righe normali (2+2)
-  for (let row = 0; row < normalRows && seatNumber <= totalSeats - lastRowSeats; row++) {
+  for (let row = 0; row < normalRowCount && seatNumber <= seatsInNormalRows; row++) {
     const leftSeats = [];
     const rightSeats = [];
 
-    // Lato sinistro (2 posti - lato finestrino + corridoio)
-    for (let col = 0; col < 2 && seatNumber <= totalSeats - lastRowSeats; col++) {
+    // Sinistra (2 posti: finestrino + corridoio)
+    for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
       leftSeats.push(renderSeat(seatNumber++));
     }
 
-    // Lato destro (2 posti - corridoio + finestrino)
-    for (let col = 0; col < 2 && seatNumber <= totalSeats - lastRowSeats; col++) {
+    // Destra (2 posti: corridoio + finestrino)
+    for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
       rightSeats.push(renderSeat(seatNumber++));
     }
 
-    // Porta centrale/posteriore? (circa a metà bus)
-    const isRearDoorRow = hasRearDoor && row === Math.floor(normalRows / 2);
+    const isCentralDoorRow = hasRearDoor && row === centralDoorPosition;
+    const isWcRow = hasWc && row === wcPosition;
 
     busRows.push(
-      <div key={`row-${row}`} className="flex items-center justify-center">
-        <div className="flex gap-1">{leftSeats}</div>
+      <div key={`row-${row}`} className="flex items-center justify-center relative">
+        {/* Finestrino sinistro */}
         <div className={cn(
-          "flex items-center justify-center",
-          compact ? "w-6" : "w-10"
+          "absolute left-0 h-full bg-gradient-to-r from-sky-100 to-transparent",
+          compact ? "w-1" : "w-1.5"
+        )} />
+        
+        {/* Sedili sinistri */}
+        <div className="flex gap-0.5">{leftSeats}</div>
+        
+        {/* Corridoio centrale */}
+        <div className={cn(
+          "flex items-center justify-center relative",
+          compact ? "w-5" : "w-8"
         )}>
-          {isRearDoorRow && (
+          {isCentralDoorRow && (
             <div className={cn(
-              "bg-amber-100 text-amber-700 rounded text-[8px] px-1 py-0.5 font-medium",
-              compact ? "text-[7px]" : ""
+              "absolute flex flex-col items-center",
+              compact ? "-right-2" : "-right-3"
             )}>
-              🚪
+              <div className={cn(
+                "bg-amber-400 rounded-sm flex items-center justify-center",
+                compact ? "w-4 h-6 text-[8px]" : "w-5 h-8 text-[10px]"
+              )}>
+                🚪
+              </div>
+            </div>
+          )}
+          {isWcRow && hasWc && (
+            <div className={cn(
+              "absolute flex flex-col items-center",
+              compact ? "-left-2" : "-left-3"
+            )}>
+              <div className={cn(
+                "bg-purple-400 text-white rounded-sm flex items-center justify-center",
+                compact ? "w-4 h-6 text-[8px]" : "w-5 h-8 text-[10px]"
+              )}>
+                🚻
+              </div>
             </div>
           )}
         </div>
-        <div className="flex gap-1">{rightSeats}</div>
+        
+        {/* Sedili destri */}
+        <div className="flex gap-0.5">{rightSeats}</div>
+        
+        {/* Finestrino destro */}
+        <div className={cn(
+          "absolute right-0 h-full bg-gradient-to-l from-sky-100 to-transparent",
+          compact ? "w-1" : "w-1.5"
+        )} />
       </div>
     );
   }
 
-  // Ultima fila (4 o 5 posti)
+  // Ultima fila
   const lastRowContent = [];
   for (let i = 0; i < lastRowSeats && seatNumber <= totalSeats; i++) {
     lastRowContent.push(renderSeat(seatNumber++, true));
   }
 
+  // Larghezza dinamica del bus basata sul tipo
+  const busWidth = compact ? "w-[200px]" : "w-[260px]";
+
   return (
-    <div className="flex flex-col gap-1">
-      {/* Area frontale: Autista + Guida + Porta anteriore */}
+    <div className={cn(
+      "flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 rounded-xl shadow-lg overflow-hidden border-2 border-slate-300",
+      busWidth
+    )}>
+      {/* FRONTALE BUS - Muso arrotondato */}
       <div className={cn(
-        "flex items-stretch justify-center mb-3 gap-1",
-        compact ? "mb-2" : ""
+        "bg-slate-700 rounded-t-3xl flex items-center justify-center gap-2 relative",
+        compact ? "py-2 px-3" : "py-3 px-4"
       )}>
-        {/* Autista (sinistra) */}
-        {hasDriverSeat && (
-          <div className={cn(
-            "flex flex-col items-center justify-center bg-slate-700 text-white rounded-lg",
-            compact ? "px-2 py-1" : "px-3 py-2"
-          )}>
-            <span className={compact ? "text-sm" : "text-base"}>🚌</span>
-            <span className={cn("font-medium", compact ? "text-[8px]" : "text-[10px]")}>
-              Autista
-            </span>
-          </div>
-        )}
+        {/* Parabrezza */}
+        <div className={cn(
+          "absolute top-0 left-1/2 -translate-x-1/2 bg-sky-200 rounded-t-2xl",
+          compact ? "w-[70%] h-[4px]" : "w-[70%] h-[6px]"
+        )} />
+        
+        <div className="flex items-center gap-2 w-full justify-between">
+          {/* Autista */}
+          {hasDriverSeat && (
+            <div className={cn(
+              "flex flex-col items-center justify-center bg-slate-600 rounded-md",
+              compact ? "p-1" : "p-1.5"
+            )}>
+              <span className={compact ? "text-xs" : "text-sm"}>🚌</span>
+              <span className={cn("text-white font-medium", compact ? "text-[6px]" : "text-[8px]")}>
+                AUTISTA
+              </span>
+            </div>
+          )}
 
-        {/* Porta anteriore (centro) */}
-        {hasFrontDoor && (
-          <div className={cn(
-            "flex flex-col items-center justify-center bg-amber-50 text-amber-700 rounded-lg border border-amber-200",
-            compact ? "px-3 py-1" : "px-4 py-2"
-          )}>
-            <span className={compact ? "text-base" : "text-lg"}>🚪</span>
-            <span className={cn("font-medium", compact ? "text-[8px]" : "text-[10px]")}>
-              Ingresso
-            </span>
-          </div>
-        )}
+          {/* Porta anteriore */}
+          {hasFrontDoor && (
+            <div className={cn(
+              "flex flex-col items-center justify-center bg-amber-400 rounded-md",
+              compact ? "px-2 py-1" : "px-3 py-1.5"
+            )}>
+              <span className={compact ? "text-sm" : "text-base"}>🚪</span>
+              <span className={cn("font-bold text-slate-800", compact ? "text-[6px]" : "text-[8px]")}>
+                INGRESSO
+              </span>
+            </div>
+          )}
 
-        {/* Guida/Accompagnatore (destra) */}
-        {hasGuideSeat && (
-          <div className={cn(
-            "flex flex-col items-center justify-center bg-blue-100 text-blue-700 rounded-lg border border-blue-200",
-            compact ? "px-2 py-1" : "px-3 py-2"
-          )}>
-            <span className={compact ? "text-sm" : "text-base"}>👤</span>
-            <span className={cn("font-medium", compact ? "text-[8px]" : "text-[10px]")}>
-              Guida
-            </span>
-          </div>
-        )}
+          {/* Guida */}
+          {hasGuideSeat && (
+            <div className={cn(
+              "flex flex-col items-center justify-center bg-blue-500 rounded-md",
+              compact ? "p-1" : "p-1.5"
+            )}>
+              <span className={compact ? "text-xs" : "text-sm"}>👤</span>
+              <span className={cn("text-white font-medium", compact ? "text-[6px]" : "text-[8px]")}>
+                GUIDA
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Separatore */}
+      {/* CORPO BUS */}
       <div className={cn(
-        "border-t border-dashed border-muted-foreground/30",
-        compact ? "my-1" : "my-2"
-      )} />
-
-      {/* Righe passeggeri */}
-      <div className="flex flex-col gap-1">
+        "flex flex-col bg-white border-x-4 border-slate-300 relative",
+        compact ? "gap-0.5 py-2" : "gap-1 py-3"
+      )}>
+        {/* Indicatori numeri fila */}
+        <div className={cn(
+          "absolute left-0 top-0 bottom-0 flex flex-col justify-around items-center text-slate-400",
+          compact ? "text-[7px] w-3" : "text-[8px] w-4"
+        )}>
+          {busRows.map((_, i) => (
+            <span key={i}>{i + 1}</span>
+          ))}
+        </div>
+        
         {busRows}
       </div>
 
-      {/* Separatore prima dell'ultima fila */}
+      {/* ULTIMA FILA - Banco posteriore */}
       <div className={cn(
-        "border-t border-dashed border-muted-foreground/30",
-        compact ? "my-1" : "my-2"
-      )} />
-
-      {/* Ultima fila (banco da 4 o 5) */}
-      <div className="flex flex-col items-center gap-1">
+        "bg-slate-200 flex flex-col items-center relative",
+        compact ? "py-2" : "py-3"
+      )}>
         <div className={cn(
-          "text-muted-foreground font-medium",
-          compact ? "text-[9px]" : "text-[10px]"
+          "text-slate-500 font-semibold mb-1",
+          compact ? "text-[8px]" : "text-[10px]"
         )}>
-          Ultima fila ({lastRowSeats} posti)
+          ULTIMA FILA ({lastRowSeats} posti)
         </div>
-        <div className="flex gap-1 justify-center">
+        <div className="flex gap-0.5 justify-center">
           {lastRowContent}
         </div>
       </div>
 
-      {/* WC se presente */}
-      {hasWc && (
-        <div className="flex justify-end mt-2">
-          <div className={cn(
-            "flex items-center gap-1 bg-purple-50 text-purple-700 rounded-lg border border-purple-200",
-            compact ? "px-2 py-1 text-[9px]" : "px-3 py-1.5 text-xs"
-          )}>
-            <span>🚻</span>
-            <span className="font-medium">WC</span>
-          </div>
-        </div>
-      )}
-
-      {/* Indicatori lati */}
+      {/* RETRO BUS */}
       <div className={cn(
-        "flex justify-between text-muted-foreground mt-2",
-        compact ? "text-[9px] px-1" : "text-[10px] px-2"
+        "bg-slate-700 rounded-b-lg flex items-center justify-center",
+        compact ? "py-1.5" : "py-2"
       )}>
-        <span>← Finestrino sx</span>
-        <span>Finestrino dx →</span>
+        <div className={cn(
+          "flex items-center gap-2 text-white",
+          compact ? "text-[7px]" : "text-[9px]"
+        )}>
+          <span>🔴</span>
+          <span className="font-medium">RETRO</span>
+          <span>🔴</span>
+        </div>
+      </div>
+
+      {/* LEGENDA */}
+      <div className={cn(
+        "bg-white border-t border-slate-200 flex items-center justify-center gap-3 flex-wrap",
+        compact ? "p-1.5 text-[7px]" : "p-2 text-[9px]"
+      )}>
+        <div className="flex items-center gap-1">
+          <div className={cn(
+            "rounded-sm bg-slate-100 border border-slate-200",
+            compact ? "w-3 h-3" : "w-4 h-4"
+          )} />
+          <span className="text-slate-500">Libero</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className={cn(
+            "rounded-sm bg-green-500",
+            compact ? "w-3 h-3" : "w-4 h-4"
+          )} />
+          <span className="text-slate-500">Selezionabile</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className={cn(
+            "rounded-sm bg-red-500",
+            compact ? "w-3 h-3" : "w-4 h-4"
+          )} />
+          <span className="text-slate-500">Occupato</span>
+        </div>
+        {hasWc && (
+          <div className="flex items-center gap-1">
+            <span>🚻</span>
+            <span className="text-slate-500">WC</span>
+          </div>
+        )}
+      </div>
+
+      {/* Info totale */}
+      <div className={cn(
+        "bg-slate-50 text-center border-t border-slate-200 text-slate-600 font-medium",
+        compact ? "py-1 text-[8px]" : "py-1.5 text-[10px]"
+      )}>
+        Totale: {totalSeats} posti passeggeri
+        {layoutType && layoutType !== 'gt_standard' && (
+          <span className="ml-2 text-slate-400">
+            ({layoutType.replace(/_/g, ' ').toUpperCase()})
+          </span>
+        )}
       </div>
     </div>
   );
