@@ -282,7 +282,15 @@ export type Database = {
           bus_type_id: string | null
           carrier_id: string | null
           created_at: string
+          has_driver_seat: boolean | null
+          has_front_door: boolean | null
+          has_guide_seat: boolean | null
+          has_rear_door: boolean | null
+          has_wc: boolean | null
           id: string
+          last_row_seats: number | null
+          layout_type: string | null
+          length_meters: number | null
           rows: number
           seats_per_row: number
           total_seats: number
@@ -292,7 +300,15 @@ export type Database = {
           bus_type_id?: string | null
           carrier_id?: string | null
           created_at?: string
+          has_driver_seat?: boolean | null
+          has_front_door?: boolean | null
+          has_guide_seat?: boolean | null
+          has_rear_door?: boolean | null
+          has_wc?: boolean | null
           id?: string
+          last_row_seats?: number | null
+          layout_type?: string | null
+          length_meters?: number | null
           rows: number
           seats_per_row: number
           total_seats: number
@@ -302,7 +318,15 @@ export type Database = {
           bus_type_id?: string | null
           carrier_id?: string | null
           created_at?: string
+          has_driver_seat?: boolean | null
+          has_front_door?: boolean | null
+          has_guide_seat?: boolean | null
+          has_rear_door?: boolean | null
+          has_wc?: boolean | null
           id?: string
+          last_row_seats?: number | null
+          layout_type?: string | null
+          length_meters?: number | null
           rows?: number
           seats_per_row?: number
           total_seats?: number
@@ -420,7 +444,15 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          has_driver_seat: boolean | null
+          has_front_door: boolean | null
+          has_guide_seat: boolean | null
+          has_rear_door: boolean | null
+          has_wc: boolean | null
           id: string
+          last_row_seats: number | null
+          layout_type: string | null
+          length_meters: number | null
           name: string
           rows: number
           seats_per_row: number
@@ -429,7 +461,15 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          has_driver_seat?: boolean | null
+          has_front_door?: boolean | null
+          has_guide_seat?: boolean | null
+          has_rear_door?: boolean | null
+          has_wc?: boolean | null
           id?: string
+          last_row_seats?: number | null
+          layout_type?: string | null
+          length_meters?: number | null
           name: string
           rows: number
           seats_per_row: number
@@ -438,7 +478,15 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          has_driver_seat?: boolean | null
+          has_front_door?: boolean | null
+          has_guide_seat?: boolean | null
+          has_rear_door?: boolean | null
+          has_wc?: boolean | null
           id?: string
+          last_row_seats?: number | null
+          layout_type?: string | null
+          length_meters?: number | null
           name?: string
           rows?: number
           seats_per_row?: number

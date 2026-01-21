@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Bus, Users, X, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import BusSeatMap, { BusLayoutConfig } from "./bus/BusSeatMap";
 
 interface BusType {
   id: string;
@@ -17,6 +18,14 @@ interface BusType {
   rows: number;
   seats_per_row: number;
   total_seats: number;
+  length_meters?: number;
+  has_driver_seat?: boolean;
+  has_guide_seat?: boolean;
+  has_front_door?: boolean;
+  has_rear_door?: boolean;
+  has_wc?: boolean;
+  last_row_seats?: number;
+  layout_type?: string;
 }
 
 interface BusConfig {
@@ -27,6 +36,14 @@ interface BusConfig {
   total_seats: number;
   carrier_id: string | null;
   bus_type_id: string | null;
+  length_meters?: number;
+  has_driver_seat?: boolean;
+  has_guide_seat?: boolean;
+  has_front_door?: boolean;
+  has_rear_door?: boolean;
+  has_wc?: boolean;
+  last_row_seats?: number;
+  layout_type?: string;
 }
 
 interface SeatAssignment {
@@ -53,8 +70,8 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
   const [configMode, setConfigMode] = useState<"preset" | "manual">("preset");
   const [selectedBusType, setSelectedBusType] = useState<string>("");
-  const [manualRows, setManualRows] = useState(13);
-  const [manualSeatsPerRow, setManualSeatsPerRow] = useState(4);
+  const [manualRows, setManualRows] = useState(11);
+  const [manualLastRowSeats, setManualLastRowSeats] = useState(5);
   const queryClient = useQueryClient();
 
   // Fetch bus types
@@ -124,30 +141,49 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
   // Create bus config
   const createBusConfig = useMutation({
     mutationFn: async () => {
-      let rows: number, seatsPerRow: number, totalSeats: number, busTypeId: string | null = null;
+      let configData: Partial<BusConfig>;
 
       if (configMode === "preset" && selectedBusType) {
         const busType = busTypes.find((bt) => bt.id === selectedBusType);
         if (!busType) throw new Error("Tipo bus non trovato");
-        rows = busType.rows;
-        seatsPerRow = busType.seats_per_row;
-        totalSeats = busType.total_seats;
-        busTypeId = busType.id;
+        
+        configData = {
+          trip_id: tripId,
+          rows: busType.rows,
+          seats_per_row: busType.seats_per_row,
+          total_seats: busType.total_seats,
+          bus_type_id: busType.id,
+          length_meters: busType.length_meters,
+          has_driver_seat: busType.has_driver_seat ?? true,
+          has_guide_seat: busType.has_guide_seat ?? true,
+          has_front_door: busType.has_front_door ?? true,
+          has_rear_door: busType.has_rear_door ?? true,
+          has_wc: busType.has_wc ?? false,
+          last_row_seats: busType.last_row_seats ?? 5,
+          layout_type: busType.layout_type ?? "gt_standard",
+        };
       } else {
-        rows = manualRows;
-        seatsPerRow = manualSeatsPerRow;
-        totalSeats = rows * seatsPerRow;
+        // Configurazione manuale
+        const totalSeats = (manualRows - 1) * 4 + manualLastRowSeats;
+        configData = {
+          trip_id: tripId,
+          rows: manualRows,
+          seats_per_row: 4,
+          total_seats: totalSeats,
+          bus_type_id: null,
+          has_driver_seat: true,
+          has_guide_seat: true,
+          has_front_door: true,
+          has_rear_door: true,
+          has_wc: false,
+          last_row_seats: manualLastRowSeats,
+          layout_type: "custom",
+        };
       }
 
       const { data, error } = await supabase
         .from("bus_configurations")
-        .insert({
-          trip_id: tripId,
-          rows,
-          seats_per_row: seatsPerRow,
-          total_seats: totalSeats,
-          bus_type_id: busTypeId,
-        })
+        .insert([configData as any])
         .select()
         .single();
       if (error) throw error;
@@ -200,98 +236,36 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
     },
   });
 
-  const getSeatAssignment = (seatNumber: number) => {
-    return seatAssignments.find((a) => a.seat_number === seatNumber);
-  };
-
   const assignedParticipantIds = seatAssignments.map((a) => a.participant_id);
   const unassignedParticipants = participants.filter(
     (p) => !assignedParticipantIds.includes(p.id)
   );
 
-  const renderSeat = (seatNumber: number) => {
-    const assignment = getSeatAssignment(seatNumber);
-    const isOccupied = !!assignment;
-    const isSelected = selectedParticipant !== "";
-
-    const seatSize = compact ? "w-8 h-8 text-[10px]" : "w-12 h-12 text-xs";
-
-    return (
-      <button
-        key={seatNumber}
-        onClick={() => {
-          if (isOccupied) {
-            if (confirm(`Rimuovere ${assignment.participant?.full_name} dal posto ${seatNumber}?`)) {
-              removeSeat.mutate(assignment.id);
-            }
-          } else if (selectedParticipant) {
-            assignSeat.mutate({ seatNumber });
-          }
-        }}
-        disabled={!isOccupied && !isSelected}
-        className={cn(
-          "rounded-lg font-medium transition-all flex items-center justify-center",
-          seatSize,
-          isOccupied
-            ? "bg-red-500 text-white hover:bg-red-600 cursor-pointer"
-            : isSelected
-            ? "bg-green-500 text-white hover:bg-green-600 cursor-pointer"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-        title={isOccupied ? assignment.participant?.full_name : `Posto ${seatNumber}`}
-      >
-        {seatNumber}
-      </button>
-    );
+  const handleSeatClick = (seatNumber: number, assignment?: SeatAssignment) => {
+    if (assignment) {
+      if (confirm(`Rimuovere ${assignment.participant?.full_name} dal posto ${seatNumber}?`)) {
+        removeSeat.mutate(assignment.id);
+      }
+    } else if (selectedParticipant) {
+      assignSeat.mutate({ seatNumber });
+    }
   };
 
-  const renderBusMap = () => {
+  // Build layout config for the map
+  const getLayoutConfig = (): BusLayoutConfig | null => {
     if (!busConfig) return null;
-
-    const rows = [];
-    let seatNumber = 1;
-
-    for (let row = 0; row < busConfig.rows; row++) {
-      const leftSeats = [];
-      const rightSeats = [];
-
-      // Left side (2 seats)
-      for (let col = 0; col < 2; col++) {
-        if (seatNumber <= busConfig.total_seats) {
-          leftSeats.push(renderSeat(seatNumber++));
-        }
-      }
-
-      // Right side (2 seats)
-      for (let col = 0; col < 2; col++) {
-        if (seatNumber <= busConfig.total_seats) {
-          rightSeats.push(renderSeat(seatNumber++));
-        }
-      }
-
-      rows.push(
-        <div key={row} className="flex items-center gap-1">
-          <div className="flex gap-0.5">{leftSeats}</div>
-          <div className={compact ? "w-4" : "w-8"} /> {/* Corridor */}
-          <div className="flex gap-0.5">{rightSeats}</div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col gap-1">
-        {/* Driver area */}
-        <div className="flex items-center justify-center mb-2">
-          <div className={cn(
-            "bg-primary/20 text-primary px-3 py-1 rounded-lg font-medium",
-            compact ? "text-xs" : "text-sm"
-          )}>
-            🚌 Autista
-          </div>
-        </div>
-        {rows}
-      </div>
-    );
+    
+    return {
+      rows: busConfig.rows,
+      totalSeats: busConfig.total_seats,
+      hasDriverSeat: busConfig.has_driver_seat ?? true,
+      hasGuideSeat: busConfig.has_guide_seat ?? true,
+      hasFrontDoor: busConfig.has_front_door ?? true,
+      hasRearDoor: busConfig.has_rear_door ?? true,
+      hasWc: busConfig.has_wc ?? false,
+      lastRowSeats: busConfig.last_row_seats ?? 5,
+      layoutType: busConfig.layout_type ?? "gt_standard",
+    };
   };
 
   const selectedBusTypeData = busTypes.find((bt) => bt.id === selectedBusType);
@@ -338,21 +312,34 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
                 <div className="space-y-2">
                   <Label className={compact ? "text-xs" : ""}>Tipo Bus</Label>
                   <Select value={selectedBusType} onValueChange={setSelectedBusType}>
-                    <SelectTrigger className={compact ? "w-full" : "w-full md:w-[300px]"}>
+                    <SelectTrigger className={compact ? "w-full" : "w-full md:w-[350px]"}>
                       <SelectValue placeholder="Seleziona tipo bus..." />
                     </SelectTrigger>
                     <SelectContent>
                       {busTypes.map((bt) => (
                         <SelectItem key={bt.id} value={bt.id}>
-                          {bt.name} ({bt.total_seats} posti)
+                          <div className="flex items-center gap-2">
+                            <Bus className="h-4 w-4" />
+                            <span>{bt.name}</span>
+                            <Badge variant="secondary" className="ml-1">
+                              {bt.total_seats} posti
+                            </Badge>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {selectedBusTypeData && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedBusTypeData.rows} righe × {selectedBusTypeData.seats_per_row} posti per riga
-                    </p>
+                    <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
+                      <p>
+                        <strong>{selectedBusTypeData.total_seats}</strong> posti passeggeri
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {selectedBusTypeData.rows - 1} file da 4 + ultima fila da {selectedBusTypeData.last_row_seats ?? 5}
+                        {selectedBusTypeData.has_wc && " • WC a bordo"}
+                        {selectedBusTypeData.length_meters && ` • ${selectedBusTypeData.length_meters}m`}
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
@@ -368,30 +355,41 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 max-w-sm">
                 <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Numero Righe</Label>
+                  <Label className={compact ? "text-xs" : ""}>Numero File</Label>
                   <Input
                     type="number"
                     value={manualRows}
-                    onChange={(e) => setManualRows(parseInt(e.target.value) || 1)}
-                    min={1}
+                    onChange={(e) => setManualRows(parseInt(e.target.value) || 5)}
+                    min={5}
+                    max={20}
                     className={compact ? "h-8 text-xs" : ""}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Include l'ultima fila
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Posti per Riga</Label>
+                  <Label className={compact ? "text-xs" : ""}>Ultima Fila</Label>
                   <Input
                     type="number"
-                    value={manualSeatsPerRow}
-                    onChange={(e) => setManualSeatsPerRow(parseInt(e.target.value) || 1)}
-                    min={1}
+                    value={manualLastRowSeats}
+                    onChange={(e) => setManualLastRowSeats(parseInt(e.target.value) || 5)}
+                    min={3}
+                    max={6}
                     className={compact ? "h-8 text-xs" : ""}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Banco 4-5 posti
+                  </p>
                 </div>
               </div>
-              <div className="bg-muted p-2 rounded-lg inline-block">
+              <div className="bg-primary/10 p-3 rounded-lg">
                 <p className="text-xs text-muted-foreground">Posti totali:</p>
                 <p className={cn("font-bold text-primary", compact ? "text-lg" : "text-xl")}>
-                  {manualRows * manualSeatsPerRow}
+                  {(manualRows - 1) * 4 + manualLastRowSeats}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {manualRows - 1} file × 4 + ultima fila da {manualLastRowSeats}
                 </p>
               </div>
               <div>
@@ -409,6 +407,8 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
       </Card>
     );
   }
+
+  const layoutConfig = getLayoutConfig();
 
   // Main seat assignment UI
   return (
@@ -483,8 +483,17 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
         {/* Bus Map */}
         <Card className={compact ? "" : "lg:col-span-2"}>
           <CardHeader className={compact ? "pb-2" : ""}>
-            <CardTitle className={compact ? "text-sm" : ""}>
-              Mappa Posti ({busConfig.total_seats} posti)
+            <CardTitle className={cn("flex items-center gap-2", compact ? "text-sm" : "")}>
+              <Bus className={compact ? "h-4 w-4" : "h-5 w-5"} />
+              Mappa Posti
+              <Badge variant="secondary" className="ml-2">
+                {busConfig.total_seats} posti
+              </Badge>
+              {busConfig.has_wc && (
+                <Badge variant="outline" className="ml-1">
+                  🚻 WC
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -492,7 +501,15 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
               "bg-muted/30 rounded-xl border-2 border-dashed",
               compact ? "p-3" : "p-6"
             )}>
-              {renderBusMap()}
+              {layoutConfig && (
+                <BusSeatMap
+                  config={layoutConfig}
+                  seatAssignments={seatAssignments}
+                  selectedParticipant={selectedParticipant}
+                  compact={compact}
+                  onSeatClick={handleSeatClick}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
