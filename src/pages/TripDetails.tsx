@@ -23,6 +23,7 @@ import { EditHotelDialog } from "@/components/EditHotelDialog";
 import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
 import { TripFileUpload } from "@/components/TripFileUpload";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
+import BusSeatManager from "@/components/BusSeatManager";
 
 interface Trip {
   id: string;
@@ -1922,7 +1923,7 @@ export default function TripDetails() {
         </TabsContent>
 
         {/* Tab Trasporti */}
-        <TabsContent value="trasporti" className="mt-4">
+        <TabsContent value="trasporti" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -1954,6 +1955,11 @@ export default function TripDetails() {
               )}
             </CardContent>
           </Card>
+
+          {/* Bus Seat Manager - integrato nella scheda viaggio */}
+          {(isAdmin || isAgent) && (
+            <BusSeatManager tripId={id!} compact />
+          )}
         </TabsContent>
 
         {/* Tab Documenti */}
