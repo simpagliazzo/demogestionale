@@ -656,6 +656,7 @@ export type Database = {
           created_by: string | null
           id: string
           notes: string | null
+          paid_by_participant_id: string | null
           participant_id: string
           payment_date: string
           payment_method: string | null
@@ -667,6 +668,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          paid_by_participant_id?: string | null
           participant_id: string
           payment_date?: string
           payment_method?: string | null
@@ -678,6 +680,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           notes?: string | null
+          paid_by_participant_id?: string | null
           participant_id?: string
           payment_date?: string
           payment_method?: string | null
@@ -689,6 +692,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_paid_by_participant_id_fkey"
+            columns: ["paid_by_participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
           {

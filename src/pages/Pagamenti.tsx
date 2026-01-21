@@ -16,6 +16,7 @@ interface PaymentWithDetails {
   payment_type: string;
   payment_method: string | null;
   notes: string | null;
+  paid_by_participant_id: string | null;
   participant: {
     full_name: string;
     trip: {
@@ -26,6 +27,9 @@ interface PaymentWithDetails {
       departure_date: string;
     };
   };
+  paid_by_participant?: {
+    full_name: string;
+  } | null;
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -50,9 +54,13 @@ export default function Pagamenti() {
           payment_type,
           payment_method,
           notes,
+          paid_by_participant_id,
           participant:participants(
             full_name,
             trip:trips(id, title, destination, trip_type, departure_date)
+          ),
+          paid_by_participant:participants!payments_paid_by_participant_id_fkey(
+            full_name
           )
         `)
         .order("payment_date", { ascending: false });
@@ -165,6 +173,7 @@ export default function Pagamenti() {
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Partecipante</TableHead>
+                <TableHead>Pagato da</TableHead>
                 <TableHead>Viaggio</TableHead>
                 <TableHead>Tipo Viaggio</TableHead>
                 <TableHead>Tipo Pagamento</TableHead>
@@ -175,49 +184,66 @@ export default function Pagamenti() {
             <TableBody>
               {filteredPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     {searchTerm ? "Nessun pagamento trovato" : "Nessun pagamento registrato"}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>
-                      {format(new Date(payment.payment_date), "dd MMM yyyy", { locale: it })}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {payment.participant?.full_name || "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{payment.participant?.trip?.title || "N/A"}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {payment.participant?.trip?.destination}
+                filteredPayments.map((payment) => {
+                  const isPaidBySomeoneElse = payment.paid_by_participant_id && 
+                    payment.paid_by_participant_id !== payment.participant?.full_name;
+                  const paidByName = payment.paid_by_participant?.full_name;
+                  
+                  return (
+                    <TableRow key={payment.id}>
+                      <TableCell>
+                        {format(new Date(payment.payment_date), "dd MMM yyyy", { locale: it })}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {payment.participant?.full_name || "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {paidByName ? (
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 border-blue-300 text-blue-700 dark:text-blue-400">
+                              💳 {paidByName}
+                            </Badge>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{payment.participant?.trip?.title || "N/A"}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {payment.participant?.trip?.destination}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {payment.participant?.trip?.trip_type === "day_trip" ? "Giornaliero" : "Con pernottamento"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${paymentTypeColors[payment.payment_type] || "bg-gray-500"} text-white`}>
-                        {paymentTypeLabels[payment.payment_type] || payment.payment_type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {payment.payment_method && (
-                        <Badge variant="secondary">
-                          {PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {payment.participant?.trip?.trip_type === "day_trip" ? "Giornaliero" : "Con pernottamento"}
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      €{payment.amount.toLocaleString("it-IT")}
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${paymentTypeColors[payment.payment_type] || "bg-gray-500"} text-white`}>
+                          {paymentTypeLabels[payment.payment_type] || payment.payment_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {payment.payment_method && (
+                          <Badge variant="secondary">
+                            {PAYMENT_METHOD_LABELS[payment.payment_method] || payment.payment_method}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        €{payment.amount.toLocaleString("it-IT")}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
