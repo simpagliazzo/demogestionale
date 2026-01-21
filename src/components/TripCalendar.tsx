@@ -178,14 +178,35 @@ export function TripCalendar({ trips, onMonthChange }: TripCalendarProps) {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center justify-between mt-2">
+                        <div className="flex flex-col gap-2 mt-2">
                           <p className="text-xs text-muted-foreground">
                             {format(departure, "dd/MM")} - {format(returnDate, "dd/MM/yyyy")}
                           </p>
-                          {(trip.participant_count !== undefined || trip.max_participants) && (
-                            <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              👥 {trip.participant_count ?? 0}
-                              {trip.max_participants ? ` / ${trip.max_participants}` : ""}
+                          {trip.max_participants && (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                👥 {trip.participant_count ?? 0} / {trip.max_participants}
+                              </span>
+                              {(() => {
+                                const available = trip.max_participants - (trip.participant_count ?? 0);
+                                if (available <= 0) {
+                                  return (
+                                    <span className="text-xs font-bold bg-red-500 text-white px-2 py-0.5 rounded-full">
+                                      🚫 Completo
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                    ✅ {available} {available === 1 ? 'posto' : 'posti'}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
+                          {!trip.max_participants && trip.participant_count !== undefined && (
+                            <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full w-fit">
+                              👥 {trip.participant_count} iscritti
                             </span>
                           )}
                         </div>
