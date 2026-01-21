@@ -45,7 +45,8 @@ export default function Pagamenti() {
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["all-payments"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get all payments with participant info
+      const { data: paymentsData, error } = await supabase
         .from("payments")
         .select(`
           id,
@@ -58,15 +59,35 @@ export default function Pagamenti() {
           participant:participants(
             full_name,
             trip:trips(id, title, destination, trip_type, departure_date)
-          ),
-          paid_by_participant:participants!payments_paid_by_participant_id_fkey(
-            full_name
           )
         `)
         .order("payment_date", { ascending: false });
 
       if (error) throw error;
-      return data as unknown as PaymentWithDetails[];
+
+      // Fetch paid_by names for payments that have paid_by_participant_id
+      const paidByIds = [...new Set(paymentsData?.filter(p => p.paid_by_participant_id).map(p => p.paid_by_participant_id) || [])];
+      
+      let paidByMap: Record<string, string> = {};
+      if (paidByIds.length > 0) {
+        const { data: paidByData } = await supabase
+          .from("participants")
+          .select("id, full_name")
+          .in("id", paidByIds);
+        
+        paidByMap = (paidByData || []).reduce((acc, p) => {
+          acc[p.id] = p.full_name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      // Combine the data
+      return (paymentsData || []).map(payment => ({
+        ...payment,
+        paid_by_participant: payment.paid_by_participant_id 
+          ? { full_name: paidByMap[payment.paid_by_participant_id] || null }
+          : null
+      })) as unknown as PaymentWithDetails[];
     },
   });
 
