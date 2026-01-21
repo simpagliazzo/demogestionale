@@ -24,6 +24,7 @@ import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleS
 import { TripFileUpload } from "@/components/TripFileUpload";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 import BusSeatManager from "@/components/BusSeatManager";
+import GroupPaymentDialog from "@/components/GroupPaymentDialog";
 
 interface Trip {
   id: string;
@@ -193,6 +194,8 @@ export default function TripDetails() {
   const [editHotelDialogOpen, setEditHotelDialogOpen] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
+  const [groupPaymentDialogOpen, setGroupPaymentDialogOpen] = useState(false);
+  const [selectedGroupForPayment, setSelectedGroupForPayment] = useState<{ participants: Participant[]; groupNumber: number } | null>(null);
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -1360,9 +1363,26 @@ export default function TripDetails() {
                       return (
                         <div key={groupNumber ?? 'no-group'} className="border rounded-lg p-3 bg-card">
                           <div className="flex items-center justify-between mb-2 pb-2 border-b">
-                            <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                              {groupNumber ? `Gruppo #${groupNumber}` : 'Senza Gruppo'}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                                {groupNumber ? `Gruppo #${groupNumber}` : 'Senza Gruppo'}
+                              </Badge>
+                              {groupNumber && (isAdmin || isAgent) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedGroupForPayment({ participants: groupParticipants, groupNumber });
+                                    setGroupPaymentDialogOpen(true);
+                                  }}
+                                >
+                                  <DollarSign className="h-3 w-3" />
+                                  Pagamenti
+                                </Button>
+                              )}
+                            </div>
                             <div className="text-right text-xs">
                               <span className="font-bold">€{groupTotal.toFixed(2)}</span>
                               <span className="text-green-600 ml-2">+€{groupDeposit.toFixed(2)}</span>
@@ -2009,6 +2029,18 @@ export default function TripDetails() {
         participantPayments={participantPayments}
         onSuccess={loadTripDetails}
       />
+
+      {/* Dialog Pagamenti Gruppo */}
+      {selectedGroupForPayment && (
+        <GroupPaymentDialog
+          open={groupPaymentDialogOpen}
+          onOpenChange={setGroupPaymentDialogOpen}
+          groupParticipants={selectedGroupForPayment.participants}
+          groupNumber={selectedGroupForPayment.groupNumber}
+          tripId={trip?.id || ""}
+          onSuccess={loadTripDetails}
+        />
+      )}
     </div>
   );
 }
