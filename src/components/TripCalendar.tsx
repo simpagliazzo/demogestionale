@@ -20,11 +20,18 @@ interface Trip {
 
 interface TripCalendarProps {
   trips: Trip[];
+  onMonthChange?: (month: Date) => void;
 }
 
-export function TripCalendar({ trips }: TripCalendarProps) {
+export function TripCalendar({ trips, onMonthChange }: TripCalendarProps) {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+
+  const handleMonthChange = (month: Date) => {
+    setCurrentMonth(month);
+    onMonthChange?.(month);
+  };
 
   // Trova viaggi per una data specifica (partenza, ritorno o durante)
   const getTripsForDate = (date: Date) => {
@@ -69,6 +76,8 @@ export function TripCalendar({ trips }: TripCalendarProps) {
           mode="single"
           selected={selectedDate}
           onSelect={setSelectedDate}
+          month={currentMonth}
+          onMonthChange={handleMonthChange}
           locale={it}
           className="rounded-md border"
           modifiers={{
