@@ -460,10 +460,13 @@ export type Database = {
           has_rear_door: boolean | null
           has_wc: boolean | null
           id: string
+          is_custom: boolean | null
           last_row_seats: number | null
           layout_type: string | null
+          left_rows: number | null
           length_meters: number | null
           name: string
+          right_rows: number | null
           rows: number
           seats_per_row: number
           total_seats: number
@@ -478,10 +481,13 @@ export type Database = {
           has_rear_door?: boolean | null
           has_wc?: boolean | null
           id?: string
+          is_custom?: boolean | null
           last_row_seats?: number | null
           layout_type?: string | null
+          left_rows?: number | null
           length_meters?: number | null
           name: string
+          right_rows?: number | null
           rows: number
           seats_per_row: number
           total_seats: number
@@ -496,10 +502,13 @@ export type Database = {
           has_rear_door?: boolean | null
           has_wc?: boolean | null
           id?: string
+          is_custom?: boolean | null
           last_row_seats?: number | null
           layout_type?: string | null
+          left_rows?: number | null
           length_meters?: number | null
           name?: string
+          right_rows?: number | null
           rows?: number
           seats_per_row?: number
           total_seats?: number

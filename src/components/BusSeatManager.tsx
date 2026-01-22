@@ -7,10 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bus, Users, X, Settings, Trash2 } from "lucide-react";
+import { Bus, Users, X, Settings, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import BusSeatMap, { BusLayoutConfig } from "./bus/BusSeatMap";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface BusType {
   id: string;
@@ -26,6 +34,10 @@ interface BusType {
   has_wc?: boolean;
   last_row_seats?: number;
   layout_type?: string;
+  left_rows?: number | null;
+  right_rows?: number | null;
+  door_row_position?: number | null;
+  is_custom?: boolean;
 }
 
 interface BusConfig {
@@ -77,6 +89,8 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
   const [manualRightRows, setManualRightRows] = useState(10); // 1 meno perché la porta occupa 1 fila a destra
   const [manualLastRowSeats, setManualLastRowSeats] = useState(5);
   const [manualDoorRow, setManualDoorRow] = useState<number>(6); // Default fila 6 per la porta
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [savePresetName, setSavePresetName] = useState("");
   const queryClient = useQueryClient();
 
   // Fetch bus types
@@ -143,6 +157,50 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
     enabled: !!tripId,
   });
 
+  // Save manual config as preset
+  const saveAsPreset = useMutation({
+    mutationFn: async (name: string) => {
+      const maxRows = Math.max(manualLeftRows, manualRightRows);
+      const normalSeats = (manualLeftRows * 2) + (manualRightRows * 2);
+      const totalSeats = normalSeats + manualLastRowSeats;
+
+      const { data, error } = await supabase
+        .from("bus_types")
+        .insert({
+          name: name,
+          rows: maxRows + 1,
+          seats_per_row: 4,
+          total_seats: totalSeats,
+          has_driver_seat: true,
+          has_guide_seat: true,
+          has_front_door: true,
+          has_rear_door: true,
+          has_wc: false,
+          last_row_seats: manualLastRowSeats,
+          layout_type: "custom_advanced",
+          door_row_position: manualDoorRow,
+          left_rows: manualLeftRows,
+          right_rows: manualRightRows,
+          is_custom: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["bus-types"] });
+      setShowSaveDialog(false);
+      setSavePresetName("");
+      setSelectedBusType(data.id);
+      setConfigMode("preset");
+      toast.success("Configurazione salvata come preset");
+    },
+    onError: () => {
+      toast.error("Errore nel salvataggio del preset");
+    },
+  });
+
   // Create bus config
   const createBusConfig = useMutation({
     mutationFn: async () => {
@@ -151,6 +209,9 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
       if (configMode === "preset" && selectedBusType) {
         const busType = busTypes.find((bt) => bt.id === selectedBusType);
         if (!busType) throw new Error("Tipo bus non trovato");
+        
+        // Check if it's a custom layout (has left_rows/right_rows)
+        const isCustomLayout = busType.is_custom || busType.left_rows || busType.right_rows;
         
         configData = {
           trip_id: tripId,
@@ -165,7 +226,12 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
           has_rear_door: busType.has_rear_door ?? true,
           has_wc: busType.has_wc ?? false,
           last_row_seats: busType.last_row_seats ?? 5,
-          layout_type: busType.layout_type ?? "gt_standard",
+          layout_type: isCustomLayout ? "custom_advanced" : (busType.layout_type ?? "gt_standard"),
+          ...(isCustomLayout && {
+            door_row_position: busType.door_row_position,
+            left_rows: busType.left_rows,
+            right_rows: busType.right_rows,
+          }),
         };
       } else {
         // Configurazione manuale avanzata con file separate per lato
@@ -322,185 +388,254 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
   // Configuration UI when no bus config exists
   if (!busConfig) {
     return (
-      <Card>
-        <CardHeader className={compact ? "pb-2" : ""}>
-          <CardTitle className={cn("flex items-center gap-2", compact ? "text-sm" : "")}>
-            <Settings className={compact ? "h-4 w-4" : "h-5 w-5"} />
-            Configura Piantina Bus
-          </CardTitle>
-          <p className={cn("text-muted-foreground mt-1", compact ? "text-xs" : "text-sm")}>
-            Prima di assegnare i posti, configura la piantina del bus.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Button
-              variant={configMode === "preset" ? "default" : "outline"}
-              onClick={() => setConfigMode("preset")}
-              size={compact ? "sm" : "default"}
-            >
-              Seleziona Tipo Bus
-            </Button>
-            <Button
-              variant={configMode === "manual" ? "default" : "outline"}
-              onClick={() => setConfigMode("manual")}
-              size={compact ? "sm" : "default"}
-            >
-              Configurazione Manuale
-            </Button>
-          </div>
-
-          {configMode === "preset" ? (
-            <div className="space-y-3">
-              {busTypes.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  Nessun tipo bus configurato. Vai alla sezione Vettori per aggiungerne uno,
-                  oppure usa la configurazione manuale.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <Label className={compact ? "text-xs" : ""}>Tipo Bus</Label>
-                  <Select value={selectedBusType} onValueChange={setSelectedBusType}>
-                    <SelectTrigger className={compact ? "w-full" : "w-full md:w-[350px]"}>
-                      <SelectValue placeholder="Seleziona tipo bus..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {busTypes.map((bt) => (
-                        <SelectItem key={bt.id} value={bt.id}>
-                          <div className="flex items-center gap-2">
-                            <Bus className="h-4 w-4" />
-                            <span>{bt.name}</span>
-                            <Badge variant="secondary" className="ml-1">
-                              {bt.total_seats} posti
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedBusTypeData && (
-                    <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
-                      <p>
-                        <strong>{selectedBusTypeData.total_seats}</strong> posti passeggeri
-                      </p>
-                      <p className="text-muted-foreground text-xs">
-                        {selectedBusTypeData.rows - 1} file da 4 + ultima fila da {selectedBusTypeData.last_row_seats ?? 5}
-                        {selectedBusTypeData.has_wc && " • WC a bordo"}
-                        {selectedBusTypeData.length_meters && ` • ${selectedBusTypeData.length_meters}m`}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+      <>
+        <Card>
+          <CardHeader className={compact ? "pb-2" : ""}>
+            <CardTitle className={cn("flex items-center gap-2", compact ? "text-sm" : "")}>
+              <Settings className={compact ? "h-4 w-4" : "h-5 w-5"} />
+              Configura Piantina Bus
+            </CardTitle>
+            <p className={cn("text-muted-foreground mt-1", compact ? "text-xs" : "text-sm")}>
+              Prima di assegnare i posti, configura la piantina del bus.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
               <Button
-                onClick={() => createBusConfig.mutate()}
-                disabled={!selectedBusType || createBusConfig.isPending}
+                variant={configMode === "preset" ? "default" : "outline"}
+                onClick={() => setConfigMode("preset")}
                 size={compact ? "sm" : "default"}
               >
-                {createBusConfig.isPending ? "Creazione..." : "Crea Configurazione"}
+                Seleziona Tipo Bus
+              </Button>
+              <Button
+                variant={configMode === "manual" ? "default" : "outline"}
+                onClick={() => setConfigMode("manual")}
+                size={compact ? "sm" : "default"}
+              >
+                Configurazione Manuale
               </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Configura file separate per lato sinistro e destro. La porta centrale occupa 2 posti sul lato destro.
-              </p>
-              
-              <div className="grid grid-cols-2 gap-4 max-w-md">
-                <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>File Lato Sinistro</Label>
-                  <Input
-                    type="number"
-                    value={manualLeftRows}
-                    onChange={(e) => setManualLeftRows(parseInt(e.target.value) || 5)}
-                    min={5}
-                    max={20}
-                    className={compact ? "h-8 text-xs" : ""}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    2 posti per fila
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>File Lato Destro</Label>
-                  <Input
-                    type="number"
-                    value={manualRightRows}
-                    onChange={(e) => setManualRightRows(parseInt(e.target.value) || 5)}
-                    min={4}
-                    max={19}
-                    className={compact ? "h-8 text-xs" : ""}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    2 posti per fila (porta occupa 1 fila)
-                  </p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4 max-w-md">
-                <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Fila Porta Centrale</Label>
-                  <Select 
-                    value={manualDoorRow.toString()} 
-                    onValueChange={(v) => setManualDoorRow(parseInt(v))}
-                  >
-                    <SelectTrigger className={compact ? "h-8 text-xs" : ""}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: Math.max(manualLeftRows, manualRightRows) }, (_, i) => i + 1).map((row) => (
-                        <SelectItem key={row} value={row.toString()}>
-                          Fila {row}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Ingresso secondario (lato destro)
+            {configMode === "preset" ? (
+              <div className="space-y-3">
+                {busTypes.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    Nessun tipo bus configurato. Vai alla sezione Vettori per aggiungerne uno,
+                    oppure usa la configurazione manuale.
                   </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Posti Ultima Fila</Label>
-                  <Input
-                    type="number"
-                    value={manualLastRowSeats}
-                    onChange={(e) => setManualLastRowSeats(parseInt(e.target.value) || 5)}
-                    min={3}
-                    max={6}
-                    className={compact ? "h-8 text-xs" : ""}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Banco posteriore
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-primary/10 p-4 rounded-lg">
-                <p className="text-xs text-muted-foreground">Posti totali:</p>
-                <p className={cn("font-bold text-primary", compact ? "text-lg" : "text-2xl")}>
-                  {(manualLeftRows * 2) + (manualRightRows * 2) + manualLastRowSeats}
-                </p>
-                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                  <p>Sinistra: {manualLeftRows} file × 2 = {manualLeftRows * 2} posti</p>
-                  <p>Destra: {manualRightRows} file × 2 = {manualRightRows * 2} posti</p>
-                  <p>Porta centrale: fila {manualDoorRow} (occupa 2 posti a destra)</p>
-                  <p>Ultima fila: {manualLastRowSeats} posti</p>
-                </div>
-              </div>
-
-              <div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className={compact ? "text-xs" : ""}>Tipo Bus</Label>
+                    <Select value={selectedBusType} onValueChange={setSelectedBusType}>
+                      <SelectTrigger className={compact ? "w-full" : "w-full md:w-[350px]"}>
+                        <SelectValue placeholder="Seleziona tipo bus..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {busTypes.map((bt) => (
+                          <SelectItem key={bt.id} value={bt.id}>
+                            <div className="flex items-center gap-2">
+                              <Bus className="h-4 w-4" />
+                              <span>{bt.name}</span>
+                              <Badge variant="secondary" className="ml-1">
+                                {bt.total_seats} posti
+                              </Badge>
+                              {bt.is_custom && (
+                                <Badge variant="outline" className="ml-1 text-xs">
+                                  Personalizzato
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedBusTypeData && (
+                      <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
+                        <p>
+                          <strong>{selectedBusTypeData.total_seats}</strong> posti passeggeri
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          {selectedBusTypeData.is_custom ? (
+                            <>
+                              Sinistra: {selectedBusTypeData.left_rows} file • 
+                              Destra: {selectedBusTypeData.right_rows} file • 
+                              Porta fila {selectedBusTypeData.door_row_position}
+                            </>
+                          ) : (
+                            <>
+                              {selectedBusTypeData.rows - 1} file da 4 + ultima fila da {selectedBusTypeData.last_row_seats ?? 5}
+                              {selectedBusTypeData.has_wc && " • WC a bordo"}
+                              {selectedBusTypeData.length_meters && ` • ${selectedBusTypeData.length_meters}m`}
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <Button
                   onClick={() => createBusConfig.mutate()}
-                  disabled={createBusConfig.isPending}
+                  disabled={!selectedBusType || createBusConfig.isPending}
                   size={compact ? "sm" : "default"}
                 >
-                  {createBusConfig.isPending ? "Creazione..." : "Crea Configurazione Manuale"}
+                  {createBusConfig.isPending ? "Creazione..." : "Crea Configurazione"}
                 </Button>
               </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Configura file separate per lato sinistro e destro. La porta centrale occupa 2 file sul lato destro.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4 max-w-md">
+                  <div className="space-y-1">
+                    <Label className={compact ? "text-xs" : ""}>File Lato Sinistro</Label>
+                    <Input
+                      type="number"
+                      value={manualLeftRows}
+                      onChange={(e) => setManualLeftRows(parseInt(e.target.value) || 5)}
+                      min={5}
+                      max={20}
+                      className={compact ? "h-8 text-xs" : ""}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      2 posti per fila
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className={compact ? "text-xs" : ""}>File Lato Destro</Label>
+                    <Input
+                      type="number"
+                      value={manualRightRows}
+                      onChange={(e) => setManualRightRows(parseInt(e.target.value) || 5)}
+                      min={4}
+                      max={19}
+                      className={compact ? "h-8 text-xs" : ""}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      2 posti per fila (porta occupa 2 file)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 max-w-md">
+                  <div className="space-y-1">
+                    <Label className={compact ? "text-xs" : ""}>Fila Porta Centrale</Label>
+                    <Select 
+                      value={manualDoorRow.toString()} 
+                      onValueChange={(v) => setManualDoorRow(parseInt(v))}
+                    >
+                      <SelectTrigger className={compact ? "h-8 text-xs" : ""}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: Math.max(manualLeftRows, manualRightRows) }, (_, i) => i + 1).map((row) => (
+                          <SelectItem key={row} value={row.toString()}>
+                            Fila {row}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Ingresso secondario (lato destro)
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className={compact ? "text-xs" : ""}>Posti Ultima Fila</Label>
+                    <Input
+                      type="number"
+                      value={manualLastRowSeats}
+                      onChange={(e) => setManualLastRowSeats(parseInt(e.target.value) || 5)}
+                      min={3}
+                      max={6}
+                      className={compact ? "h-8 text-xs" : ""}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Banco posteriore
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Posti totali:</p>
+                  <p className={cn("font-bold text-primary", compact ? "text-lg" : "text-2xl")}>
+                    {(manualLeftRows * 2) + (manualRightRows * 2) + manualLastRowSeats}
+                  </p>
+                  <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                    <p>Sinistra: {manualLeftRows} file × 2 = {manualLeftRows * 2} posti</p>
+                    <p>Destra: {manualRightRows} file × 2 = {manualRightRows * 2} posti</p>
+                    <p>Porta centrale: fila {manualDoorRow} (occupa 2 file a destra)</p>
+                    <p>Ultima fila: {manualLastRowSeats} posti</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    onClick={() => createBusConfig.mutate()}
+                    disabled={createBusConfig.isPending}
+                    size={compact ? "sm" : "default"}
+                  >
+                    {createBusConfig.isPending ? "Creazione..." : "Usa Configurazione"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSaveDialog(true)}
+                    size={compact ? "sm" : "default"}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Salva come Preset
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Save Preset Dialog */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Salva Configurazione Bus</DialogTitle>
+              <DialogDescription>
+                Dai un nome a questa configurazione per poterla riutilizzare in futuro.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="preset-name">Nome Configurazione</Label>
+                <Input
+                  id="preset-name"
+                  value={savePresetName}
+                  onChange={(e) => setSavePresetName(e.target.value)}
+                  placeholder="Es. GT 49 Porta Centrale"
+                />
+              </div>
+              <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">
+                <p><strong>Riepilogo:</strong></p>
+                <p>File sinistra: {manualLeftRows} ({manualLeftRows * 2} posti)</p>
+                <p>File destra: {manualRightRows} ({manualRightRows * 2} posti)</p>
+                <p>Porta centrale: fila {manualDoorRow}</p>
+                <p>Ultima fila: {manualLastRowSeats} posti</p>
+                <p className="font-bold text-primary">
+                  Totale: {(manualLeftRows * 2) + (manualRightRows * 2) + manualLastRowSeats} posti
+                </p>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                Annulla
+              </Button>
+              <Button 
+                onClick={() => saveAsPreset.mutate(savePresetName)}
+                disabled={!savePresetName.trim() || saveAsPreset.isPending}
+              >
+                {saveAsPreset.isPending ? "Salvataggio..." : "Salva Preset"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
