@@ -158,27 +158,13 @@ export default function Partecipanti() {
     const result: GroupedParticipant[] = [];
     
     grouped.forEach((records) => {
-      // Find the best record (most complete data)
-      let bestRecord = records[0];
-      let bestScore = 0;
-      
-      for (const record of records) {
-        let score = 0;
-        if (record.email) score++;
-        if (record.phone) score++;
-        if (record.date_of_birth) score++;
-        if (record.place_of_birth) score++;
-        if (score > bestScore) {
-          bestScore = score;
-          bestRecord = record;
-        }
-      }
+      // Sort records by created_at DESC (most recent first)
+      const sortedRecords = [...records].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
-      // Merge all non-null data
-      const mergedEmail = records.find(r => r.email)?.email || null;
-      const mergedPhone = records.find(r => r.phone)?.phone || null;
-      const mergedDob = records.find(r => r.date_of_birth)?.date_of_birth || null;
-      const mergedPob = records.find(r => r.place_of_birth)?.place_of_birth || null;
+      // Use the most recent record as the "master" record for biographical data
+      const mostRecentRecord = sortedRecords[0];
 
       // Collect all trips
       const trips = records
@@ -190,13 +176,13 @@ export default function Partecipanti() {
         .sort((a, b) => new Date(b.trip.departure_date).getTime() - new Date(a.trip.departure_date).getTime());
 
       result.push({
-        id: bestRecord.id,
-        full_name: bestRecord.full_name,
-        email: mergedEmail,
-        phone: mergedPhone,
-        date_of_birth: mergedDob,
-        place_of_birth: mergedPob,
-        notes: bestRecord.notes,
+        id: mostRecentRecord.id,
+        full_name: mostRecentRecord.full_name,
+        email: mostRecentRecord.email,
+        phone: mostRecentRecord.phone,
+        date_of_birth: mostRecentRecord.date_of_birth,
+        place_of_birth: mostRecentRecord.place_of_birth,
+        notes: mostRecentRecord.notes,
         records,
         trips,
       });

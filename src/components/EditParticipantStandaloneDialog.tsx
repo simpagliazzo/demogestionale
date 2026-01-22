@@ -118,7 +118,10 @@ export default function EditParticipantStandaloneDialog({
     
     setIsSubmitting(true);
     const fullName = `${values.cognome} ${values.nome}`.trim();
+    const originalName = participant.full_name.toLowerCase().trim();
+    
     try {
+      // Prima aggiorna il record corrente
       const { error } = await supabase
         .from("participants")
         .update({
@@ -133,15 +136,46 @@ export default function EditParticipantStandaloneDialog({
 
       if (error) throw error;
 
+      // Poi sincronizza i dati anagrafici su tutti i record con lo stesso nome
+      // (escluse le note che potrebbero essere specifiche per viaggio)
+      const { data: sameNameRecords } = await supabase
+        .from("participants")
+        .select("id")
+        .ilike("full_name", originalName)
+        .neq("id", participant.id);
+
+      if (sameNameRecords && sameNameRecords.length > 0) {
+        const { error: syncError } = await supabase
+          .from("participants")
+          .update({
+            full_name: fullName,
+            date_of_birth: convertDateToISO(values.date_of_birth),
+            place_of_birth: values.place_of_birth || null,
+            email: values.email || null,
+            phone: values.phone || null,
+            // Non sincronizzare le note - potrebbero essere specifiche per viaggio
+          })
+          .in("id", sameNameRecords.map(r => r.id));
+
+        if (syncError) {
+          console.error("Errore sincronizzazione record:", syncError);
+        }
+      }
+
       await logUpdate("participant", participant.id, fullName, {
         changes: {
           full_name: fullName,
           email: values.email,
           phone: values.phone,
         },
+        synced_records: sameNameRecords?.length || 0,
       });
 
-      toast.success("Partecipante aggiornato con successo");
+      toast.success(
+        sameNameRecords && sameNameRecords.length > 0
+          ? `Partecipante aggiornato e sincronizzato su ${sameNameRecords.length + 1} record`
+          : "Partecipante aggiornato con successo"
+      );
       onOpenChange(false);
       onSuccess();
     } catch (error) {
