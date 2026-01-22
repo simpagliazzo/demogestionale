@@ -291,7 +291,9 @@ export type Database = {
           id: string
           last_row_seats: number | null
           layout_type: string | null
+          left_rows: number | null
           length_meters: number | null
+          right_rows: number | null
           rows: number
           seats_per_row: number
           total_seats: number
@@ -310,7 +312,9 @@ export type Database = {
           id?: string
           last_row_seats?: number | null
           layout_type?: string | null
+          left_rows?: number | null
           length_meters?: number | null
+          right_rows?: number | null
           rows: number
           seats_per_row: number
           total_seats: number
@@ -329,7 +333,9 @@ export type Database = {
           id?: string
           last_row_seats?: number | null
           layout_type?: string | null
+          left_rows?: number | null
           length_meters?: number | null
+          right_rows?: number | null
           rows?: number
           seats_per_row?: number
           total_seats?: number
