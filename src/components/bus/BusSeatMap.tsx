@@ -119,16 +119,19 @@ export default function BusSeatMap({
     const leftSeats = [];
     const rightSeats = [];
     
-    const isCentralDoorRow = hasRearDoor && row === centralDoorPosition;
+    // La porta occupa 2 file consecutive sul lato destro
+    const isDoorRow1 = hasRearDoor && row === centralDoorPosition;
+    const isDoorRow2 = hasRearDoor && row === centralDoorPosition + 1;
+    const isDoorArea = isDoorRow1 || isDoorRow2;
     
     // Sinistra (2 posti: finestrino + corridoio) - sempre presenti
     for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
       leftSeats.push(renderSeat(seatNumber++));
     }
     
-    if (isCentralDoorRow && isAdvancedLayout) {
-      // Alla fila della porta: a destra c'è la porta, non i sedili
-      // I sedili a destra "saltano" questa fila - la porta occupa lo spazio
+    if (isDoorArea && isAdvancedLayout) {
+      // Alla fila della porta (2 file): a destra c'è la porta, non i sedili
+      // I sedili a destra "saltano" queste 2 file - la porta occupa lo spazio
     } else {
       // Fila normale: destra ha 2 posti
       for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
@@ -156,7 +159,7 @@ export default function BusSeatMap({
           "flex items-center justify-center relative",
           compact ? "w-5" : "w-8"
         )}>
-          {isCentralDoorRow && !isAdvancedLayout && (
+          {isDoorRow1 && !isAdvancedLayout && (
             <div className={cn(
               "absolute flex flex-col items-center",
               compact ? "-right-2" : "-right-3"
@@ -185,13 +188,21 @@ export default function BusSeatMap({
         </div>
         
         {/* Sedili destri o porta */}
-        {isCentralDoorRow && isAdvancedLayout ? (
+        {isDoorArea && isAdvancedLayout ? (
           <div className={cn(
             "flex items-center justify-center bg-amber-400 rounded-md gap-1",
-            compact ? "w-[68px] h-7 text-[8px]" : "w-[84px] h-8 text-[10px]"
+            compact ? "w-[68px] h-7 text-[8px]" : "w-[84px] h-8 text-[10px]",
+            isDoorRow1 ? "rounded-b-none" : "rounded-t-none"
           )}>
-            <span>🚪</span>
-            <span className="font-medium text-slate-800">PORTA</span>
+            {isDoorRow1 && (
+              <>
+                <span>🚪</span>
+                <span className="font-medium text-slate-800">PORTA</span>
+              </>
+            )}
+            {isDoorRow2 && (
+              <span className="font-medium text-slate-800 text-[8px]">SCALE</span>
+            )}
           </div>
         ) : (
           <div className="flex gap-0.5">{rightSeats}</div>
