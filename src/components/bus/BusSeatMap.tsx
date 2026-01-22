@@ -11,6 +11,7 @@ export interface BusLayoutConfig {
   hasWc?: boolean;
   lastRowSeats?: number; // 3-6
   layoutType?: string;
+  doorRowPosition?: number | null; // Fila dove si trova la porta centrale (null = automatico)
 }
 
 interface SeatAssignment {
@@ -46,6 +47,7 @@ export default function BusSeatMap({
     hasWc = false,
     lastRowSeats = 5,
     layoutType = 'gt_standard',
+    doorRowPosition,
   } = config;
 
   const getSeatAssignment = (seatNumber: number) => {
@@ -97,8 +99,11 @@ export default function BusSeatMap({
   const seatsInNormalRows = totalSeats - lastRowSeats;
   const normalRowCount = Math.ceil(seatsInNormalRows / 4);
   
-  // Posizione della porta centrale (circa a metà bus)
-  const centralDoorPosition = Math.floor(normalRowCount * 0.55);
+  // Posizione della porta centrale - usa il valore configurato o calcola automaticamente
+  // doorRowPosition è 1-indexed (fila 1, 2, 3...), mentre l'array è 0-indexed
+  const centralDoorPosition = doorRowPosition 
+    ? doorRowPosition - 1 
+    : Math.floor(normalRowCount * 0.55);
   
   // Posizione WC (in fondo, prima dell'ultima fila)
   const wcPosition = normalRowCount - 1;

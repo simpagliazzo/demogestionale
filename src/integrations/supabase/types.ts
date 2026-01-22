@@ -282,6 +282,7 @@ export type Database = {
           bus_type_id: string | null
           carrier_id: string | null
           created_at: string
+          door_row_position: number | null
           has_driver_seat: boolean | null
           has_front_door: boolean | null
           has_guide_seat: boolean | null
@@ -300,6 +301,7 @@ export type Database = {
           bus_type_id?: string | null
           carrier_id?: string | null
           created_at?: string
+          door_row_position?: number | null
           has_driver_seat?: boolean | null
           has_front_door?: boolean | null
           has_guide_seat?: boolean | null
@@ -318,6 +320,7 @@ export type Database = {
           bus_type_id?: string | null
           carrier_id?: string | null
           created_at?: string
+          door_row_position?: number | null
           has_driver_seat?: boolean | null
           has_front_door?: boolean | null
           has_guide_seat?: boolean | null
@@ -444,6 +447,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          door_row_position: number | null
           has_driver_seat: boolean | null
           has_front_door: boolean | null
           has_guide_seat: boolean | null
@@ -461,6 +465,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          door_row_position?: number | null
           has_driver_seat?: boolean | null
           has_front_door?: boolean | null
           has_guide_seat?: boolean | null
@@ -478,6 +483,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          door_row_position?: number | null
           has_driver_seat?: boolean | null
           has_front_door?: boolean | null
           has_guide_seat?: boolean | null
