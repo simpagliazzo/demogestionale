@@ -44,6 +44,7 @@ interface BusConfig {
   has_wc?: boolean;
   last_row_seats?: number;
   layout_type?: string;
+  door_row_position?: number | null;
 }
 
 interface SeatAssignment {
@@ -72,6 +73,7 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
   const [selectedBusType, setSelectedBusType] = useState<string>("");
   const [manualRows, setManualRows] = useState(11);
   const [manualLastRowSeats, setManualLastRowSeats] = useState(5);
+  const [manualDoorRow, setManualDoorRow] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch bus types
@@ -178,6 +180,7 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
           has_wc: false,
           last_row_seats: manualLastRowSeats,
           layout_type: "custom",
+          door_row_position: manualDoorRow,
         };
       }
 
@@ -296,6 +299,7 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
       hasWc: busConfig.has_wc ?? false,
       lastRowSeats: busConfig.last_row_seats ?? 5,
       layoutType: busConfig.layout_type ?? "gt_standard",
+      doorRowPosition: busConfig.door_row_position ?? null,
     };
   };
 
@@ -384,7 +388,7 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 max-w-sm">
+              <div className="grid grid-cols-3 gap-3 max-w-md">
                 <div className="space-y-1">
                   <Label className={compact ? "text-xs" : ""}>Numero File</Label>
                   <Input
@@ -410,7 +414,29 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
                     className={compact ? "h-8 text-xs" : ""}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Banco 4-5 posti
+                    Posti banco
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className={compact ? "text-xs" : ""}>Fila Ingresso</Label>
+                  <Select 
+                    value={manualDoorRow?.toString() ?? "auto"} 
+                    onValueChange={(v) => setManualDoorRow(v === "auto" ? null : parseInt(v))}
+                  >
+                    <SelectTrigger className={compact ? "h-8 text-xs" : ""}>
+                      <SelectValue placeholder="Auto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Automatico</SelectItem>
+                      {Array.from({ length: manualRows - 1 }, (_, i) => i + 1).map((row) => (
+                        <SelectItem key={row} value={row.toString()}>
+                          Fila {row}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Porta centrale
                   </p>
                 </div>
               </div>
@@ -421,6 +447,7 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {manualRows - 1} file × 4 + ultima fila da {manualLastRowSeats}
+                  {manualDoorRow && ` • Ingresso fila ${manualDoorRow}`}
                 </p>
               </div>
               <div>
