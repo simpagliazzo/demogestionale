@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Calendar, Eye, Edit, Ban, UserPlus, Merge } from "lucide-react";
+import { Search, MapPin, Calendar, Eye, Edit, Ban, UserPlus, Merge, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import AddParticipantStandaloneDialog from "@/components/AddParticipantStandalon
 import MergeParticipantsDialog from "@/components/MergeParticipantsDialog";
 import { ParticipantDocUpload } from "@/components/ParticipantDocUpload";
 
-interface ParticipantWithTrip {
+interface ParticipantRecord {
   id: string;
   full_name: string;
   email: string | null;
@@ -33,6 +33,25 @@ interface ParticipantWithTrip {
     return_date: string;
     status: string;
   } | null;
+}
+
+// Grouped participant with all their trips
+interface GroupedParticipant {
+  // Best record info (most complete data)
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  date_of_birth: string | null;
+  place_of_birth: string | null;
+  notes: string | null;
+  // All records for this person
+  records: ParticipantRecord[];
+  // All trips
+  trips: {
+    participantId: string;
+    trip: NonNullable<ParticipantRecord["trip"]>;
+  }[];
 }
 
 const statusColors = {
@@ -54,14 +73,15 @@ const statusLabels = {
 export default function Partecipanti() {
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
-  const [participants, setParticipants] = useState<ParticipantWithTrip[]>([]);
+  const [participants, setParticipants] = useState<ParticipantRecord[]>([]);
   const [blacklistedNames, setBlacklistedNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editParticipant, setEditParticipant] = useState<ParticipantWithTrip | null>(null);
-  const [blacklistParticipant, setBlacklistParticipant] = useState<ParticipantWithTrip | null>(null);
+  const [editParticipant, setEditParticipant] = useState<ParticipantRecord | null>(null);
+  const [blacklistParticipant, setBlacklistParticipant] = useState<ParticipantRecord | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [mergeParticipants, setMergeParticipants] = useState<ParticipantWithTrip[]>([]);
+  const [mergeParticipants, setMergeParticipants] = useState<ParticipantRecord[]>([]);
+  const [expandedParticipants, setExpandedParticipants] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadParticipants();
@@ -115,7 +135,7 @@ export default function Partecipanti() {
 
       if (error) throw error;
       
-      setParticipants((data || []) as ParticipantWithTrip[]);
+      setParticipants((data || []) as ParticipantRecord[]);
     } catch (error) {
       console.error("Errore caricamento partecipanti:", error);
     } finally {
@@ -123,39 +143,121 @@ export default function Partecipanti() {
     }
   };
 
+  // Group participants by normalized name
+  const getGroupedParticipants = (): GroupedParticipant[] => {
+    const grouped = new Map<string, ParticipantRecord[]>();
+    
+    participants.forEach(p => {
+      const key = p.full_name.toLowerCase().trim();
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(p);
+    });
+
+    const result: GroupedParticipant[] = [];
+    
+    grouped.forEach((records) => {
+      // Find the best record (most complete data)
+      let bestRecord = records[0];
+      let bestScore = 0;
+      
+      for (const record of records) {
+        let score = 0;
+        if (record.email) score++;
+        if (record.phone) score++;
+        if (record.date_of_birth) score++;
+        if (record.place_of_birth) score++;
+        if (score > bestScore) {
+          bestScore = score;
+          bestRecord = record;
+        }
+      }
+
+      // Merge all non-null data
+      const mergedEmail = records.find(r => r.email)?.email || null;
+      const mergedPhone = records.find(r => r.phone)?.phone || null;
+      const mergedDob = records.find(r => r.date_of_birth)?.date_of_birth || null;
+      const mergedPob = records.find(r => r.place_of_birth)?.place_of_birth || null;
+
+      // Collect all trips
+      const trips = records
+        .filter(r => r.trip)
+        .map(r => ({
+          participantId: r.id,
+          trip: r.trip!
+        }))
+        .sort((a, b) => new Date(b.trip.departure_date).getTime() - new Date(a.trip.departure_date).getTime());
+
+      result.push({
+        id: bestRecord.id,
+        full_name: bestRecord.full_name,
+        email: mergedEmail,
+        phone: mergedPhone,
+        date_of_birth: mergedDob,
+        place_of_birth: mergedPob,
+        notes: bestRecord.notes,
+        records,
+        trips,
+      });
+    });
+
+    return result;
+  };
+
   const getFilteredParticipants = () => {
-    let filtered = participants;
+    let grouped = getGroupedParticipants();
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = participants.filter(p => 
+      grouped = grouped.filter(p => 
         p.full_name.toLowerCase().includes(query) ||
         p.email?.toLowerCase().includes(query) ||
         p.phone?.includes(query) ||
-        p.trip?.title.toLowerCase().includes(query) ||
-        p.trip?.destination.toLowerCase().includes(query)
+        p.trips.some(t => 
+          t.trip.title.toLowerCase().includes(query) ||
+          t.trip.destination.toLowerCase().includes(query)
+        )
       );
     }
     
-    // Ordina alfabeticamente per cognome (usando formatNameSurnameFirst per estrarre il cognome)
-    return filtered.sort((a, b) => {
+    // Sort alphabetically by surname
+    return grouped.sort((a, b) => {
       const aFormatted = formatNameSurnameFirst(a.full_name);
       const bFormatted = formatNameSurnameFirst(b.full_name);
       return aFormatted.localeCompare(bFormatted, 'it', { sensitivity: 'base' });
     });
   };
 
-  const getParticipantTripHistory = (participantName: string) => {
-    return participants.filter(p => 
-      p.full_name.toLowerCase() === participantName.toLowerCase()
-    );
+  const handleMergeClick = (participant: GroupedParticipant) => {
+    if (participant.records.length > 1) {
+      setMergeParticipants(participant.records);
+    }
   };
 
-  const handleMergeClick = (participantName: string) => {
-    const duplicates = participants.filter(
-      p => p.full_name.toLowerCase() === participantName.toLowerCase()
-    );
-    setMergeParticipants(duplicates);
+  const toggleExpanded = (key: string) => {
+    setExpandedParticipants(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const getTripStatusCategory = (status: string, departureDate: string) => {
+    const now = new Date();
+    const departure = new Date(departureDate);
+    
+    if (status === "completed" || status === "cancelled") {
+      return "past";
+    }
+    if (departure > now) {
+      return "future";
+    }
+    return "current";
   };
 
   const filteredParticipants = getFilteredParticipants();
@@ -206,7 +308,7 @@ export default function Partecipanti() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Risultati ({filteredParticipants.length})
+            Risultati ({filteredParticipants.length} persone)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -219,12 +321,16 @@ export default function Partecipanti() {
           ) : (
             <div className="space-y-4">
               {filteredParticipants.map((participant) => {
-                const tripHistory = getParticipantTripHistory(participant.full_name);
-                const hasMultipleTrips = tripHistory.length > 1;
+                const key = participant.full_name.toLowerCase().trim();
+                const isExpanded = expandedParticipants.has(key);
+                const hasMultipleRecords = participant.records.length > 1;
+                const futureTrips = participant.trips.filter(t => getTripStatusCategory(t.trip.status, t.trip.departure_date) === "future");
+                const currentTrips = participant.trips.filter(t => getTripStatusCategory(t.trip.status, t.trip.departure_date) === "current");
+                const pastTrips = participant.trips.filter(t => getTripStatusCategory(t.trip.status, t.trip.departure_date) === "past");
 
                 return (
                   <div
-                    key={participant.id}
+                    key={key}
                     className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -236,17 +342,20 @@ export default function Partecipanti() {
                               Blacklist
                             </Badge>
                           )}
-                          {hasMultipleTrips && (
+                          {hasMultipleRecords && (
                             <Badge 
                               variant="secondary" 
                               className="text-xs cursor-pointer hover:bg-yellow-200"
-                              onClick={() => handleMergeClick(participant.full_name)}
+                              onClick={() => handleMergeClick(participant)}
                               title="Clicca per unire i record duplicati"
                             >
                               <Merge className="h-3 w-3 mr-1" />
-                              {tripHistory.length} record
+                              {participant.records.length} record (unisci)
                             </Badge>
                           )}
+                          <Badge variant="outline" className="text-xs">
+                            {participant.trips.length} viaggi
+                          </Badge>
                         </div>
                         
                         {(participant.email || participant.phone) && (
@@ -269,57 +378,157 @@ export default function Partecipanti() {
                           </div>
                         )}
 
-                        {participant.trip ? (
-                          <div className="pt-2 border-t">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-medium">Viaggio attuale:</span>
-                              <Badge className={`${statusColors[participant.trip.status as keyof typeof statusColors]} text-white`}>
-                                {statusLabels[participant.trip.status as keyof typeof statusLabels]}
+                        {/* Viaggi Section */}
+                        <div className="pt-2 border-t">
+                          <button
+                            className="flex items-center gap-2 text-sm font-medium text-primary hover:underline w-full text-left"
+                            onClick={() => toggleExpanded(key)}
+                          >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            {participant.trips.length === 0 
+                              ? "Nessun viaggio associato" 
+                              : `${participant.trips.length} viaggio/i`}
+                          </button>
+
+                          {isExpanded && participant.trips.length > 0 && (
+                            <div className="mt-3 space-y-4 pl-6">
+                              {/* Future Trips */}
+                              {futureTrips.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-green-600 uppercase mb-2">
+                                    Da Fare ({futureTrips.length})
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {futureTrips.map(({ participantId, trip }) => (
+                                      <div 
+                                        key={participantId}
+                                        className="flex items-center justify-between p-2 rounded-lg bg-green-50 border border-green-200"
+                                      >
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">{trip.title}</span>
+                                            <Badge className={`${statusColors[trip.status as keyof typeof statusColors]} text-white text-xs`}>
+                                              {statusLabels[trip.status as keyof typeof statusLabels]}
+                                            </Badge>
+                                          </div>
+                                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                            <span className="flex items-center gap-1">
+                                              <MapPin className="h-3 w-3" />
+                                              {trip.destination}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                              <Calendar className="h-3 w-3" />
+                                              {format(new Date(trip.departure_date), "dd MMM yyyy", { locale: it })}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/viaggi/${trip.id}`)}
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Vai
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Current Trips */}
+                              {currentTrips.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-orange-600 uppercase mb-2">
+                                    In Corso ({currentTrips.length})
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {currentTrips.map(({ participantId, trip }) => (
+                                      <div 
+                                        key={participantId}
+                                        className="flex items-center justify-between p-2 rounded-lg bg-orange-50 border border-orange-200"
+                                      >
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">{trip.title}</span>
+                                            <Badge className={`${statusColors[trip.status as keyof typeof statusColors]} text-white text-xs`}>
+                                              {statusLabels[trip.status as keyof typeof statusLabels]}
+                                            </Badge>
+                                          </div>
+                                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                            <span className="flex items-center gap-1">
+                                              <MapPin className="h-3 w-3" />
+                                              {trip.destination}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                              <Calendar className="h-3 w-3" />
+                                              {format(new Date(trip.departure_date), "dd MMM yyyy", { locale: it })}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => navigate(`/viaggi/${trip.id}`)}
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" />
+                                          Vai
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Past Trips */}
+                              {pastTrips.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                                    Storico ({pastTrips.length})
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {pastTrips.map(({ participantId, trip }) => (
+                                      <div 
+                                        key={participantId}
+                                        className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border"
+                                      >
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm text-muted-foreground">{trip.title}</span>
+                                            <Badge variant="outline" className="text-xs">
+                                              {statusLabels[trip.status as keyof typeof statusLabels]}
+                                            </Badge>
+                                          </div>
+                                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                            <span className="flex items-center gap-1">
+                                              <MapPin className="h-3 w-3" />
+                                              {trip.destination}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                              <Calendar className="h-3 w-3" />
+                                              {format(new Date(trip.departure_date), "dd MMM yyyy", { locale: it })}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <Badge variant="secondary" className="text-xs">
+                                          Completato
+                                        </Badge>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {isExpanded && participant.trips.length === 0 && (
+                            <div className="mt-2 pl-6">
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Nessun viaggio associato
                               </Badge>
                             </div>
-                            
-                            <div className="space-y-1">
-                              <p className="font-medium">{participant.trip.title}</p>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <MapPin className="h-3 w-3" />
-                                {participant.trip.destination}
-                              </div>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Calendar className="h-3 w-3" />
-                                {format(new Date(participant.trip.departure_date), "dd MMM yyyy", { locale: it })}
-                                {" - "}
-                                {format(new Date(participant.trip.return_date), "dd MMM yyyy", { locale: it })}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="pt-2 border-t">
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Nessun viaggio associato
-                            </Badge>
-                          </div>
-                        )}
-
-                        {hasMultipleTrips && (
-                          <details className="pt-2">
-                            <summary className="cursor-pointer text-sm font-medium text-primary hover:underline">
-                              Mostra storico viaggi ({tripHistory.length})
-                            </summary>
-                            <div className="mt-3 space-y-2 pl-4 border-l-2 border-primary/20">
-                              {tripHistory.filter(t => t.trip).map((trip, index) => (
-                                <div key={trip.id} className="text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
-                                      {format(new Date(trip.trip!.departure_date), "MMM yyyy", { locale: it })}
-                                    </Badge>
-                                    <span className="font-medium">{trip.trip!.title}</span>
-                                  </div>
-                                  <p className="text-muted-foreground ml-2">{trip.trip!.destination}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
+                          )}
+                        </div>
 
                         <div className="pt-2">
                           <ParticipantDocUpload participantId={participant.id} participantName={participant.full_name} dateOfBirth={participant.date_of_birth} />
@@ -330,28 +539,17 @@ export default function Partecipanti() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setEditParticipant(participant)}
+                          onClick={() => setEditParticipant(participant.records[0])}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Modifica
                         </Button>
 
-                        {participant.trip && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/viaggi/${participant.trip!.id}`)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Vedi Viaggio
-                          </Button>
-                        )}
-
                         {isAdmin && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setBlacklistParticipant(participant)}
+                            onClick={() => setBlacklistParticipant(participant.records[0])}
                             className="bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:text-white"
                           >
                             <Ban className="h-4 w-4 mr-2" />

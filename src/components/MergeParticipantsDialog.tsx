@@ -81,6 +81,15 @@ export default function MergeParticipantsDialog({
 
       if (!primaryParticipant) throw new Error("Partecipante principale non trovato");
 
+      // Collect all unique trip IDs from secondary participants
+      const secondaryTripsToKeep = secondaryParticipants
+        .filter(p => p.trip)
+        .map(p => ({
+          participantId: p.id,
+          tripId: p.trip!.id,
+          tripTitle: p.trip!.title
+        }));
+
       // Unisci i dati: prendi i valori non nulli dal primario, altrimenti dai secondari
       let mergedData = {
         email: primaryParticipant.email,
@@ -111,34 +120,67 @@ export default function MergeParticipantsDialog({
 
       if (updateError) throw updateError;
 
-      // Trasferisci i pagamenti dai record secondari al principale
+      // For each secondary participant that has a trip:
+      // 1. Transfer payments, bus seats, and room assignments to the primary
+      // 2. Update the secondary participant's data to match primary (keep it as a separate record for that trip!)
+      // NOTE: We DON'T delete records with trips - they represent real bookings!
+      
+      const secondaryIdsWithoutTrips: string[] = [];
+      
       for (const secondary of secondaryParticipants) {
-        await supabase
-          .from("payments")
-          .update({ participant_id: selectedPrimary })
-          .eq("participant_id", secondary.id);
+        // Transfer payments to primary (only if they don't have a trip - otherwise payments are per-booking)
+        // Actually, keep payments tied to their original booking/trip
+        
+        if (secondary.trip) {
+          // This secondary has a trip - update their data to match primary but KEEP the record
+          // This ensures the participant stays in that trip
+          const { error: updateSecondaryError } = await supabase
+            .from("participants")
+            .update({
+              email: mergedData.email,
+              phone: mergedData.phone,
+              date_of_birth: mergedData.date_of_birth,
+              place_of_birth: mergedData.place_of_birth,
+              // Don't update notes - they might be trip-specific
+            })
+            .eq("id", secondary.id);
 
-        // Trasferisci assegnazioni posti bus
-        await supabase
-          .from("bus_seat_assignments")
-          .update({ participant_id: selectedPrimary })
-          .eq("participant_id", secondary.id);
+          if (updateSecondaryError) {
+            console.error("Error updating secondary participant:", updateSecondaryError);
+          }
+        } else {
+          // This secondary has no trip - we can safely merge it
+          // Transfer any associated data to primary
+          await supabase
+            .from("payments")
+            .update({ participant_id: selectedPrimary })
+            .eq("participant_id", secondary.id);
 
-        // Trasferisci assegnazioni stanze
-        await supabase
-          .from("room_assignments")
-          .update({ participant_id: selectedPrimary })
-          .eq("participant_id", secondary.id);
+          await supabase
+            .from("bus_seat_assignments")
+            .update({ participant_id: selectedPrimary })
+            .eq("participant_id", secondary.id);
+
+          await supabase
+            .from("room_assignments")
+            .update({ participant_id: selectedPrimary })
+            .eq("participant_id", secondary.id);
+
+          secondaryIdsWithoutTrips.push(secondary.id);
+        }
       }
 
-      // Elimina i record secondari
-      const secondaryIds = secondaryParticipants.map(p => p.id);
-      const { error: deleteError } = await supabase
-        .from("participants")
-        .delete()
-        .in("id", secondaryIds);
+      // Only delete secondary records that don't have trips
+      if (secondaryIdsWithoutTrips.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("participants")
+          .delete()
+          .in("id", secondaryIdsWithoutTrips);
 
-      if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error("Error deleting orphan records:", deleteError);
+        }
+      }
 
       await logActivity({
         actionType: "update",
@@ -147,14 +189,18 @@ export default function MergeParticipantsDialog({
         entityName: primaryParticipant.full_name,
         details: {
           action: "merge",
-          mergedIds: secondaryIds,
-          mergedCount: secondaryIds.length,
+          mergedCount: secondaryParticipants.length,
+          deletedOrphanRecords: secondaryIdsWithoutTrips.length,
+          preservedTripRecords: secondaryParticipants.length - secondaryIdsWithoutTrips.length,
         },
       });
 
+      const tripsPreserved = secondaryParticipants.length - secondaryIdsWithoutTrips.length;
       toast({
-        title: "Partecipanti uniti",
-        description: `${secondaryIds.length + 1} record sono stati uniti in uno`,
+        title: "Dati unificati",
+        description: tripsPreserved > 0 
+          ? `Dati anagrafici unificati. ${tripsPreserved} viaggi mantenuti, ${secondaryIdsWithoutTrips.length} record orfani rimossi.`
+          : `${secondaryIdsWithoutTrips.length + 1} record sono stati uniti in uno`,
       });
 
       onSuccess();
@@ -177,7 +223,7 @@ export default function MergeParticipantsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Merge className="h-5 w-5" />
-            Unisci Partecipanti Duplicati
+            Unifica Dati Partecipante
           </DialogTitle>
           <DialogDescription>
             Sono stati trovati {participants.length} record con lo stesso nome. 
@@ -196,7 +242,7 @@ export default function MergeParticipantsDialog({
         </div>
 
         <div className="space-y-4">
-          <p className="text-sm font-medium">Seleziona il record principale da mantenere:</p>
+          <p className="text-sm font-medium">Seleziona il record con i dati anagrafici più completi:</p>
           
           <RadioGroup value={selectedPrimary} onValueChange={setSelectedPrimary}>
             <div className="grid gap-4">
@@ -249,8 +295,8 @@ export default function MergeParticipantsDialog({
 
                       {p.trip ? (
                         <div className="pt-2 border-t mt-2">
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Viaggio: </span>
+                          <div className="text-sm flex items-center gap-2">
+                            <Badge className="bg-green-500 text-white text-xs">Viaggio</Badge>
                             <span className="font-medium">{p.trip.title}</span>
                             <span className="text-muted-foreground"> - {p.trip.destination}</span>
                             <span className="text-muted-foreground ml-2">
@@ -278,17 +324,16 @@ export default function MergeParticipantsDialog({
           </RadioGroup>
         </div>
 
-        <div className="bg-muted/50 rounded-lg p-4 mt-4">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+          <h4 className="font-medium mb-2 flex items-center gap-2 text-green-800">
             <Check className="h-4 w-4" />
             Cosa succederà:
           </h4>
-          <ul className="text-sm space-y-1 text-muted-foreground">
-            <li>• Il record selezionato verrà mantenuto come principale</li>
-            <li>• I dati mancanti verranno completati dagli altri record</li>
-            <li>• Tutti i pagamenti verranno trasferiti al record principale</li>
-            <li>• Le assegnazioni posti e stanze verranno trasferite</li>
-            <li>• Gli altri record verranno eliminati</li>
+          <ul className="text-sm space-y-1 text-green-700">
+            <li>• I dati anagrafici verranno unificati su tutti i record</li>
+            <li>• <strong>Tutti i viaggi associati verranno mantenuti</strong></li>
+            <li>• I pagamenti e le assegnazioni posti/stanze restano invariati per ogni viaggio</li>
+            <li>• Solo i record senza viaggi verranno eliminati (orfani)</li>
           </ul>
         </div>
 
@@ -304,9 +349,9 @@ export default function MergeParticipantsDialog({
           <Button
             onClick={handleMerge}
             disabled={isSubmitting || !selectedPrimary}
-            className="bg-yellow-600 hover:bg-yellow-700"
+            className="bg-green-600 hover:bg-green-700"
           >
-            {isSubmitting ? "Unione in corso..." : "Unisci Partecipanti"}
+            {isSubmitting ? "Unificazione in corso..." : "Unifica Dati"}
           </Button>
         </div>
       </DialogContent>
