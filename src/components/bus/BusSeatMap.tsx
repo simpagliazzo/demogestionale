@@ -12,6 +12,8 @@ export interface BusLayoutConfig {
   lastRowSeats?: number; // 3-6
   layoutType?: string;
   doorRowPosition?: number | null; // Fila dove si trova la porta centrale (null = automatico)
+  leftRows?: number; // Numero file lato sinistro (per config manuale)
+  rightRows?: number; // Numero file lato destro (per config manuale)
 }
 
 interface SeatAssignment {
@@ -48,6 +50,8 @@ export default function BusSeatMap({
     lastRowSeats = 5,
     layoutType = 'gt_standard',
     doorRowPosition,
+    leftRows,
+    rightRows,
   } = config;
 
   const getSeatAssignment = (seatNumber: number) => {
@@ -91,7 +95,12 @@ export default function BusSeatMap({
 
   // Calcola layout
   const seatsInNormalRows = totalSeats - lastRowSeats;
-  const normalRowCount = Math.ceil(seatsInNormalRows / 4);
+  
+  // Se abbiamo leftRows e rightRows separati (config manuale avanzata)
+  const isAdvancedLayout = leftRows !== undefined && rightRows !== undefined;
+  const normalRowCount = isAdvancedLayout 
+    ? Math.max(leftRows, rightRows) 
+    : Math.ceil(seatsInNormalRows / 4);
   
   // Posizione della porta centrale - usa il valore configurato o calcola automaticamente
   // doorRowPosition è 1-indexed (fila 1, 2, 3...), mentre l'array è 0-indexed
@@ -109,18 +118,30 @@ export default function BusSeatMap({
   for (let row = 0; row < normalRowCount && seatNumber <= seatsInNormalRows; row++) {
     const leftSeats = [];
     const rightSeats = [];
-
-    // Sinistra (2 posti: finestrino + corridoio)
-    for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
-      leftSeats.push(renderSeat(seatNumber++));
-    }
-
-    // Destra (2 posti: corridoio + finestrino)
-    for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
-      rightSeats.push(renderSeat(seatNumber++));
-    }
-
+    
     const isCentralDoorRow = hasRearDoor && row === centralDoorPosition;
+    
+    if (isCentralDoorRow && isAdvancedLayout) {
+      // Alla fila della porta: i posti che sarebbero a destra vanno a sinistra
+      // perché a destra c'è porta + scale (occupano 2 posti)
+      // Quindi in questa fila abbiamo 4 posti tutti a sinistra
+      for (let col = 0; col < 4 && seatNumber <= seatsInNormalRows; col++) {
+        leftSeats.push(renderSeat(seatNumber++));
+      }
+      // Destra vuota (porta + scale)
+    } else {
+      // Fila normale: 2 sinistra + 2 destra
+      // Sinistra (2 posti: finestrino + corridoio)
+      for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
+        leftSeats.push(renderSeat(seatNumber++));
+      }
+
+      // Destra (2 posti: corridoio + finestrino)
+      for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
+        rightSeats.push(renderSeat(seatNumber++));
+      }
+    }
+
     const isWcRow = hasWc && row === wcPosition;
 
     busRows.push(
@@ -132,14 +153,20 @@ export default function BusSeatMap({
         )} />
         
         {/* Sedili sinistri */}
-        <div className="flex gap-0.5">{leftSeats}</div>
+        <div className={cn(
+          "flex gap-0.5",
+          isCentralDoorRow && isAdvancedLayout ? "flex-wrap justify-center" : ""
+        )}>
+          {leftSeats}
+        </div>
         
         {/* Corridoio centrale */}
         <div className={cn(
           "flex items-center justify-center relative",
-          compact ? "w-5" : "w-8"
+          compact ? "w-5" : "w-8",
+          isCentralDoorRow && isAdvancedLayout ? "w-0" : ""
         )}>
-          {isCentralDoorRow && (
+          {isCentralDoorRow && !isAdvancedLayout && (
             <div className={cn(
               "absolute flex flex-col items-center",
               compact ? "-right-2" : "-right-3"
@@ -167,8 +194,18 @@ export default function BusSeatMap({
           )}
         </div>
         
-        {/* Sedili destri */}
-        <div className="flex gap-0.5">{rightSeats}</div>
+        {/* Sedili destri o porta */}
+        {isCentralDoorRow && isAdvancedLayout ? (
+          <div className={cn(
+            "flex items-center justify-center bg-amber-400 rounded-md",
+            compact ? "w-16 h-7 text-[8px]" : "w-20 h-8 text-[10px]"
+          )}>
+            <span className="mr-1">🚪</span>
+            <span className="font-medium text-slate-800">PORTA</span>
+          </div>
+        ) : (
+          <div className="flex gap-0.5">{rightSeats}</div>
+        )}
         
         {/* Finestrino destro */}
         <div className={cn(

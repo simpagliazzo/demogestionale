@@ -45,6 +45,8 @@ interface BusConfig {
   last_row_seats?: number;
   layout_type?: string;
   door_row_position?: number | null;
+  left_rows?: number | null;
+  right_rows?: number | null;
 }
 
 interface SeatAssignment {
@@ -71,9 +73,10 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
   const [selectedParticipant, setSelectedParticipant] = useState<string>("");
   const [configMode, setConfigMode] = useState<"preset" | "manual">("preset");
   const [selectedBusType, setSelectedBusType] = useState<string>("");
-  const [manualRows, setManualRows] = useState(11);
+  const [manualLeftRows, setManualLeftRows] = useState(11);
+  const [manualRightRows, setManualRightRows] = useState(10); // 1 meno perché la porta occupa 1 fila a destra
   const [manualLastRowSeats, setManualLastRowSeats] = useState(5);
-  const [manualDoorRow, setManualDoorRow] = useState<number | null>(null);
+  const [manualDoorRow, setManualDoorRow] = useState<number>(6); // Default fila 6 per la porta
   const queryClient = useQueryClient();
 
   // Fetch bus types
@@ -165,11 +168,18 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
           layout_type: busType.layout_type ?? "gt_standard",
         };
       } else {
-        // Configurazione manuale
-        const totalSeats = (manualRows - 1) * 4 + manualLastRowSeats;
+        // Configurazione manuale avanzata con file separate per lato
+        // Le file normali: leftRows file a sinistra, rightRows file a destra
+        // Alla fila della porta, i 4 posti vanno tutti a sinistra
+        const maxRows = Math.max(manualLeftRows, manualRightRows);
+        // Posti normali: ogni fila ha 4 posti tranne la fila della porta che ne ha 4 a sinistra e 0 a destra
+        // Ma la numerazione segue la logica: alla fila porta, 4 posti consecutivi a sinistra
+        const normalSeats = (manualLeftRows * 2) + (manualRightRows * 2);
+        const totalSeats = normalSeats + manualLastRowSeats;
+        
         configData = {
           trip_id: tripId,
-          rows: manualRows,
+          rows: maxRows + 1, // +1 per l'ultima fila
           seats_per_row: 4,
           total_seats: totalSeats,
           bus_type_id: null,
@@ -179,8 +189,10 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
           has_rear_door: true,
           has_wc: false,
           last_row_seats: manualLastRowSeats,
-          layout_type: "custom",
+          layout_type: "custom_advanced",
           door_row_position: manualDoorRow,
+          left_rows: manualLeftRows,
+          right_rows: manualRightRows,
         };
       }
 
@@ -300,6 +312,8 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
       lastRowSeats: busConfig.last_row_seats ?? 5,
       layoutType: busConfig.layout_type ?? "gt_standard",
       doorRowPosition: busConfig.door_row_position ?? null,
+      leftRows: busConfig.left_rows ?? undefined,
+      rightRows: busConfig.right_rows ?? undefined,
     };
   };
 
@@ -387,24 +401,66 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3 max-w-md">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Configura file separate per lato sinistro e destro. La porta centrale occupa 2 posti sul lato destro.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 max-w-md">
                 <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Numero File</Label>
+                  <Label className={compact ? "text-xs" : ""}>File Lato Sinistro</Label>
                   <Input
                     type="number"
-                    value={manualRows}
-                    onChange={(e) => setManualRows(parseInt(e.target.value) || 5)}
+                    value={manualLeftRows}
+                    onChange={(e) => setManualLeftRows(parseInt(e.target.value) || 5)}
                     min={5}
                     max={20}
                     className={compact ? "h-8 text-xs" : ""}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Include l'ultima fila
+                    2 posti per fila
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Ultima Fila</Label>
+                  <Label className={compact ? "text-xs" : ""}>File Lato Destro</Label>
+                  <Input
+                    type="number"
+                    value={manualRightRows}
+                    onChange={(e) => setManualRightRows(parseInt(e.target.value) || 5)}
+                    min={4}
+                    max={19}
+                    className={compact ? "h-8 text-xs" : ""}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    2 posti per fila (porta occupa 1 fila)
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 max-w-md">
+                <div className="space-y-1">
+                  <Label className={compact ? "text-xs" : ""}>Fila Porta Centrale</Label>
+                  <Select 
+                    value={manualDoorRow.toString()} 
+                    onValueChange={(v) => setManualDoorRow(parseInt(v))}
+                  >
+                    <SelectTrigger className={compact ? "h-8 text-xs" : ""}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: Math.max(manualLeftRows, manualRightRows) }, (_, i) => i + 1).map((row) => (
+                        <SelectItem key={row} value={row.toString()}>
+                          Fila {row}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Ingresso secondario (lato destro)
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className={compact ? "text-xs" : ""}>Posti Ultima Fila</Label>
                   <Input
                     type="number"
                     value={manualLastRowSeats}
@@ -414,42 +470,24 @@ export default function BusSeatManager({ tripId, compact = false }: BusSeatManag
                     className={compact ? "h-8 text-xs" : ""}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Posti banco
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className={compact ? "text-xs" : ""}>Fila Ingresso</Label>
-                  <Select 
-                    value={manualDoorRow?.toString() ?? "auto"} 
-                    onValueChange={(v) => setManualDoorRow(v === "auto" ? null : parseInt(v))}
-                  >
-                    <SelectTrigger className={compact ? "h-8 text-xs" : ""}>
-                      <SelectValue placeholder="Auto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Automatico</SelectItem>
-                      {Array.from({ length: manualRows - 1 }, (_, i) => i + 1).map((row) => (
-                        <SelectItem key={row} value={row.toString()}>
-                          Fila {row}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Porta centrale
+                    Banco posteriore
                   </p>
                 </div>
               </div>
-              <div className="bg-primary/10 p-3 rounded-lg">
+
+              <div className="bg-primary/10 p-4 rounded-lg">
                 <p className="text-xs text-muted-foreground">Posti totali:</p>
-                <p className={cn("font-bold text-primary", compact ? "text-lg" : "text-xl")}>
-                  {(manualRows - 1) * 4 + manualLastRowSeats}
+                <p className={cn("font-bold text-primary", compact ? "text-lg" : "text-2xl")}>
+                  {(manualLeftRows * 2) + (manualRightRows * 2) + manualLastRowSeats}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {manualRows - 1} file × 4 + ultima fila da {manualLastRowSeats}
-                  {manualDoorRow && ` • Ingresso fila ${manualDoorRow}`}
-                </p>
+                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                  <p>Sinistra: {manualLeftRows} file × 2 = {manualLeftRows * 2} posti</p>
+                  <p>Destra: {manualRightRows} file × 2 = {manualRightRows * 2} posti</p>
+                  <p>Porta centrale: fila {manualDoorRow} (occupa 2 posti a destra)</p>
+                  <p>Ultima fila: {manualLastRowSeats} posti</p>
+                </div>
               </div>
+
               <div>
                 <Button
                   onClick={() => createBusConfig.mutate()}
