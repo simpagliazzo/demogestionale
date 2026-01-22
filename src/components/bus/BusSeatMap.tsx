@@ -121,22 +121,16 @@ export default function BusSeatMap({
     
     const isCentralDoorRow = hasRearDoor && row === centralDoorPosition;
     
+    // Sinistra (2 posti: finestrino + corridoio) - sempre presenti
+    for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
+      leftSeats.push(renderSeat(seatNumber++));
+    }
+    
     if (isCentralDoorRow && isAdvancedLayout) {
-      // Alla fila della porta: i posti che sarebbero a destra vanno a sinistra
-      // perché a destra c'è porta + scale (occupano 2 posti)
-      // Quindi in questa fila abbiamo 4 posti tutti a sinistra
-      for (let col = 0; col < 4 && seatNumber <= seatsInNormalRows; col++) {
-        leftSeats.push(renderSeat(seatNumber++));
-      }
-      // Destra vuota (porta + scale)
+      // Alla fila della porta: a destra c'è la porta, non i sedili
+      // I sedili a destra "saltano" questa fila - la porta occupa lo spazio
     } else {
-      // Fila normale: 2 sinistra + 2 destra
-      // Sinistra (2 posti: finestrino + corridoio)
-      for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
-        leftSeats.push(renderSeat(seatNumber++));
-      }
-
-      // Destra (2 posti: corridoio + finestrino)
+      // Fila normale: destra ha 2 posti
       for (let col = 0; col < 2 && seatNumber <= seatsInNormalRows; col++) {
         rightSeats.push(renderSeat(seatNumber++));
       }
@@ -153,18 +147,14 @@ export default function BusSeatMap({
         )} />
         
         {/* Sedili sinistri */}
-        <div className={cn(
-          "flex gap-0.5",
-          isCentralDoorRow && isAdvancedLayout ? "flex-wrap justify-center" : ""
-        )}>
+        <div className="flex gap-0.5">
           {leftSeats}
         </div>
         
         {/* Corridoio centrale */}
         <div className={cn(
           "flex items-center justify-center relative",
-          compact ? "w-5" : "w-8",
-          isCentralDoorRow && isAdvancedLayout ? "w-0" : ""
+          compact ? "w-5" : "w-8"
         )}>
           {isCentralDoorRow && !isAdvancedLayout && (
             <div className={cn(
@@ -197,10 +187,10 @@ export default function BusSeatMap({
         {/* Sedili destri o porta */}
         {isCentralDoorRow && isAdvancedLayout ? (
           <div className={cn(
-            "flex items-center justify-center bg-amber-400 rounded-md",
-            compact ? "w-16 h-7 text-[8px]" : "w-20 h-8 text-[10px]"
+            "flex items-center justify-center bg-amber-400 rounded-md gap-1",
+            compact ? "w-[68px] h-7 text-[8px]" : "w-[84px] h-8 text-[10px]"
           )}>
-            <span className="mr-1">🚪</span>
+            <span>🚪</span>
             <span className="font-medium text-slate-800">PORTA</span>
           </div>
         ) : (
