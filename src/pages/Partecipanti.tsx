@@ -309,10 +309,43 @@ export default function Partecipanti() {
               {filteredParticipants.map((participant) => {
                 const key = participant.full_name.toLowerCase().trim();
                 const isExpanded = expandedParticipants.has(key);
-                const hasMultipleRecords = participant.records.length > 1;
                 const futureTrips = participant.trips.filter(t => getTripStatusCategory(t.trip.status, t.trip.departure_date) === "future");
                 const currentTrips = participant.trips.filter(t => getTripStatusCategory(t.trip.status, t.trip.departure_date) === "current");
                 const pastTrips = participant.trips.filter(t => getTripStatusCategory(t.trip.status, t.trip.departure_date) === "past");
+                
+                // Check if there are records with potentially conflicting biographical data
+                // Only show merge button when there are actual discrepancies to resolve
+                const hasPotentialDuplicates = participant.records.length > 1 && (() => {
+                  // Check for records with different biographical data (possible different people or data to merge)
+                  const bioDataSets = participant.records.map(r => ({
+                    email: r.email?.toLowerCase().trim() || "",
+                    phone: r.phone?.replace(/\s/g, "") || "",
+                    dob: r.date_of_birth || "",
+                    pob: r.place_of_birth?.toLowerCase().trim() || ""
+                  }));
+                  
+                  // Compare first record with others - if any field differs, might need merge
+                  for (let i = 1; i < bioDataSets.length; i++) {
+                    const first = bioDataSets[0];
+                    const current = bioDataSets[i];
+                    
+                    // If both have data but it's different, it's a potential duplicate/conflict
+                    if ((first.email && current.email && first.email !== current.email) ||
+                        (first.phone && current.phone && first.phone !== current.phone) ||
+                        (first.dob && current.dob && first.dob !== current.dob) ||
+                        (first.pob && current.pob && first.pob !== current.pob)) {
+                      return true;
+                    }
+                  }
+                  
+                  // Also check for orphan records (records without trips that could be merged)
+                  const orphanRecords = participant.records.filter(r => !r.trip);
+                  if (orphanRecords.length > 0 && participant.records.length > orphanRecords.length) {
+                    return true; // Has orphans that could be cleaned up
+                  }
+                  
+                  return false;
+                })();
 
                 return (
                   <div
@@ -328,15 +361,15 @@ export default function Partecipanti() {
                               Blacklist
                             </Badge>
                           )}
-                          {hasMultipleRecords && (
+                          {hasPotentialDuplicates && (
                             <Badge 
                               variant="secondary" 
                               className="text-xs cursor-pointer hover:bg-yellow-200"
                               onClick={() => handleMergeClick(participant)}
-                              title="Clicca per unire i record duplicati"
+                              title="Clicca per unificare i dati anagrafici discordanti"
                             >
                               <Merge className="h-3 w-3 mr-1" />
-                              {participant.records.length} record (unisci)
+                              Dati da unificare
                             </Badge>
                           )}
                           <Badge variant="outline" className="text-xs">
