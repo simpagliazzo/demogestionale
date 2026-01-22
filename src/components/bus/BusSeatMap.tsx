@@ -65,30 +65,24 @@ export default function BusSeatMap({
   const renderSeat = (seatNumber: number, isLastRow = false) => {
     const assignment = getSeatAssignment(seatNumber);
     const isOccupied = !!assignment;
-    const isSelected = selectedParticipant !== "";
 
     return (
       <button
         key={seatNumber}
         onClick={() => onSeatClick(seatNumber, assignment)}
-        disabled={!isOccupied && !isSelected}
         className={cn(
-          "rounded-md font-bold transition-all flex items-center justify-center border-2 relative",
+          "rounded-md font-bold transition-all flex items-center justify-center border-2 relative cursor-pointer",
           isLastRow ? lastRowSeatSize : seatSize,
           isOccupied
-            ? "bg-red-500 text-white border-red-600 hover:bg-red-600 cursor-pointer shadow-md"
-            : isSelected
-            ? "bg-green-500 text-white border-green-600 hover:bg-green-600 cursor-pointer shadow-md"
-            : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed",
+            ? "bg-red-500 text-white border-red-600 hover:bg-red-600 shadow-md"
+            : "bg-green-500 text-white border-green-600 hover:bg-green-600 shadow-md",
           // Effetto sedile con bordo superiore arrotondato
           "before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[60%] before:h-[3px] before:rounded-t-full",
           isOccupied 
             ? "before:bg-red-700" 
-            : isSelected 
-            ? "before:bg-green-700" 
-            : "before:bg-slate-300"
+            : "before:bg-green-700"
         )}
-        title={isOccupied ? `${seatNumber}: ${assignment.participant?.full_name}` : `Posto ${seatNumber}`}
+        title={isOccupied ? `${seatNumber}: ${assignment.participant?.full_name}` : `Posto ${seatNumber} - Libero`}
       >
         {seatNumber}
       </button>
@@ -303,22 +297,15 @@ export default function BusSeatMap({
 
       {/* LEGENDA */}
       <div className={cn(
-        "bg-white border-t border-slate-200 flex items-center justify-center gap-3 flex-wrap",
+        "bg-white border-t border-slate-200 flex items-center justify-center gap-4 flex-wrap",
         compact ? "p-1.5 text-[7px]" : "p-2 text-[9px]"
       )}>
-        <div className="flex items-center gap-1">
-          <div className={cn(
-            "rounded-sm bg-slate-100 border border-slate-200",
-            compact ? "w-3 h-3" : "w-4 h-4"
-          )} />
-          <span className="text-slate-500">Libero</span>
-        </div>
         <div className="flex items-center gap-1">
           <div className={cn(
             "rounded-sm bg-green-500",
             compact ? "w-3 h-3" : "w-4 h-4"
           )} />
-          <span className="text-slate-500">Selezionabile</span>
+          <span className="text-slate-500">Disponibile</span>
         </div>
         <div className="flex items-center gap-1">
           <div className={cn(
