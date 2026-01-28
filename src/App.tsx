@@ -26,6 +26,7 @@ import ScegliPosto from "./pages/ScegliPosto";
 import ConfermaPrenotazione from "./pages/ConfermaPrenotazione";
 import AccompagnatoriGuide from "./pages/AccompagnatoriGuide";
 import Impostazioni from "./pages/Impostazioni";
+import GestioneContratto from "./pages/GestioneContratto";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/blacklist" element={<Blacklist />} />
               <Route path="/accompagnatori-guide" element={<AccompagnatoriGuide />} />
               <Route path="/impostazioni" element={<Impostazioni />} />
+              <Route path="/contratto" element={<GestioneContratto />} />
             </Route>
             <Route path="/trips/:id/hotel-list" element={<ProtectedRoute><HotelList /></ProtectedRoute>} />
             <Route path="/trips/:id/companion-list" element={<ProtectedRoute><CompanionList /></ProtectedRoute>} />

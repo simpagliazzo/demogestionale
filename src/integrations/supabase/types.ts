@@ -61,6 +61,87 @@ export type Database = {
           },
         ]
       }
+      agency_contract: {
+        Row: {
+          annual_amount: number | null
+          block_after_date: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          client_email: string | null
+          contract_file_url: string | null
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          id: string
+          is_blocked: boolean | null
+          is_paid: boolean | null
+          notes: string | null
+          payment_date: string | null
+          reminder_15_sent: boolean | null
+          reminder_30_sent: boolean | null
+          reminder_7_sent: boolean | null
+          start_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          annual_amount?: number | null
+          block_after_date?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          client_email?: string | null
+          contract_file_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          id?: string
+          is_blocked?: boolean | null
+          is_paid?: boolean | null
+          notes?: string | null
+          payment_date?: string | null
+          reminder_15_sent?: boolean | null
+          reminder_30_sent?: boolean | null
+          reminder_7_sent?: boolean | null
+          start_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          annual_amount?: number | null
+          block_after_date?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          client_email?: string | null
+          contract_file_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          is_blocked?: boolean | null
+          is_paid?: boolean | null
+          notes?: string | null
+          payment_date?: string | null
+          reminder_15_sent?: boolean | null
+          reminder_30_sent?: boolean | null
+          reminder_7_sent?: boolean | null
+          start_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_contract_blocked_by_fkey"
+            columns: ["blocked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_contract_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agency_settings: {
         Row: {
           address: string | null
