@@ -79,12 +79,12 @@ export function ContractExpiryBanner() {
         )}
         <AlertTitle className="font-bold">
           {daysUntilExpiry === 0 
-            ? "Il contratto scade oggi!" 
-            : `Il contratto scade tra ${daysUntilExpiry} giorni`}
+            ? "La versione free scade oggi!" 
+            : `La versione free scade tra ${daysUntilExpiry} giorni`}
         </AlertTitle>
         <AlertDescription>
-          Data scadenza: {format(new Date(contract.end_date), "dd/MM/yyyy")}. 
-          {!contract.is_paid && " Il pagamento non è ancora stato registrato."}
+          Scadenza: {format(new Date(contract.end_date), "dd/MM/yyyy")}. 
+          Contattaci per continuare ad utilizzare tutte le funzionalità.
         </AlertDescription>
       </Alert>
     );
