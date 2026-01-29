@@ -34,6 +34,9 @@ export function ContractExpiryBanner() {
   const isExpired = daysUntilExpiry < 0;
   const isExpiringSoon = daysUntilExpiry <= 30 && daysUntilExpiry >= 0;
 
+  // Se il contratto è pagato e non è scaduto, non mostrare nulla
+  if (contract.is_paid && !isExpired) return null;
+
   // Se bloccato, mostra alert di blocco
   if (contract.is_blocked) {
     return (

@@ -27,8 +27,10 @@ import {
   Save,
   Mail,
   Euro,
-  Clock
+  Clock,
+  Send
 } from "lucide-react";
+import { ManualReminderSection } from "@/components/contract/ManualReminderSection";
 
 interface AgencyContract {
   id: string;
@@ -488,40 +490,17 @@ export default function GestioneContratto() {
             </CardContent>
           </Card>
 
-          {/* Stato Promemoria */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Promemoria Inviati
-              </CardTitle>
-              <CardDescription>
-                Stato delle email di promemoria automatiche
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>30 giorni prima</span>
-                  <Badge variant={contract?.reminder_30_sent ? "default" : "secondary"}>
-                    {contract?.reminder_30_sent ? "Inviato" : "Non inviato"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>15 giorni prima</span>
-                  <Badge variant={contract?.reminder_15_sent ? "default" : "secondary"}>
-                    {contract?.reminder_15_sent ? "Inviato" : "Non inviato"}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>7 giorni prima</span>
-                  <Badge variant={contract?.reminder_7_sent ? "default" : "secondary"}>
-                    {contract?.reminder_7_sent ? "Inviato" : "Non inviato"}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Invio Promemoria Manuale */}
+          {contract && (
+            <ManualReminderSection
+              contractId={contract.id}
+              clientEmail={contract.client_email}
+              reminder30Sent={contract.reminder_30_sent}
+              reminder15Sent={contract.reminder_15_sent}
+              reminder7Sent={contract.reminder_7_sent}
+              endDate={contract.end_date}
+            />
+          )}
         </div>
       </div>
 
