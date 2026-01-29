@@ -31,6 +31,7 @@ import {
   Send
 } from "lucide-react";
 import { ManualReminderSection } from "@/components/contract/ManualReminderSection";
+import { ContractPaymentsSection } from "@/components/contract/ContractPaymentsSection";
 
 interface AgencyContract {
   id: string;
@@ -366,59 +367,14 @@ export default function GestioneContratto() {
           </CardContent>
         </Card>
 
-        {/* Pagamento e Blocco */}
+        {/* Storico Pagamenti */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Euro className="h-5 w-5" />
-                Stato Pagamento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Pagamento Effettuato</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Il cliente ha pagato il canone annuale
-                  </p>
-                </div>
-                <Switch
-                  checked={isPaid}
-                  onCheckedChange={setIsPaid}
-                />
-              </div>
-
-              {isPaid && (
-                <div className="space-y-2">
-                  <Label>Data Pagamento</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !paymentDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {paymentDate ? format(paymentDate, "dd/MM/yyyy") : "Seleziona data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={paymentDate}
-                        onSelect={setPaymentDate}
-                        locale={it}
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {contract && (
+            <ContractPaymentsSection
+              contractId={contract.id}
+              annualAmount={parseFloat(annualAmount) || 0}
+            />
+          )}
 
           <Card className={cn(isBlocked && "border-destructive")}>
             <CardHeader>

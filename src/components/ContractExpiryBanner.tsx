@@ -9,8 +9,12 @@ interface AgencyContract {
   id: string;
   end_date: string;
   is_blocked: boolean;
-  is_paid: boolean;
+  annual_amount: number | null;
   block_after_date: string | null;
+}
+
+interface ContractPayment {
+  amount: number;
 }
 
 export function ContractExpiryBanner() {
@@ -19,23 +23,43 @@ export function ContractExpiryBanner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agency_contract")
-        .select("id, end_date, is_blocked, is_paid, block_after_date")
+        .select("id, end_date, is_blocked, annual_amount, block_after_date")
         .maybeSingle();
       
       if (error) throw error;
       return data as AgencyContract | null;
     },
-    staleTime: 5 * 60 * 1000, // Cache per 5 minuti
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ["contract-payments-total", contract?.id],
+    queryFn: async () => {
+      if (!contract?.id) return [];
+      const { data, error } = await supabase
+        .from("contract_payments")
+        .select("amount")
+        .eq("contract_id", contract.id);
+      
+      if (error) throw error;
+      return data as ContractPayment[];
+    },
+    enabled: !!contract?.id,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (!contract) return null;
+
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const annualAmount = contract.annual_amount || 0;
+  const isFullyPaid = totalPaid >= annualAmount && annualAmount > 0;
 
   const daysUntilExpiry = differenceInDays(new Date(contract.end_date), new Date());
   const isExpired = daysUntilExpiry < 0;
   const isExpiringSoon = daysUntilExpiry <= 30 && daysUntilExpiry >= 0;
 
-  // Se il contratto è pagato e non è scaduto, non mostrare nulla
-  if (contract.is_paid && !isExpired) return null;
+  // Se il contratto è completamente pagato e non è scaduto, non mostrare nulla
+  if (isFullyPaid && !isExpired) return null;
 
   // Se bloccato, mostra alert di blocco
   if (contract.is_blocked) {
