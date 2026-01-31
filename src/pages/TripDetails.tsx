@@ -1067,6 +1067,11 @@ export default function TripDetails() {
               <p className="text-xs text-muted-foreground">Prezzo</p>
               <p className="text-xl font-bold">€{trip.price.toLocaleString("it-IT")}</p>
               <p className="text-[10px] text-muted-foreground">Acc: {depositDisplay}</p>
+              {trip.single_room_supplement > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Suppl. singola: €{trip.single_room_supplement}/notte
+                </p>
+              )}
             </div>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </div>
