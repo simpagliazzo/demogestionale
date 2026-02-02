@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { formatNameSurnameFirst, calculateDiscountedPrice, calculateTotalSingleSupplement } from "@/lib/format-utils";
-import { Baby } from "lucide-react";
+import { Baby, UtensilsCrossed } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -393,6 +393,26 @@ export default function CompanionList() {
           </p>
         )}
         <h2 className="text-xl font-semibold mt-4">LISTA ACCOMPAGNATORE</h2>
+        
+        {/* Riepilogo Ristorante */}
+        {restaurants.length > 0 && (
+          <div className="mt-4 p-3 border rounded-lg bg-orange-50 text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <UtensilsCrossed className="h-4 w-4 text-orange-600" />
+              <span className="font-semibold text-orange-700">Ristorante</span>
+              <span className="ml-auto text-sm font-bold text-orange-700">
+                {getRestaurantBookingsCount()} prenotazioni
+              </span>
+            </div>
+            {restaurants.map((restaurant) => (
+              <div key={restaurant.id} className="text-sm">
+                <p className="font-medium">{restaurant.name}</p>
+                {restaurant.address && <p className="text-muted-foreground">{restaurant.address}</p>}
+                {restaurant.phone && <p className="text-muted-foreground">📞 {restaurant.phone}</p>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mb-4 text-sm text-muted-foreground border-b pb-4">

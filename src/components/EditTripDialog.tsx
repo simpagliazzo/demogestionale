@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useActivityLog } from "@/hooks/use-activity-log";
-import { Link as LinkIcon, ExternalLink, UtensilsCrossed } from "lucide-react";
+import { Link as LinkIcon, ExternalLink } from "lucide-react";
 
 interface Guide {
   id: string;
@@ -21,14 +21,6 @@ interface Guide {
   role: string;
 }
 
-interface Restaurant {
-  id: string;
-  name: string;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
-  notes: string | null;
-}
 
 const tripSchema = z.object({
   title: z.string().min(1, "Il titolo è obbligatorio").max(200, "Massimo 200 caratteri"),
@@ -46,10 +38,6 @@ const tripSchema = z.object({
   companion_name: z.string().optional(),
   guide_name: z.string().optional(),
   flyer_url: z.string().url("Inserisci un URL valido").optional().or(z.literal("")),
-  restaurant_name: z.string().optional(),
-  restaurant_address: z.string().optional(),
-  restaurant_phone: z.string().optional(),
-  restaurant_email: z.string().email("Email non valida").optional().or(z.literal("")),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -86,7 +74,7 @@ interface EditTripDialogProps {
 export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: EditTripDialogProps) {
   const [loading, setLoading] = useState(false);
   const [guides, setGuides] = useState<Guide[]>([]);
-  const [existingRestaurant, setExistingRestaurant] = useState<Restaurant | null>(null);
+  
   const { logUpdate } = useActivityLog();
 
   const form = useForm<TripFormValues>({
@@ -107,17 +95,12 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
       companion_name: "",
       guide_name: "",
       flyer_url: "",
-      restaurant_name: "",
-      restaurant_address: "",
-      restaurant_phone: "",
-      restaurant_email: "",
     },
   });
 
   useEffect(() => {
     if (open) {
       loadGuides();
-      loadRestaurant();
     }
   }, [open, trip.id]);
 
@@ -129,20 +112,6 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
     setGuides(data || []);
   };
 
-  const loadRestaurant = async () => {
-    const { data } = await supabase
-      .from("restaurants")
-      .select("*")
-      .eq("trip_id", trip.id)
-      .maybeSingle();
-    setExistingRestaurant(data);
-    if (data) {
-      form.setValue("restaurant_name", data.name || "");
-      form.setValue("restaurant_address", data.address || "");
-      form.setValue("restaurant_phone", data.phone || "");
-      form.setValue("restaurant_email", data.email || "");
-    }
-  };
 
   const accompagnatori = guides.filter(g => g.role === "accompagnatore");
   const guideList = guides.filter(g => g.role === "guida");
@@ -165,13 +134,9 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
         companion_name: trip.companion_name || "",
         guide_name: trip.guide_name || "",
         flyer_url: trip.flyer_url || "",
-        restaurant_name: existingRestaurant?.name || "",
-        restaurant_address: existingRestaurant?.address || "",
-        restaurant_phone: existingRestaurant?.phone || "",
-        restaurant_email: existingRestaurant?.email || "",
       });
     }
-  }, [trip, open, form, existingRestaurant]);
+  }, [trip, open, form]);
 
   const depositType = form.watch("deposit_type");
   const tripType = form.watch("trip_type");
@@ -202,38 +167,6 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
 
       if (error) throw error;
 
-      // Handle restaurant data
-      if (values.restaurant_name) {
-        if (existingRestaurant) {
-          // Update existing restaurant
-          await supabase
-            .from("restaurants")
-            .update({
-              name: values.restaurant_name,
-              address: values.restaurant_address || null,
-              phone: values.restaurant_phone || null,
-              email: values.restaurant_email || null,
-            })
-            .eq("id", existingRestaurant.id);
-        } else {
-          // Create new restaurant
-          await supabase
-            .from("restaurants")
-            .insert({
-              trip_id: trip.id,
-              name: values.restaurant_name,
-              address: values.restaurant_address || null,
-              phone: values.restaurant_phone || null,
-              email: values.restaurant_email || null,
-            });
-        }
-      } else if (existingRestaurant) {
-        // Remove restaurant if name is cleared
-        await supabase
-          .from("restaurants")
-          .delete()
-          .eq("id", existingRestaurant.id);
-      }
 
       await logUpdate("trip", trip.id, trip.title, {
         changes: {
@@ -602,71 +535,6 @@ export default function EditTripDialog({ open, onOpenChange, onSuccess, trip }: 
               )}
             />
 
-            {/* Restaurant Section */}
-            <div className="border-t pt-4 mt-4">
-              <h3 className="text-sm font-medium flex items-center gap-2 mb-4">
-                <UtensilsCrossed className="h-4 w-4" />
-                Ristorante (opzionale)
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="restaurant_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Ristorante</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Es: Ristorante Da Mario" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="restaurant_phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefono</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Es: 055 1234567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="restaurant_address"
-                render={({ field }) => (
-                  <FormItem className="mt-4">
-                    <FormLabel>Indirizzo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Es: Via Roma 123, Firenze" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="restaurant_email"
-                render={({ field }) => (
-                  <FormItem className="mt-4">
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="Es: info@ristorante.it" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
