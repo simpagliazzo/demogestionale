@@ -1993,43 +1993,6 @@ export default function TripDetails() {
                   </CardContent>
                 </Card>
 
-                {/* Card Ristorante */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <UtensilsCrossed className="h-4 w-4" />
-                      Ristorante
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(isAdmin || isAgent) ? (
-                      <RestaurantForm 
-                        tripId={id!}
-                        restaurants={restaurants}
-                        onSuccess={() => {
-                          loadRestaurants();
-                          loadTripDetails();
-                        }}
-                      />
-                    ) : (
-                      <div className="space-y-2">
-                        {restaurants.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Nessun ristorante</p>
-                        ) : (
-                          restaurants.map((restaurant) => (
-                            <div key={restaurant.id} className="border-b last:border-b-0 pb-1.5">
-                              <p className="text-xs font-medium">{restaurant.name}</p>
-                              {restaurant.address && <p className="text-[10px] text-muted-foreground">{restaurant.address}</p>}
-                              {restaurant.phone && <p className="text-[10px] text-muted-foreground">📞 {restaurant.phone}</p>}
-                              {restaurant.email && <p className="text-[10px] text-muted-foreground">✉️ {restaurant.email}</p>}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
                 <EditHotelDialog
                   open={editHotelDialogOpen}
                   onOpenChange={setEditHotelDialogOpen}
@@ -2184,13 +2147,42 @@ export default function TripDetails() {
             </>
           )}
 
-          {trip?.trip_type === 'day_trip' && (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                I viaggi giornalieri non prevedono alloggio
-              </CardContent>
-            </Card>
-          )}
+          {/* Card Ristorante - visibile per tutti i tipi di viaggio */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                Ristorante
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(isAdmin || isAgent) ? (
+                <RestaurantForm 
+                  tripId={id!}
+                  restaurants={restaurants}
+                  onSuccess={() => {
+                    loadRestaurants();
+                    loadTripDetails();
+                  }}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {restaurants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nessun ristorante</p>
+                  ) : (
+                    restaurants.map((restaurant) => (
+                      <div key={restaurant.id} className="border-b last:border-b-0 pb-1.5">
+                        <p className="text-xs font-medium">{restaurant.name}</p>
+                        {restaurant.address && <p className="text-[10px] text-muted-foreground">{restaurant.address}</p>}
+                        {restaurant.phone && <p className="text-[10px] text-muted-foreground">📞 {restaurant.phone}</p>}
+                        {restaurant.email && <p className="text-[10px] text-muted-foreground">✉️ {restaurant.email}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Tab Trasporti */}
