@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2, Pencil, FolderOpen, LayoutDashboard, ExternalLink, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, DollarSign, Plus, Hotel, Bus, User, Save, Search, Euro, TrendingUp, FileText, ClipboardList, Trash2, Pencil, FolderOpen, LayoutDashboard, ExternalLink, Link as LinkIcon, UtensilsCrossed } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -84,6 +84,15 @@ interface Participant {
   group_number: number | null;
   discount_type: string | null;
   discount_amount: number | null;
+  has_restaurant: boolean | null;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
 }
 
 interface ParticipantPayment {
@@ -196,6 +205,7 @@ export default function TripDetails() {
   const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
   const [groupPaymentDialogOpen, setGroupPaymentDialogOpen] = useState(false);
   const [selectedGroupForPayment, setSelectedGroupForPayment] = useState<{ participants: Participant[]; groupNumber: number } | null>(null);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const { isAdmin, isAgent } = useUserRole();
   const { canDeleteTrips } = usePermissions();
 
@@ -228,7 +238,22 @@ export default function TripDetails() {
     loadTripCompanions();
     loadHotelRegistry();
     loadBusSeatAssignments();
+    loadRestaurants();
   }, [id]);
+
+  const loadRestaurants = async () => {
+    if (!id) return;
+    try {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("trip_id", id);
+      if (error) throw error;
+      setRestaurants(data || []);
+    } catch (error) {
+      console.error("Errore caricamento ristoranti:", error);
+    }
+  };
 
   useEffect(() => {
     if (participants.length > 0) {
@@ -1115,7 +1140,7 @@ export default function TripDetails() {
           </TabsTrigger>
           <TabsTrigger value="alloggio" className="text-xs gap-1.5">
             <Hotel className="h-3 w-3" />
-            <span className="hidden sm:inline">Alloggio</span>
+            <span className="hidden sm:inline">Alloggio / Ristorante</span>
           </TabsTrigger>
           <TabsTrigger value="trasporti" className="text-xs gap-1.5">
             <Bus className="h-3 w-3" />
@@ -1600,6 +1625,11 @@ export default function TripDetails() {
                               {getParticipantSeatNumber(participant.id) && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-50 dark:bg-blue-950/30 border-blue-300 text-blue-700 dark:text-blue-400">
                                   🚌 {getParticipantSeatNumber(participant.id)}
+                                </Badge>
+                              )}
+                              {participant.has_restaurant && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-700 dark:text-amber-400">
+                                  <UtensilsCrossed className="h-3 w-3" />
                                 </Badge>
                               )}
                             </div>

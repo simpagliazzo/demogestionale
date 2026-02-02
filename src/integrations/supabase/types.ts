@@ -775,6 +775,7 @@ export type Database = {
           email: string | null
           full_name: string
           group_number: number | null
+          has_restaurant: boolean | null
           id: string
           is_infant: boolean
           notes: string | null
@@ -794,6 +795,7 @@ export type Database = {
           email?: string | null
           full_name: string
           group_number?: number | null
+          has_restaurant?: boolean | null
           id?: string
           is_infant?: boolean
           notes?: string | null
@@ -813,6 +815,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           group_number?: number | null
+          has_restaurant?: boolean | null
           id?: string
           is_infant?: boolean
           notes?: string | null
@@ -1038,6 +1041,47 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurants: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          trip_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          trip_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]

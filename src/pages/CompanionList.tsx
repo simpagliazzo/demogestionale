@@ -48,6 +48,14 @@ interface Participant {
   discount_type: string | null;
   discount_amount: number | null;
   is_infant: boolean;
+  has_restaurant: boolean | null;
+}
+
+interface Restaurant {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
 }
 
 interface Payment {
@@ -68,6 +76,7 @@ export default function CompanionList() {
   const [seatAssignments, setSeatAssignments] = useState<SeatAssignment[]>([]);
   const [tripGuides, setTripGuides] = useState<TripGuide[]>([]);
   const [tripCompanions, setTripCompanions] = useState<TripCompanion[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -154,11 +163,22 @@ export default function CompanionList() {
         id: tc.id,
         guide: tc.guides
       })));
+
+      // Carica ristoranti del viaggio
+      const { data: restaurantsData } = await supabase
+        .from("restaurants")
+        .select("id, name, address, phone")
+        .eq("trip_id", id);
+      setRestaurants(restaurantsData || []);
     } catch (error) {
       console.error("Errore:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRestaurantBookingsCount = () => {
+    return participants.filter(p => p.has_restaurant).length;
   };
 
   const getParticipantPayments = (participantId: string) => {
