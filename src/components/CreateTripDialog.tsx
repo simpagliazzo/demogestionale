@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Link, UtensilsCrossed } from "lucide-react";
+import { Link } from "lucide-react";
 
 interface Guide {
   id: string;
@@ -37,10 +37,6 @@ const tripSchema = z.object({
   companion_name: z.string().optional(),
   guide_name: z.string().optional(),
   flyer_url: z.string().url("Inserisci un URL valido").optional().or(z.literal("")),
-  restaurant_name: z.string().optional(),
-  restaurant_address: z.string().optional(),
-  restaurant_phone: z.string().optional(),
-  restaurant_email: z.string().optional(),
 }).refine((data) => new Date(data.return_date) >= new Date(data.departure_date), {
   message: "La data di ritorno deve essere successiva alla data di partenza",
   path: ["return_date"],
@@ -77,10 +73,6 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
       companion_name: "",
       guide_name: "",
       flyer_url: "",
-      restaurant_name: "",
-      restaurant_address: "",
-      restaurant_phone: "",
-      restaurant_email: "",
     },
   });
 
@@ -133,16 +125,6 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
 
       if (error) throw error;
 
-      // Se è stato inserito un ristorante, salvalo
-      if (values.restaurant_name && tripData) {
-        await supabase.from("restaurants").insert({
-          trip_id: tripData.id,
-          name: values.restaurant_name,
-          address: values.restaurant_address || null,
-          phone: values.restaurant_phone || null,
-          email: values.restaurant_email || null,
-        });
-      }
 
       toast.success("Viaggio creato con successo!");
       form.reset();
@@ -491,71 +473,6 @@ export default function CreateTripDialog({ open, onOpenChange, onSuccess }: Crea
               )}
             />
 
-            {/* Sezione Ristorante */}
-            <div className="p-4 border rounded-lg space-y-4 bg-muted/30">
-              <div className="flex items-center gap-2">
-                <UtensilsCrossed className="h-4 w-4" />
-                <Label className="text-base font-semibold">Ristorante (opzionale)</Label>
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="restaurant_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Ristorante</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Es: Ristorante Da Mario" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="restaurant_address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Indirizzo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Via Roma 1, Milano" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="restaurant_phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefono</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+39 02 1234567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="restaurant_email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="info@ristorante.it" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -160,6 +160,185 @@ const statusLabels = {
   cancelled: "Annullato",
 };
 
+// Restaurant Form Component
+function RestaurantForm({ 
+  tripId, 
+  restaurants, 
+  onSuccess 
+}: { 
+  tripId: string; 
+  restaurants: Restaurant[]; 
+  onSuccess: () => void;
+}) {
+  const [restaurantData, setRestaurantData] = useState({ name: "", address: "", phone: "", email: "" });
+  const [showManualEntry, setShowManualEntry] = useState(false);
+
+  const addRestaurant = async () => {
+    if (!restaurantData.name.trim()) {
+      toast.error("Il nome del ristorante è obbligatorio");
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.from("restaurants").insert({
+        trip_id: tripId,
+        name: restaurantData.name,
+        address: restaurantData.address || null,
+        phone: restaurantData.phone || null,
+        email: restaurantData.email || null,
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Ristorante aggiunto con successo!");
+      setRestaurantData({ name: "", address: "", phone: "", email: "" });
+      setShowManualEntry(false);
+      onSuccess();
+    } catch (error) {
+      console.error("Errore aggiunta ristorante:", error);
+      toast.error("Errore durante l'aggiunta del ristorante");
+    }
+  };
+
+  const updateRestaurant = async (restaurantId: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ [field]: value || null })
+        .eq("id", restaurantId);
+      
+      if (error) throw error;
+      onSuccess();
+    } catch (error) {
+      console.error("Errore aggiornamento ristorante:", error);
+      toast.error("Errore durante l'aggiornamento");
+    }
+  };
+
+  const deleteRestaurant = async (restaurantId: string) => {
+    try {
+      const { error } = await supabase
+        .from("restaurants")
+        .delete()
+        .eq("id", restaurantId);
+      
+      if (error) throw error;
+      toast.success("Ristorante eliminato");
+      onSuccess();
+    } catch (error) {
+      console.error("Errore eliminazione ristorante:", error);
+      toast.error("Errore durante l'eliminazione");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {restaurants.map((restaurant) => (
+        <div key={restaurant.id} className="p-2 border rounded bg-muted/50">
+          <div className="flex items-center justify-between mb-1">
+            <Input
+              value={restaurant.name}
+              onChange={(e) => updateRestaurant(restaurant.id, "name", e.target.value)}
+              className="h-7 text-xs font-medium"
+              placeholder="Nome ristorante"
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-5 w-5 ml-2 text-destructive hover:text-destructive"
+              onClick={() => deleteRestaurant(restaurant.id)}
+            >
+              <Trash2 className="h-2.5 w-2.5" />
+            </Button>
+          </div>
+          <Input
+            value={restaurant.address || ""}
+            onChange={(e) => updateRestaurant(restaurant.id, "address", e.target.value)}
+            className="h-7 text-xs mb-1"
+            placeholder="Indirizzo"
+          />
+          <div className="grid grid-cols-2 gap-1">
+            <Input
+              value={restaurant.phone || ""}
+              onChange={(e) => updateRestaurant(restaurant.id, "phone", e.target.value)}
+              className="h-7 text-xs"
+              placeholder="Telefono"
+            />
+            <Input
+              value={restaurant.email || ""}
+              onChange={(e) => updateRestaurant(restaurant.id, "email", e.target.value)}
+              className="h-7 text-xs"
+              placeholder="Email"
+            />
+          </div>
+        </div>
+      ))}
+      
+      {restaurants.length === 0 && !showManualEntry && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full h-7 text-xs"
+          onClick={() => setShowManualEntry(true)}
+        >
+          Aggiungi ristorante
+        </Button>
+      )}
+      
+      {restaurants.length > 0 && !showManualEntry && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full h-7 text-xs"
+          onClick={() => setShowManualEntry(true)}
+        >
+          Aggiungi altro ristorante
+        </Button>
+      )}
+      
+      {showManualEntry && (
+        <div className="space-y-1.5 pt-2 border-t">
+          <Input
+            value={restaurantData.name}
+            onChange={(e) => setRestaurantData({...restaurantData, name: e.target.value})}
+            placeholder="Nome ristorante *"
+            className="h-7 text-xs"
+          />
+          <Input
+            value={restaurantData.address}
+            onChange={(e) => setRestaurantData({...restaurantData, address: e.target.value})}
+            placeholder="Indirizzo"
+            className="h-7 text-xs"
+          />
+          <div className="grid grid-cols-2 gap-1.5">
+            <Input
+              value={restaurantData.phone}
+              onChange={(e) => setRestaurantData({...restaurantData, phone: e.target.value})}
+              placeholder="Telefono"
+              className="h-7 text-xs"
+            />
+            <Input
+              value={restaurantData.email}
+              onChange={(e) => setRestaurantData({...restaurantData, email: e.target.value})}
+              placeholder="Email"
+              className="h-7 text-xs"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={addRestaurant} size="sm" className="flex-1 gap-1 h-7 text-xs">
+              <Plus className="h-3 w-3" />
+              Aggiungi
+            </Button>
+            <Button onClick={() => setShowManualEntry(false)} variant="outline" size="sm" className="h-7 text-xs">
+              Annulla
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TripDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1806,6 +1985,43 @@ export default function TripDetails() {
                               {hotel.address && <p className="text-[10px] text-muted-foreground">{hotel.address}</p>}
                               {hotel.phone && <p className="text-[10px] text-muted-foreground">📞 {hotel.phone}</p>}
                               {hotel.email && <p className="text-[10px] text-muted-foreground">✉️ {hotel.email}</p>}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Card Ristorante */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <UtensilsCrossed className="h-4 w-4" />
+                      Ristorante
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(isAdmin || isAgent) ? (
+                      <RestaurantForm 
+                        tripId={id!}
+                        restaurants={restaurants}
+                        onSuccess={() => {
+                          loadRestaurants();
+                          loadTripDetails();
+                        }}
+                      />
+                    ) : (
+                      <div className="space-y-2">
+                        {restaurants.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Nessun ristorante</p>
+                        ) : (
+                          restaurants.map((restaurant) => (
+                            <div key={restaurant.id} className="border-b last:border-b-0 pb-1.5">
+                              <p className="text-xs font-medium">{restaurant.name}</p>
+                              {restaurant.address && <p className="text-[10px] text-muted-foreground">{restaurant.address}</p>}
+                              {restaurant.phone && <p className="text-[10px] text-muted-foreground">📞 {restaurant.phone}</p>}
+                              {restaurant.email && <p className="text-[10px] text-muted-foreground">✉️ {restaurant.email}</p>}
                             </div>
                           ))
                         )}
