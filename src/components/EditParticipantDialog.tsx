@@ -12,7 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useActivityLog } from "@/hooks/use-activity-log";
-import { FileText, MessageCircle, Receipt, Copy } from "lucide-react";
+import { FileText, MessageCircle, Receipt, Copy, UtensilsCrossed } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import PaymentReceiptDialog from "@/components/PaymentReceiptDialog";
 import TripConfirmationDialog from "@/components/TripConfirmationDialog";
 import GenerateUploadLinkButton from "@/components/GenerateUploadLinkButton";
@@ -60,6 +61,7 @@ interface EditParticipantDialogProps {
     group_number?: number | null;
     discount_type?: string | null;
     discount_amount?: number | null;
+    has_restaurant?: boolean | null;
   } | null;
   tripId?: string;
   tripPrice: number;
@@ -102,6 +104,7 @@ export default function EditParticipantDialog({
   const [newPaymentNotes, setNewPaymentNotes] = useState("");
   const [discountType, setDiscountType] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [hasRestaurant, setHasRestaurant] = useState<boolean>(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [selectedPaymentForReceipt, setSelectedPaymentForReceipt] = useState<Payment | null>(null);
   const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
@@ -176,6 +179,7 @@ export default function EditParticipantDialog({
       });
       setDiscountType(participant.discount_type || null);
       setDiscountAmount(participant.discount_amount || 0);
+      setHasRestaurant(participant.has_restaurant || false);
       loadPayments();
     }
   }, [participant, reset]);
@@ -339,6 +343,7 @@ export default function EditParticipantDialog({
           group_number: groupNum,
           discount_type: discountType,
           discount_amount: discountAmount || 0,
+          has_restaurant: hasRestaurant,
         })
         .eq("id", participant.id);
 
@@ -561,6 +566,24 @@ export default function EditParticipantDialog({
               placeholder="Note da stampare nella lista accompagnatore"
               rows={2}
             />
+          </div>
+
+          {/* Checkbox Ristorante */}
+          <div className="flex items-start space-x-3 p-3 rounded-md border bg-amber-50/50">
+            <Checkbox
+              id="has_restaurant"
+              checked={hasRestaurant}
+              onCheckedChange={(checked) => setHasRestaurant(checked === true)}
+            />
+            <div className="space-y-1 leading-none">
+              <Label htmlFor="has_restaurant" className="flex items-center gap-2 cursor-pointer">
+                <UtensilsCrossed className="h-4 w-4 text-amber-600" />
+                Prenotazione Ristorante
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Seleziona se il partecipante ha prenotato il ristorante
+              </p>
+            </div>
           </div>
 
             <div className="flex justify-between gap-3 pt-4">

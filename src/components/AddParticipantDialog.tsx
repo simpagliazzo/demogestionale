@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import ParticipantAutocomplete from "@/components/ParticipantAutocomplete";
 import { ExistingParticipant } from "@/hooks/use-participant-search";
 import { useActivityLog } from "@/hooks/use-activity-log";
-import { AlertTriangle, Baby } from "lucide-react";
+import { AlertTriangle, Baby, UtensilsCrossed } from "lucide-react";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { formatNameSurnameFirst } from "@/lib/format-utils";
 const participantSchema = z.object({
@@ -28,6 +28,7 @@ const participantSchema = z.object({
   phone: z.string().optional(),
   notes: z.string().optional(),
   is_infant: z.boolean().optional(),
+  has_restaurant: z.boolean().optional(),
 });
 
 const formSchema = z.object({
@@ -74,7 +75,7 @@ export default function AddParticipantDialog({
   } = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      participants: [{ cognome: "", nome: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "", is_infant: false }],
+      participants: [{ cognome: "", nome: "", date_of_birth: "", place_of_birth: "", email: "", phone: "", notes: "", is_infant: false, has_restaurant: false }],
       room_type: isDayTrip ? "nessuna" : "doppia",
       group_number: "",
       customNumParticipants: undefined,
@@ -231,6 +232,7 @@ export default function AddParticipantDialog({
         group_number: groupNum,
         created_by: user?.id || null,
         is_infant: p.is_infant || false,
+        has_restaurant: p.has_restaurant || false,
       }));
 
       const { data: insertedData, error } = await supabase.from("participants").insert(participantsToInsert).select();
@@ -284,6 +286,7 @@ export default function AddParticipantDialog({
       phone: "", 
       notes: "",
       is_infant: false,
+      has_restaurant: false,
     }));
     reset({
       participants: newParticipants,
@@ -594,6 +597,29 @@ export default function AddParticipantDialog({
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         L'infant non paga e dorme nel letto con i genitori
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3 p-3 rounded-md border bg-amber-50/50">
+                    <Controller
+                      name={`participants.${index}.has_restaurant`}
+                      control={control}
+                      render={({ field }) => (
+                        <Checkbox
+                          id={`participants.${index}.has_restaurant`}
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor={`participants.${index}.has_restaurant`} className="flex items-center gap-2 cursor-pointer">
+                        <UtensilsCrossed className="h-4 w-4 text-amber-600" />
+                        Prenotazione Ristorante
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Seleziona se il partecipante ha prenotato il ristorante
                       </p>
                     </div>
                   </div>
