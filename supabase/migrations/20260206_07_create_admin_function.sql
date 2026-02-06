@@ -24,7 +24,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   -- Assign admin role
-  DELETE FROM public.user_roles WHERE user_id = v_user_id;
+  DELETE FROM public.user_roles ur WHERE ur.user_id = v_user_id;
   
   INSERT INTO public.user_roles (user_id, role)
   VALUES (v_user_id, 'admin');
