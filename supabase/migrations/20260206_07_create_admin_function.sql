@@ -9,9 +9,9 @@ DECLARE
   v_user_id UUID;
 BEGIN
   -- Get user_id from email
-  SELECT id INTO v_user_id
-  FROM auth.users
-  WHERE email = p_email;
+  SELECT u.id INTO v_user_id
+  FROM auth.users AS u
+  WHERE u.email = p_email;
 
   IF v_user_id IS NULL THEN
     RETURN QUERY SELECT NULL::UUID, p_email, 'Error: User not found'::TEXT;
