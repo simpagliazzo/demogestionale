@@ -23,15 +23,15 @@ BEGIN
   VALUES (v_user_id, COALESCE((SELECT raw_user_meta_data->>'full_name' FROM auth.users WHERE id = v_user_id), 'User'))
   ON CONFLICT (id) DO NOTHING;
 
-  -- Assign admin role
+  -- Assign super_admin role
   DELETE FROM public.user_roles ur WHERE ur.user_id = v_user_id;
   
   INSERT INTO public.user_roles (user_id, role)
-  VALUES (v_user_id, 'admin');
+  VALUES (v_user_id, 'super_admin');
 
   -- Assign all admin permissions
   INSERT INTO public.role_permissions (role, permission)
-  SELECT 'admin'::app_role, permission
+  SELECT 'super_admin'::app_role, permission
   FROM (
     SELECT 'manage_trips'::permission_type 
     UNION SELECT 'delete_trips'::permission_type
@@ -45,6 +45,6 @@ BEGIN
   ) AS perms(permission)
   ON CONFLICT (role, permission) DO NOTHING;
 
-  RETURN QUERY SELECT v_user_id, p_email, 'Admin role assigned successfully'::TEXT;
+  RETURN QUERY SELECT v_user_id, p_email, 'Super admin role assigned successfully'::TEXT;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
