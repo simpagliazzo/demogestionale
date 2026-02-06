@@ -18,14 +18,13 @@ INSERT INTO public.role_permissions (role, permission)
 SELECT 'admin'::app_role, permission
 FROM (
   SELECT 'manage_trips'::permission_type 
+  UNION SELECT 'delete_trips'::permission_type
   UNION SELECT 'manage_participants'::permission_type
   UNION SELECT 'manage_payments'::permission_type
-  UNION SELECT 'manage_quotes'::permission_type
-  UNION SELECT 'manage_hotels'::permission_type
   UNION SELECT 'manage_bus'::permission_type
   UNION SELECT 'manage_carriers'::permission_type
   UNION SELECT 'view_prices'::permission_type
+  UNION SELECT 'manage_hotels'::permission_type
   UNION SELECT 'view_activity_logs'::permission_type
-  UNION SELECT 'delete_trips'::permission_type
 ) AS perms(permission)
 ON CONFLICT (role, permission) DO NOTHING;
